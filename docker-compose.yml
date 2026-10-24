@@ -1,0 +1,43 @@
+# Bingoor on the VPS: API, website and admin panel.
+#
+# Deployed by deploy/docker-deploy.sh (run by GitHub Actions on every push to
+# main). The apps use the host network so they keep the ports the aaPanel
+# reverse proxy already points at (API 5000, website 3000, admin 5173) and
+# reach MongoDB on localhost exactly as before.
+#
+# Server-only settings live outside the repository:
+#   $BINGOOR_ENV_DIR/backend.env   the API's .env (MONGO_URI, JWT secrets, ...)
+#   $BINGOOR_DATA_DIR/uploads      files older builds wrote to disk
+
+name: bingoor
+
+x-next-build: &next-build
+  args:
+    NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.bingoor.com/api/v1}
+
+services:
+  api:
+    build:
+      context: ${BACKEND_DIR:-./autozo-backend}
+    image: bingoor-api:latest
+    env_file: ${BINGOOR_ENV_DIR:-/opt/bingoor-env}/backend.env
+    volumes:
+      - ${BINGOOR_DATA_DIR:-/opt/bingoor-data}/uploads:/app/uploads
+    network_mode: host
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ${WEB_DIR:-./autozo-web}
+      <<: *next-build
+    image: bingoor-web:latest
+    network_mode: host
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: ${ADMIN_DIR:-./autozo-admin}
+      <<: *next-build
+    image: bingoor-admin:latest
+    network_mode: host
+    restart: unless-stopped
