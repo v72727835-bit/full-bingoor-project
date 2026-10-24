@@ -324,7 +324,7 @@ export function ProductDetailScreen() {
         {/* ------------------------------------------------ promises -- */}
         <View style={styles.promises}>
           {[
-            { icon: 'shield-checkmark-outline' as const, title: 'Fulfilled by', body: 'Autozo' },
+            { icon: 'shield-checkmark-outline' as const, title: 'Fulfilled by', body: 'Bingoor' },
             product.codAvailable === false
               ? { icon: 'card-outline' as const, title: 'Online payment only', body: 'No cash on delivery' }
               : product.onlineAvailable === false
@@ -410,7 +410,7 @@ export function ProductDetailScreen() {
                     </View>
                     <View style={styles.flex}>
                       <Txt variant="label" numberOfLines={1}>
-                        {r.user?.name ?? 'Autozo customer'}
+                        {r.user?.name ?? 'Bingoor customer'}
                       </Txt>
                       <View style={styles.reviewMeta}>
                         <Stars value={r.rating} size={12} />

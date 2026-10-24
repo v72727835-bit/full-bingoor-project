@@ -392,7 +392,7 @@ export function FeedFooter() {
   return (
     <View style={styles.footer}>
       <Txt style={styles.footerMark} numberOfLines={1} adjustsFontSizeToFit>
-        Autozo
+        Bingoor
       </Txt>
       <Txt variant="bodySm" tone="faint">
         Your neighbourhood store, in minutes.

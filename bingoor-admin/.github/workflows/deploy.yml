@@ -1,0 +1,43 @@
+name: Deploy
+
+# When something lands on main, the server pulls and rebuilds all three apps.
+# The deploy key on the server can run only the deploy script (see
+# authorized_keys on the server), so a leaked key cannot open a shell.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time. A newer push waits, then deploys the latest code.
+concurrency:
+  group: bingoor-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check secrets are set
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+          KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          [ -n "$HOST" ] && [ -n "$KEY" ] || { echo "Set SERVER_HOST, SERVER_USER and SERVER_SSH_KEY in the repository secrets."; exit 1; }
+
+      - name: Deploy over SSH
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER_NAME: ${{ secrets.SERVER_USER }}
+          KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # The server runs its deploy script whatever command is asked for.
+          ssh -i ~/.ssh/deploy_key -o ServerAliveInterval=30 -o ServerAliveCountMax=40 \
+            "${USER_NAME:-root}@$HOST" deploy

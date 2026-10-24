@@ -174,7 +174,7 @@ export function SignupScreen() {
           <Button label="Create account" onPress={submit} loading={busy} size="lg" style={styles.submit} />
 
           <Txt variant="caption" tone="faint" center style={styles.legal}>
-            By continuing you agree to Autozo&apos;s Terms of Service and Privacy Policy.
+            By continuing you agree to Bingoor&apos;s Terms of Service and Privacy Policy.
           </Txt>
         </ScrollView>
 

@@ -36,7 +36,7 @@ export function Logo({
   }));
   const px = ms(size);
   return (
-    <View style={[s.row, style]} accessibilityRole="image" accessibilityLabel="Autozo">
+    <View style={[s.row, style]} accessibilityRole="image" accessibilityLabel="Bingoor">
       <Image
         source={onDark ? MARK_WHITE : MARK}
         style={{ width: px, height: px }}
@@ -45,7 +45,7 @@ export function Logo({
       />
       <View style={s.words}>
         <Txt style={[s.wordmark, { fontSize: px * 0.62, lineHeight: px * 0.74, color: onDark ? c.onHeader : c.ink }]}>
-          Autozo
+          Bingoor
         </Txt>
         {showTagline ? (
           <Txt variant="overline" style={[s.tagline, { color: onDark ? c.onHeaderMuted : c.inkMuted }]}>

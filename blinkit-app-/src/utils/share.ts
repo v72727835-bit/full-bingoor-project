@@ -9,7 +9,7 @@ import { WEB_URL } from '../config';
 export async function shareLink(title: string, path: string): Promise<void> {
   const url = `${WEB_URL}${path}`;
   try {
-    await Share.share({ title, message: `${title} on Autozo\n${url}`, url }, { dialogTitle: `Share ${title}` });
+    await Share.share({ title, message: `${title} on Bingoor\n${url}`, url }, { dialogTitle: `Share ${title}` });
   } catch {
     /* the customer closed the sheet */
   }

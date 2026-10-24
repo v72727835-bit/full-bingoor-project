@@ -24,4 +24,4 @@ export const API_URL: string = (API_URL_OVERRIDE ?? defaultUrl).replace(/\/+$/, 
  * The storefront a shared link opens. Someone without the app installed still
  * lands on the product page, which is the whole point of sharing one.
  */
-export const WEB_URL = 'https://shop.autozo.org';
+export const WEB_URL = 'https://bingoor.com';

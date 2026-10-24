@@ -1,0 +1,211 @@
+import crypto from 'crypto';
+import { getIntegrations } from '../services/integrations.service';
+import { localPhone, requireOtp, verifyPhoneToken } from '../services/firebase.service';
+import { User, UserDoc } from '../models/User';
+import { ApiError } from '../utils/ApiError';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sha256, signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt';
+import { created, ok } from '../utils/response';
+
+const MAX_SESSIONS = 5; // refresh tokens kept per user (one per logged-in device)
+
+async function issueTokens(user: UserDoc) {
+  const accessToken = signAccessToken(user.id, user.role);
+  const refreshToken = signRefreshToken(user.id);
+  await User.updateOne(
+    { _id: user._id },
+    {
+      $push: { refreshTokens: { $each: [{ hash: sha256(refreshToken), createdAt: new Date() }], $slice: -MAX_SESSIONS } },
+      $set: { lastLoginAt: new Date() },
+    },
+  );
+  return { accessToken, refreshToken };
+}
+
+/** Every password login also needs an OTP for the account's own phone when the admin turned that on. */
+async function otpOnLogin(user: UserDoc, firebaseIdToken?: string) {
+  if (!/^[6-9]\d{9}$/.test(user.phone)) return; // social sign-ups without a real number yet
+  if (await requireOtp('login', user.phone, firebaseIdToken)) {
+    if (!user.phoneVerified) await User.updateOne({ _id: user._id }, { $set: { phoneVerified: true } });
+  }
+}
+
+export const register = asyncHandler(async (req, res) => {
+  const { name, phone, email, password, firebaseIdToken } = req.body;
+
+  const clash = await User.findOne({ role: 'customer', $or: [{ phone }, ...(email ? [{ email }] : [])] }).select('phone email');
+  if (clash) {
+    throw new ApiError(409, clash.phone === phone ? 'Phone number already registered' : 'Email already registered');
+  }
+
+  const phoneVerified = await requireOtp('signup', phone, firebaseIdToken);
+  const user = await User.create({ name, phone, email, password, role: 'customer', phoneVerified });
+  const tokens = await issueTokens(user);
+  created(res, { user, ...tokens });
+});
+
+export const login = asyncHandler(async (req, res) => {
+  const { identifier, password, firebaseIdToken } = req.body as { identifier: string; password: string; firebaseIdToken?: string };
+
+  const query = identifier.includes('@')
+    ? { email: identifier.toLowerCase(), role: 'customer' }
+    : { phone: identifier.replace(/[\s-]/g, '').replace(/^(\+91|91)(?=\d{10}$)/, ''), role: 'customer' };
+
+  const user = await User.findOne(query).select('+password');
+  if (!user || !(await user.comparePassword(password))) {
+    throw new ApiError(401, 'Invalid phone/email or password');
+  }
+  if (!user.isActive) throw new ApiError(403, 'Your account has been disabled. Please contact support.');
+  if (user.role !== 'customer') throw new ApiError(403, 'This login is for customers only. Use your own portal.');
+  await otpOnLogin(user, firebaseIdToken);
+
+  const tokens = await issueTokens(user);
+  ok(res, { user, ...tokens });
+});
+
+export const riderLogin = asyncHandler(async (req, res) => {
+  const { identifier, password, firebaseIdToken } = req.body as { identifier: string; password: string; firebaseIdToken?: string };
+  const query = identifier.includes('@')
+    ? { email: identifier.toLowerCase(), role: 'rider' }
+    : { phone: identifier.replace(/[\s-]/g, '').replace(/^(\+91|91)(?=\d{10}$)/, ''), role: 'rider' };
+  const user = await User.findOne(query).select('+password');
+  if (!user || !(await user.comparePassword(password))) throw new ApiError(401, 'Invalid phone/email or password');
+  if (!user.isActive) throw new ApiError(403, 'Your account has been disabled. Please contact support.');
+  if (user.role !== 'rider') throw new ApiError(403, 'This login is only for riders.');
+  await otpOnLogin(user, firebaseIdToken);
+  await user.populate('warehouse', 'name');
+  const tokens = await issueTokens(user);
+  ok(res, { user, ...tokens });
+});
+/** Forgot password: a phone OTP proves the number is theirs, then they pick a new password. Customers and riders only. */
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { phone, newPassword, firebaseIdToken, role } = req.body as { phone: string; newPassword: string; firebaseIdToken: string; role: 'customer' | 'rider' };
+  const verified = localPhone(await verifyPhoneToken(firebaseIdToken));
+  if (verified !== localPhone(phone)) throw new ApiError(400, 'The OTP was verified for a different phone number.');
+
+  const user = await User.findOne({ phone: verified, role }).select('+password');
+  if (!user) throw new ApiError(404, 'No account found with this phone number.');
+  if (!user.isActive) throw new ApiError(403, 'Your account has been disabled. Please contact support.');
+  user.password = newPassword;
+  user.phoneVerified = true;
+  user.refreshTokens = []; // sign out every device
+  await user.save();
+  ok(res, { message: 'Password changed. You can log in now.' });
+});
+
+export const refresh = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body as { refreshToken: string };
+
+  let userId: string;
+  try {
+    userId = String(verifyRefreshToken(refreshToken).sub);
+  } catch {
+    throw new ApiError(401, 'Invalid or expired refresh token');
+  }
+
+  const hash = sha256(refreshToken);
+  const user = await User.findOne({ _id: userId, 'refreshTokens.hash': hash });
+  if (!user || !user.isActive) throw new ApiError(401, 'Invalid or expired refresh token');
+
+  // Rotate: drop the used token, hand out a fresh pair
+  await User.updateOne({ _id: user._id }, { $pull: { refreshTokens: { hash } } });
+  const tokens = await issueTokens(user);
+  ok(res, tokens);
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body as { refreshToken?: string };
+  // Riders drop off the "online" list as soon as they log out.
+  if (req.user!.role === 'rider') await User.updateOne({ _id: req.user!.id }, { $set: { lastSeenAt: null } });
+  if (refreshToken) {
+    await User.updateOne({ _id: req.user!.id }, { $pull: { refreshTokens: { hash: sha256(refreshToken) } } });
+  } else {
+    await User.updateOne({ _id: req.user!.id }, { $set: { refreshTokens: [] } }); // log out everywhere
+  }
+  ok(res, { message: 'Logged out' });
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
+
+  const user = await User.findById(req.user!.id).select('+password');
+  if (!user || !(await user.comparePassword(currentPassword))) {
+    throw new ApiError(400, 'Current password is incorrect');
+  }
+  user.password = newPassword;
+  user.refreshTokens = []; // sign out all other devices
+  await user.save();
+  ok(res, { message: 'Password changed. Please log in again on your other devices.' });
+});
+
+/* ---------------- Continue with Google / Facebook ---------------- */
+
+interface SocialProfile {
+  provider: 'google' | 'facebook';
+  id: string;
+  email?: string;
+  name: string;
+}
+
+async function getJson<T>(url: string): Promise<T> {
+  const r = await fetch(url);
+  const json = (await r.json().catch(() => ({}))) as T;
+  if (!r.ok) throw new ApiError(401, 'We could not verify your login with that account. Please try again.');
+  return json;
+}
+
+/** Signs in (or signs up) the customer behind a verified social profile. */
+async function signInWithSocial(p: SocialProfile) {
+  const key = p.provider === 'google' ? 'googleId' : 'facebookId';
+  let user = (await User.findOne({ [key]: p.id, role: 'customer' })) ?? (p.email ? await User.findOne({ email: p.email.toLowerCase(), role: 'customer' }) : null);
+  if (user && user.role !== 'customer') throw new ApiError(403, 'This login is for customers only.');
+  if (user && !user.isActive) throw new ApiError(403, 'Your account has been disabled. Please contact support.');
+  if (!user) {
+    // No phone yet: a placeholder keeps the unique phone field valid, and the customer adds a real one in their profile.
+    user = await User.create({
+      name: p.name || 'Customer',
+      phone: `s${crypto.randomBytes(6).toString('hex')}`,
+      email: p.email?.toLowerCase(),
+      password: crypto.randomBytes(24).toString('hex'),
+      role: 'customer',
+      [key]: p.id,
+    });
+  } else if (!(user as unknown as Record<string, unknown>)[key]) {
+    await User.updateOne({ _id: user._id }, { $set: { [key]: p.id } });
+  }
+  const tokens = await issueTokens(user);
+  return { user, ...tokens, needsPhone: user.phone.startsWith('s') && !/^\d{10}$/.test(user.phone) };
+}
+
+export const googleLogin = asyncHandler(async (req, res) => {
+  const { googleClientId } = await getIntegrations();
+  if (!googleClientId) throw new ApiError(503, 'Login with Google is not switched on yet.');
+  const { accessToken } = req.body as { accessToken: string };
+  // The token must have been issued to OUR Google client, or anyone could sign in with another app's token.
+  const info = await getJson<{ aud?: string; azp?: string; email?: string; email_verified?: string | boolean; sub?: string; name?: string }>(
+    `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`,
+  );
+  if ((info.aud ?? info.azp) !== googleClientId || !info.sub) throw new ApiError(401, 'This Google login was not issued for Bingoor.');
+  const profile = await getJson<{ name?: string; email?: string }>(
+    `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${encodeURIComponent(accessToken)}`,
+  );
+  const verified = info.email_verified === true || info.email_verified === 'true';
+  ok(res, await signInWithSocial({ provider: 'google', id: info.sub, email: verified ? info.email ?? profile.email : undefined, name: profile.name ?? info.name ?? '' }));
+});
+
+export const facebookLogin = asyncHandler(async (req, res) => {
+  const { facebookAppId, facebookAppSecret } = await getIntegrations();
+  if (!facebookAppId || !facebookAppSecret) throw new ApiError(503, 'Login with Facebook is not switched on yet.');
+  const { accessToken } = req.body as { accessToken: string };
+  const appToken = `${facebookAppId}|${facebookAppSecret}`;
+  const debug = await getJson<{ data?: { app_id?: string; is_valid?: boolean; user_id?: string } }>(
+    `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appToken)}`,
+  );
+  if (!debug.data?.is_valid || debug.data.app_id !== facebookAppId || !debug.data.user_id) {
+    throw new ApiError(401, 'This Facebook login was not issued for Bingoor.');
+  }
+  const me = await getJson<{ id: string; name?: string; email?: string }>(
+    `https://graph.facebook.com/me?fields=id,name,email&access_token=${encodeURIComponent(accessToken)}`,
+  );
+  ok(res, await signInWithSocial({ provider: 'facebook', id: me.id, email: me.email, name: me.name ?? '' }));
+});
