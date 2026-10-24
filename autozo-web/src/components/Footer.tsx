@@ -5,7 +5,7 @@ import React from 'react';
 import { useCatalog } from '../context/CatalogContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSettings } from '../context/SettingsContext';
-import { DESKTOP_PAGES, FORMS } from '../lib/pages';
+import { DESKTOP_PAGES, FORMS, LEGAL_PAGES } from '../lib/pages';
 import { Icon } from './Icon';
 import { LanguageMenu } from './LanguageMenu';
 import s from './Footer.module.css';
@@ -148,6 +148,15 @@ export function Footer() {
             </Link>
           </nav>
 
+          <nav className={s.col} aria-label="Legal">
+            <div className={s.colTitle}>Legal</div>
+            {LEGAL_PAGES.map((l) => (
+              <Link key={l.href} href={l.href} className={s.colLink}>
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+
           <nav className={s.col} aria-label="Account">
             <div className={s.colTitle}>{t('account')}</div>
             <Link href="/orders" className={s.colLink}>{t('myOrders')}</Link>
@@ -160,7 +169,7 @@ export function Footer() {
         </div>
 
         <div className={s.base}>
-          <span>© {new Date().getFullYear()} Autozo · Robertsganj, Sonbhadra, Uttar Pradesh</span>
+          <span>© 2026 www.bingoor.com. All rights reserved.</span>
           <span className={s.baseTools}>
             <LanguageMenu upward />
           </span>

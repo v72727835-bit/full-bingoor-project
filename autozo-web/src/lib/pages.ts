@@ -18,3 +18,11 @@ export const DESKTOP_PAGES: { href: string; label: string }[] = [
   { href: '/help', label: 'Help & Support' },
   { href: '/sitemap', label: 'Sitemap' },
 ];
+
+/** The policy pages. These show on every screen size, phones included. */
+export const LEGAL_PAGES: { href: string; label: string }[] = [
+  { href: '/privacy', label: 'Privacy Policy' },
+  { href: '/terms', label: 'Terms & Conditions' },
+  { href: '/cancellation', label: 'Cancellation Policy' },
+  { href: '/contact', label: 'Contact us' },
+];

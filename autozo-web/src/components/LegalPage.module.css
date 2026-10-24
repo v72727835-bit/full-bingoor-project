@@ -1,0 +1,56 @@
+.head {
+  max-width: 820px;
+  margin-bottom: 28px;
+}
+
+.updated {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.doc {
+  max-width: 820px;
+}
+
+.sec {
+  margin-bottom: 30px;
+}
+
+.secTitle {
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.para {
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  margin-bottom: 14px;
+}
+
+.list {
+  /* globals.css clears list-style site-wide; a policy document needs it back. */
+  list-style: disc;
+  margin: 0 0 14px;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.list li {
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+.list li::marker {
+  color: var(--brand);
+}
