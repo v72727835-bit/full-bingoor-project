@@ -29,13 +29,13 @@
 .childChip {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 11px;
   flex-shrink: 0;
-  padding: 7px 15px 7px 7px;
+  padding: 7px 18px 7px 7px;
   border-radius: var(--r-pill);
   border: 1px solid var(--line);
   background: var(--surface);
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--ink);
   transition: border-color 0.16s var(--ease), background-color 0.16s var(--ease);
@@ -46,11 +46,13 @@
   background: var(--brand-tint);
 }
 
+/* Sized to match the aisle images in Blinkit and Zepto, which were noticeably
+   larger than ours. */
 .childFrame {
   position: relative;
   display: block;
-  width: 30px;
-  height: 30px;
+  width: 46px;
+  height: 46px;
   flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
@@ -58,8 +60,8 @@
 }
 
 .childArt {
-  width: 30px;
-  height: 30px;
+  width: 46px;
+  height: 46px;
   object-fit: cover;
 }
 

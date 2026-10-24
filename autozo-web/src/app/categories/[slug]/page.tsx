@@ -13,6 +13,7 @@ import { Crumbs } from '../../../components/Crumbs';
 import { Icon } from '../../../components/Icon';
 import { SearchBar } from '../../../components/SearchBar';
 import { ProductListView } from '../../../components/ProductListView';
+import { Rail } from '../../../components/Rail';
 import { ShareButtons } from '../../../components/ShareButtons';
 import s from '../categories.module.css';
 
@@ -93,7 +94,7 @@ export default function CategoryPage() {
 
       {/* Child aisles first, so a deep catalogue stays browsable. */}
       {category?.children && category.children.length > 0 ? (
-        <div className={`rail ${s.childRail}`}>
+        <Rail className={s.childRail}>
           {category.children.map((c) => (
             <Link key={c.id} href={`/categories/${c.slug}`} className={s.childChip}>
               {/* A photo fills its frame by absolute position, so the frame must be its own positioned box. */}
@@ -110,7 +111,7 @@ export default function CategoryPage() {
               {name(c)}
             </Link>
           ))}
-        </div>
+        </Rail>
       ) : null}
 
       <div className={s.catBody}>

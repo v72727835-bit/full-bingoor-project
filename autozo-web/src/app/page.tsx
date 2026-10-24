@@ -9,6 +9,7 @@ import { CategoryCircle, CategoryTile } from '../components/CategoryTile';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Icon } from '../components/Icon';
 import { ProductCard, ProductCardSkeleton } from '../components/ProductCard';
+import { Rail } from '../components/Rail';
 import { Alert, Button, SectionHead } from '../components/ui';
 import s from './home.module.css';
 
@@ -104,11 +105,11 @@ function Section({ section }: { section: HomeSection }) {
               eyebrow={deals ? 'Limited time' : undefined}
               href={section.seeAllSlug ? `/categories/${section.seeAllSlug}` : undefined}
             />
-            <div className="rail">
+            <Rail>
               {section.items.map((p) => (
                 <ProductCard key={p.id} product={p} width={168} tint={section.tint} />
               ))}
-            </div>
+            </Rail>
           </div>
         </section>
       );
@@ -119,11 +120,11 @@ function Section({ section }: { section: HomeSection }) {
       return (
         <section className={s.section}>
           <SectionHead title={section.title} subtitle={section.subtitle} />
-          <div className="rail">
+          <Rail>
             {section.items.map((p) => (
               <ProductCard key={p.id} product={p} width={168} />
             ))}
-          </div>
+          </Rail>
         </section>
       );
 
