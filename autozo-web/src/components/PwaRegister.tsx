@@ -10,8 +10,34 @@ interface InstallPrompt extends Event {
 
 const DISMISS_KEY = 'autozo_install_dismissed';
 
+/**
+ * iOS Safari never fires `beforeinstallprompt`, so an iPhone visitor would
+ * otherwise never be told the site can live on the home screen. There it has
+ * to be done by hand through the Share sheet, so we show the instruction
+ * instead of a button. iPadOS 13+ reports itself as a Mac, hence the touch
+ * check.
+ */
+function isIosSafari(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const iOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (!iOS) return false;
+  // Chrome and Firefox on iOS cannot add to the home screen at all.
+  return /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+}
+
+/** Already launched from the home screen — nothing to offer. */
+function isStandalone(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
 export function PwaRegister() {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
+  const [ios, setIos] = useState(false);
   const [gone, setGone] = useState(true);
 
   useEffect(() => {
@@ -45,6 +71,7 @@ export function PwaRegister() {
     } catch {
       setGone(false);
     }
+    if (isIosSafari() && !isStandalone()) setIos(true);
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setPrompt(e as InstallPrompt);
@@ -62,7 +89,28 @@ export function PwaRegister() {
     }
   };
 
-  if (!prompt || gone) return null;
+  if (gone) return null;
+
+  // iOS: no install button exists, so say where the option lives.
+  if (!prompt && ios)
+    return (
+      <div className={s.bar}>
+        <span className={s.icon}>
+          <Icon name="download" size={19} />
+        </span>
+        <span className={s.text}>
+          <b>Add Bingoor to your home screen</b>
+          <span className={s.sub}>
+            Tap Share at the bottom of Safari, then choose &ldquo;Add to Home Screen&rdquo;. It then opens like an app.
+          </span>
+        </span>
+        <button className={s.x} onClick={dismiss} aria-label="Dismiss">
+          <Icon name="x" size={16} />
+        </button>
+      </div>
+    );
+
+  if (!prompt) return null;
 
   return (
     <div className={s.bar}>

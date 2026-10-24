@@ -14,6 +14,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { useCatalog } from '../../../context/CatalogContext';
+import { useSettings } from '../../../context/SettingsContext';
 import { useToast } from '../../../context/ToastContext';
 import { Crumbs } from '../../../components/Crumbs';
 import { Icon } from '../../../components/Icon';
@@ -26,7 +27,6 @@ import {
   Alert,
   Badge,
   Button,
-  EmptyState,
   FoodMark,
   Rating,
   SectionHead,
@@ -39,6 +39,7 @@ export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const settings = useSettings();
   const { name } = useLanguage();
   const { quantityOf, addItem, updateItem } = useCart();
   const { home } = useCatalog();
@@ -332,46 +333,15 @@ export default function ProductPage() {
         </div>
       </div>
 
+      {/* #21: reviews are collected here but published on Google, not on the
+          site, so the list of other people's reviews is not shown. The star
+          rating and the count stay, since those come from the catalogue. */}
       <section className={s.reviews}>
         <SectionHead
-          title="Reviews"
-          subtitle={p.ratingCount ? `Rated by ${compact(p.ratingCount)} customers` : 'Be the first to leave a review'}
+          title="Rate this product"
+          subtitle={p.ratingCount ? `Rated by ${compact(p.ratingCount)} customers` : 'Tell other shoppers what you thought'}
         />
         <div className={s.revGrid}>
-          <div>
-            {p.reviews && p.reviews.length > 0 ? (
-              <div className="stack" style={{ gap: 12 }}>
-                {p.reviews.map((r) => (
-                  <article key={r.id} className="card card-pad">
-                    <div className={s.revTop}>
-                      <span className={s.who}>
-                        <span className={s.avatar}>{r.userName.charAt(0).toUpperCase()}</span>
-                        <span>
-                          <span className={s.whoName}>{r.userName}</span>
-                          <span className={`body-sm ${s.whoWhen}`}>
-                            {new Date(r.createdAt).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </span>
-                        </span>
-                      </span>
-                      <Rating value={r.rating} size={12} />
-                    </div>
-                    {r.comment ? <p className={s.revBody}>{r.comment}</p> : null}
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon="star"
-                title="No reviews yet"
-                body="Tried this product? Share your experience with other shoppers."
-              />
-            )}
-          </div>
-
           <aside className={`card card-pad ${s.write}`}>
             <h3 className="h3" style={{ marginBottom: 10 }}>
               Write a review
@@ -402,6 +372,17 @@ export default function ProductPage() {
                 {user ? 'Submit review' : 'Sign in to review'}
               </Button>
             </div>
+            {settings?.googleReviewUrl ? (
+              <a
+                href={settings.googleReviewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-md btn-outline btn-full"
+                style={{ marginTop: 10 }}
+              >
+                Review us on Google
+              </a>
+            ) : null}
           </aside>
         </div>
       </section>
