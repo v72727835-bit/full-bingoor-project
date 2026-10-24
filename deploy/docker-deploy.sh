@@ -134,8 +134,13 @@ say "Clearing the proxy caches"
 for d in $PROXY_CACHE_DIRS; do
   [ -d "$d" ] && find "$d" -mindepth 1 -delete
 done
-NGINX="$(command -v nginx || echo /www/server/nginx/sbin/nginx)"
-if [ -x "$NGINX" ]; then "$NGINX" -t >>"$LOG" 2>&1 && "$NGINX" -s reload >>"$LOG" 2>&1 || true; fi
+# A reload keeps nginx's in-memory cache index, which went on serving the old
+# gzip copy of the homepage; only a full restart drops it.
+if [ -x /etc/init.d/nginx ]; then
+  /etc/init.d/nginx restart >>"$LOG" 2>&1 || true
+elif command -v systemctl >/dev/null 2>&1; then
+  systemctl restart nginx >>"$LOG" 2>&1 || true
+fi
 
 docker image prune -f >>"$LOG" 2>&1 || true
 say "Done. Live on $(git log -1 --format=%h)."
