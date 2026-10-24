@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchFestival } from '../../api/catalog';
 import { Icon } from '../../components/Icon';
 import { ProductCard, ProductCardSkeleton } from '../../components/ProductCard';
+import { Rail } from '../../components/Rail';
 import { Alert, Button, SectionHead } from '../../components/ui';
 import { getErrorMessage } from '../../lib/client';
 import { FestivalPage } from '../../lib/types';
@@ -80,11 +81,11 @@ export default function FestivalTab() {
       {page.sections.map((section) => (
         <section key={section.category.id} className={s.section}>
           <SectionHead title={section.title || section.category.name} />
-          <div className="grid-products">
+          <Rail>
             {section.items.map((p) => (
-              <ProductCard key={p.id} product={p} tint={section.category.tint} />
+              <ProductCard key={p.id} product={p} width={168} tint={section.category.tint} />
             ))}
-          </div>
+          </Rail>
           {/* Straight into the aisle, where every child category is listed. */}
           <Link href={`/categories/${section.category.slug}`} className={s.seeAll}>
             See all {section.category.name}

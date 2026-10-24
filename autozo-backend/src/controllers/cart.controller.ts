@@ -4,7 +4,7 @@ import { Shop } from '../models/Shop';
 import { User } from '../models/User';
 import { getCartView, lineIssue, resolveCart } from '../services/cart.service';
 import { quoteDelivery, Slot } from '../services/pricing.service';
-import { codMessage, loadSettings, productRules } from '../services/settings.service';
+import { codMessage, loadSettings, longDistanceCodMessage, productRules } from '../services/settings.service';
 import { haversineKm } from '../utils/helpers';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -90,6 +90,14 @@ export const quote = asyncHandler(async (req, res) => {
   const km = point && c ? haversineKm(point.lat, point.lng, c[1], c[0]) : null;
 
   const { settings } = await loadSettings();
-  const codAllowed = groups.every((g) => g.lines.every((l) => productRules(l.product.category, l.product.paymentMode).codAvailable));
-  ok(res, { ...quoteDelivery(settings, { subtotal, distanceKm: km, slot }), codAllowed, ...(codAllowed ? {} : { codMessage: codMessage() }) });
+  const quote = quoteDelivery(settings, { subtotal, distanceKm: km, slot });
+  // Two separate reasons COD can be off: something in the basket, or the
+  // customer being past the last distance band. Distance is reported first,
+  // since it is the one they cannot fix by editing their cart.
+  const productsAllowCod = groups.every((g) =>
+    g.lines.every((l) => productRules(l.product.category, l.product.paymentMode).codAvailable),
+  );
+  const codAllowed = quote.codAllowed && productsAllowCod;
+  const message = !quote.codAllowed ? longDistanceCodMessage() : productsAllowCod ? undefined : codMessage();
+  ok(res, { ...quote, codAllowed, ...(message ? { codMessage: message } : {}) });
 });

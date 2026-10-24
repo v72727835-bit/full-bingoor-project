@@ -40,6 +40,8 @@ const DEFAULTS: Pricing = {
   ],
   beyondDays: 3,
   beyondMinOrder: 199,
+  beyondCodDisabled: true,
+  beyondCodMessage: 'For long distance "COD" option is not available',
 };
 
 /**
@@ -100,9 +102,10 @@ export function quoteDelivery(
     days,
     redOrder,
     longDistance,
-    // Distance controls charges, delivery time and routing, not payment mode.
-    // Product payment permissions are applied by the cart/order controllers.
-    codAllowed: true,
+    // Past the last band COD is refused, because a long run is too far to
+    // send a rider out carrying cash. Product payment permissions are applied
+    // on top of this by the cart/order controllers.
+    codAllowed: !(longDistance && (pricing.beyondCodDisabled ?? true)),
     total: round2(subtotal + deliveryFee + handlingFee + twoHourFee),
   };
 }

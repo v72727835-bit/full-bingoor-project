@@ -104,6 +104,13 @@ export function codMessage(): string {
   return cache?.settings.cod?.message ?? 'Cash on delivery is not available for some items in your cart.';
 }
 
+/** Why COD is off when the customer is simply too far away. */
+export function longDistanceCodMessage(): string {
+  return (
+    cache?.settings.pricing?.beyondCodMessage ?? 'For long distance "COD" option is not available'
+  );
+}
+
 export function cachedSettings(): SettingsLean | null {
   return cache?.settings ?? null;
 }

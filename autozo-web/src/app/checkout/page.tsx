@@ -134,6 +134,10 @@ function CheckoutInner() {
     .filter((i) => i.onlineAvailable === false)
     .map((i) => i.name);
   const incompatiblePayments = codBlocked.length > 0 && onlineBlocked.length > 0;
+  // #37: past the last distance band the warehouse will not send a rider out
+  // carrying cash, so COD is refused however the cart is made up.
+  const codTooFar = quote ? quote.codAllowed === false : false;
+  const farCodMessage = quote?.codMessage || 'For long distance "COD" option is not available';
   const subtotalShort = quote ? !quote.meetsMinOrder : false;
 
   const place = async () => {
@@ -190,6 +194,7 @@ function CheckoutInner() {
   if (quote && !quote.meetsMinOrder) {
     blockers.push(`The minimum order is ₹${quote.minOrder}. Add ₹${Math.max(1, Math.round(quote.minOrder - quote.subtotal))} more to continue.`);
   }
+  if (pay === 'cod' && codTooFar) blockers.push(farCodMessage);
   if (incompatiblePayments) blockers.push('This cart contains both COD-only and online-only items. Place separate orders for these items.');
   else if (pay === 'cod' && codBlocked.length > 0) blockers.push(`Cash on delivery is not available for: ${codBlocked.join(', ')}.`);
   else if (pay === 'online' && onlineBlocked.length > 0) blockers.push(`Online payment is not available for: ${onlineBlocked.join(', ')}. Choose Cash on Delivery.`);
@@ -279,7 +284,14 @@ function CheckoutInner() {
               <h2 className="h3">Delivery time &amp; payment</h2>
             </div>
             <DeliverySlots compact />
-            {codBlocked.length > 0 && !incompatiblePayments && pay === 'cod' ? (
+            {codTooFar && pay === 'cod' ? (
+              <div style={{ marginBottom: 14 }}>
+                <Alert tone="bad" icon="wallet">
+                  {farCodMessage}
+                </Alert>
+              </div>
+            ) : null}
+            {codBlocked.length > 0 && !codTooFar && !incompatiblePayments && pay === 'cod' ? (
               <div style={{ marginBottom: 14 }}>
                 <Alert tone="bad" icon="wallet">
                   {settings?.codMessage ||
@@ -297,7 +309,7 @@ function CheckoutInner() {
             ) : null}
             <div className={s.pays}>
               {PAYMENTS.map((o) => (
-                <label key={o.value} className={s.pay} data-on={pay === o.value} style={(o.value === 'online' && onlineBlocked.length > 0) || (o.value === 'cod' && codBlocked.length > 0) ? { opacity: 0.5 } : undefined}>
+                <label key={o.value} className={s.pay} data-on={pay === o.value} style={(o.value === 'online' && onlineBlocked.length > 0) || (o.value === 'cod' && (codBlocked.length > 0 || codTooFar)) ? { opacity: 0.5 } : undefined}>
                   <input type="radio" name="pay" checked={pay === o.value} disabled={(o.value === 'online' && onlineBlocked.length > 0) || (o.value === 'cod' && codBlocked.length > 0)} onChange={() => setPay(o.value)} />
                   <span className={s.payIcon}>
                     <Icon name={o.icon} size={19} />

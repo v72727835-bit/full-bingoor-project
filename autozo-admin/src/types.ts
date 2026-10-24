@@ -311,6 +311,8 @@ export interface Settings {
     bands: { upToKm: number; minOrder: number; freeAbove: number; fee: number; nextDay: boolean; redOrder: boolean }[];
     beyondDays: number;
     beyondMinOrder: number;
+    beyondCodDisabled: boolean;
+    beyondCodMessage: string;
   };
   filters: { key: string; label: string; kind: 'brand' | 'price' | 'discount' | 'rating' | 'diet' | 'stock'; enabled: boolean }[];
   priceSortEnabled: boolean;

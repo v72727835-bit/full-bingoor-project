@@ -76,6 +76,10 @@ export interface ISettings {
     /** Beyond the last band: delivery in this many days, COD off. */
     beyondDays: number;
     beyondMinOrder: number;
+    /** Cash on delivery is refused past the last band when this is on. */
+    beyondCodDisabled: boolean;
+    /** Shown when a long-distance customer taps COD. */
+    beyondCodMessage: string;
   };
   /** Filters shown on listing pages; the admin can rename, reorder and hide them. */
   filters: { key: string; label: string; kind: 'brand' | 'price' | 'discount' | 'rating' | 'diet' | 'stock'; enabled: boolean }[];
@@ -173,6 +177,8 @@ const settingsSchema = new Schema<ISettings>(
       },
       beyondDays: { type: Number, default: 3, min: 1 },
       beyondMinOrder: { type: Number, default: 199, min: 0 },
+      beyondCodDisabled: { type: Boolean, default: true },
+      beyondCodMessage: { type: String, default: 'For long distance "COD" option is not available', trim: true },
     },
     filters: {
       type: [{ key: String, label: { type: String, trim: true }, kind: String, enabled: { type: Boolean, default: true }, _id: false }],

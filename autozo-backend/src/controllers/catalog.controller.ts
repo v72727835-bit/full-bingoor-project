@@ -596,7 +596,8 @@ export const festival = asyncHandler(async (req, res) => {
     (fest?.sections ?? []).map(async (s) => {
       const cat = byId.get(String(s.category));
       if (!cat) return null;
-      const items = await railQuery(await categoryFamily(cat._id as Types.ObjectId), 12, scope);
+      // 21 to a row: the festival page slides sideways, so a short row looks bare.
+      const items = await railQuery(await categoryFamily(cat._id as Types.ObjectId), 21, scope);
       return { title: s.title || cat.name, category: cat, items: items.map(toCard) };
     }),
   );

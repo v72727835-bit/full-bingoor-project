@@ -217,6 +217,30 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
           <input type="number" min={0} value={p.beyondMinOrder} onChange={(e) => setP({ ...p, beyondMinOrder: num(e.target.value) })} />
         </Field>
       </div>
+
+      <div className="field-row">
+        <Field label="Long distance: cash on delivery">
+          <div className="checkbox-row" style={{ height: 38 }}>
+            <input
+              id="beyond-cod"
+              type="checkbox"
+              checked={p.beyondCodDisabled}
+              onChange={(e) => setP({ ...p, beyondCodDisabled: e.target.checked })}
+            />
+            <label htmlFor="beyond-cod" style={{ marginBottom: 0 }}>
+              Refuse COD past the last distance row
+            </label>
+          </div>
+        </Field>
+        <Field label="Message shown when COD is refused">
+          <input
+            value={p.beyondCodMessage}
+            onChange={(e) => setP({ ...p, beyondCodMessage: e.target.value })}
+            maxLength={200}
+            placeholder='For long distance "COD" option is not available'
+          />
+        </Field>
+      </div>
       <div className="page-subtitle">Beyond the last row, long-distance delivery time and minimum shopping apply. Payment options follow each product&apos;s COD / online setting.</div>
       <div className="modal-actions">
         <Button onClick={submit} disabled={busy}>
