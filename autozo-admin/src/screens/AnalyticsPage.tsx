@@ -83,7 +83,7 @@ export default function AnalyticsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Analytics</h1>
-          <div className="page-subtitle">How Autozo performed over the last {days} days.</div>
+          <div className="page-subtitle">How Bingoor performed over the last {days} days.</div>
         </div>
         <Tabs
           value={String(days)}

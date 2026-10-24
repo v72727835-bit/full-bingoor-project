@@ -72,7 +72,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="page-title">{greeting}</h1>
           <div className="page-subtitle">
-            An overview of activity across Autozo today
+            An overview of activity across Bingoor today
             {lastUpdated && ` · updated ${timeAgo(lastUpdated.toISOString())}`}
           </div>
         </div>
