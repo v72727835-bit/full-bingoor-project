@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Autozo: one-command deploy for the cPanel server.
+# Bingoor: one-command deploy.
 #
 #   bash ~/bingoor-project/deploy.sh
+#
+# EVERYTHING SERVER-SPECIFIC LIVES IN THE CONFIG BLOCK BELOW. Moving to a new
+# server means editing those few lines and nothing else. They can also be set
+# as environment variables, so the script itself never needs changing:
+#
+#   REPO_DIR=~/app  WEB_URL=https://example.com  bash deploy.sh
 #
 # Pulls the latest main, rebuilds the backend, website and admin panel, and
 # restarts the three cPanel Node.js apps. Server-only files (.env, the
@@ -16,11 +22,33 @@
 
 set -euo pipefail
 
+# ----------------------------------------------------------------------------
+# CONFIG - the only part that changes from one server to another.
+# ----------------------------------------------------------------------------
+
+# Where the checkout lives on this server.
+ROOT="${REPO_DIR:-$HOME/bingoor-project}"
+
+# cPanel only: the Node virtualenv it created for the apps. On a plain VPS
+# (pm2, systemd, Docker) leave this pointing anywhere unused - it is only read
+# when cloudlinux-selector is present.
+VENV="${NODE_VENV:-$HOME/nodevenv/bingoor-project}"
+
+# App-root prefix cPanel registered the apps under, normally the folder name.
+APP_ROOT_PREFIX="${APP_ROOT_PREFIX:-$(basename "$ROOT")}"
+
+NODE_VER="${NODE_VER:-20}"
+LOG_DIR="${LOG_DIR:-$HOME/deploy-logs}"
+
+# The three live URLs, checked after the restart. Set them to this server's own
+# domains; a wrong URL here fails a deploy that actually worked.
+API_URL="${API_URL:-}"
+WEB_URL="${WEB_URL:-}"
+ADMIN_URL="${ADMIN_URL:-}"
+
+# ----------------------------------------------------------------------------
+
 ME="$(id -un)"
-ROOT="$HOME/bingoor-project"
-VENV="$HOME/nodevenv/bingoor-project"
-NODE_VER=20
-LOG_DIR="$HOME/deploy-logs"
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/deploy-$(date +%Y%m%d-%H%M%S).log"
 
@@ -61,7 +89,7 @@ threads() { ps -u "$ME" -L --no-headers 2>/dev/null | wc -l; }
 stop_app() {
   local app="$1"
   if command -v cloudlinux-selector >/dev/null 2>&1 &&
-    cloudlinux-selector stop --json --interpreter nodejs --app-root "bingoor-project/$app" >>"$LOG" 2>&1; then
+    cloudlinux-selector stop --json --interpreter nodejs --app-root "$APP_ROOT_PREFIX/$app" >>"$LOG" 2>&1; then
     :
   else
     pkill -u "$ME" -f "lsnode:$ROOT/$app/" 2>/dev/null || true
@@ -78,8 +106,8 @@ stop_app() {
 restart_app() {
   local app="$1"
   if command -v cloudlinux-selector >/dev/null 2>&1 &&
-    { cloudlinux-selector start --json --interpreter nodejs --app-root "bingoor-project/$app" >>"$LOG" 2>&1 || true; } &&
-    cloudlinux-selector restart --json --interpreter nodejs --app-root "bingoor-project/$app" >>"$LOG" 2>&1; then
+    { cloudlinux-selector start --json --interpreter nodejs --app-root "$APP_ROOT_PREFIX/$app" >>"$LOG" 2>&1 || true; } &&
+    cloudlinux-selector restart --json --interpreter nodejs --app-root "$APP_ROOT_PREFIX/$app" >>"$LOG" 2>&1; then
     echo "   restarted $app"
   else
     # Passenger also restarts an app when tmp/restart.txt is touched.
@@ -163,7 +191,15 @@ restart_app autozo-admin
 say "Checking the live sites"
 sleep 8
 HEALTH_FAILED=0
-for url in https://app-api.autozo.org/health https://shop.autozo.org https://panel.autozo.org/login; do
+HEALTH_URLS=()
+[ -n "$API_URL" ] && HEALTH_URLS+=("${API_URL%/}/health")
+[ -n "$WEB_URL" ] && HEALTH_URLS+=("$WEB_URL")
+[ -n "$ADMIN_URL" ] && HEALTH_URLS+=("${ADMIN_URL%/}/login")
+if [ ${#HEALTH_URLS[@]} -eq 0 ]; then
+  echo "   No URLs configured - skipping the health check."
+  echo "   Set API_URL, WEB_URL and ADMIN_URL in the config block above."
+fi
+for url in ${HEALTH_URLS[@]+"${HEALTH_URLS[@]}"}; do
   code=000
   for attempt in 1 2 3; do
     code=$(curl -s -o /dev/null --connect-timeout 8 -m 20 -w '%{http_code}' "$url" || true)
