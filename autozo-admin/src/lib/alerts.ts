@@ -30,7 +30,7 @@ export function notifyNewOrders(count: number, onClick: () => void) {
     const n = new Notification(count === 1 ? 'New order received' : `${count} new orders received`, {
       body: 'Open Live Orders to accept it.',
       icon: '/logo-mark.png',
-      tag: 'autozo-new-order',
+      tag: 'bingoor-new-order',
     });
     n.onclick = () => {
       window.focus();

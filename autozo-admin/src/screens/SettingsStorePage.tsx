@@ -526,13 +526,13 @@ function AppLinksCard({ settings, onSave }: { settings: Settings; onSave: (patch
         Shown in the website footer. Point each app at its APK or Play Store listing.
       </div>
       <Field label="Android (APK or Play Store)">
-        <input value={android} onChange={(e) => setAndroid(e.target.value)} placeholder="https://…/autozo.apk" />
+        <input value={android} onChange={(e) => setAndroid(e.target.value)} placeholder="https://…/bingoor.apk" />
       </Field>
       <Field label="Rider app (APK or Play Store)">
-        <input value={rider} onChange={(e) => setRider(e.target.value)} placeholder="https://…/autozo-rider.apk" />
+        <input value={rider} onChange={(e) => setRider(e.target.value)} placeholder="https://…/bingoor-rider.apk" />
       </Field>
       <Field label="Warehouse app (APK or Play Store)">
-        <input value={warehouse} onChange={(e) => setWarehouse(e.target.value)} placeholder="https://…/autozo-warehouse.apk" />
+        <input value={warehouse} onChange={(e) => setWarehouse(e.target.value)} placeholder="https://…/bingoor-warehouse.apk" />
       </Field>
       <Field label="iOS (App Store)">
         <input value={ios} onChange={(e) => setIos(e.target.value)} placeholder="https://apps.apple.com/…" />
@@ -610,11 +610,11 @@ function CompanyCard({ settings, onSave }: { settings: Settings; onSave: (patch:
         <ImageField label="Round seal / stamp" hint="PNG with a transparent background." value={f.seal} onChange={(v) => set('seal', v)} />
         <ImageField label="Signature" hint="Signature on a transparent or white background." value={f.signature} onChange={(v) => set('signature', v)} />
         <div />
-        <Field label="Company name"><input value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Autozo Retail Pvt Ltd" /></Field>
+        <Field label="Company name"><input value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Bingoor Retail Pvt Ltd" /></Field>
         <Field label="Tagline"><input value={f.tagline} onChange={(e) => set('tagline', e.target.value)} placeholder="Groceries in minutes" /></Field>
         <Field label="Phone"><input value={f.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
         <Field label="Email"><input value={f.email} onChange={(e) => set('email', e.target.value)} /></Field>
-        <Field label="Website"><input value={f.website} onChange={(e) => set('website', e.target.value)} placeholder="https://autozo.org" /></Field>
+        <Field label="Website"><input value={f.website} onChange={(e) => set('website', e.target.value)} placeholder="https://bingoor.com" /></Field>
         <Field label="GSTIN"><input value={f.gstin} onChange={(e) => set('gstin', e.target.value.toUpperCase())} placeholder="09ABCDE1234F1Z5" /></Field>
         <Field label="FSSAI licence no."><input value={f.fssai} onChange={(e) => set('fssai', e.target.value)} /></Field>
         <Field label="Authorised signatory name"><input value={f.signatoryName} onChange={(e) => set('signatoryName', e.target.value)} /></Field>

@@ -114,7 +114,7 @@ export default function IntegrationsPage() {
           Continue with Gmail {status(data.live.google)}
         </h2>
         <div className="page-subtitle" style={{ marginBottom: 12 }}>
-          Google Cloud Console → APIs &amp; Services → Credentials → OAuth client ID (Web). Add https://shop.autozo.org as an authorised JavaScript origin.
+          Google Cloud Console → APIs &amp; Services → Credentials → OAuth client ID (Web). Add https://bingoor.com as an authorised JavaScript origin.
         </div>
         <Field label="Google Client ID">
           <input value={google} onChange={(e) => setGoogle(e.target.value)} placeholder="1234567890-abc.apps.googleusercontent.com" />
@@ -131,7 +131,7 @@ export default function IntegrationsPage() {
           Continue with Facebook {status(data.live.facebook)}
         </h2>
         <div className="page-subtitle" style={{ marginBottom: 12 }}>
-          developers.facebook.com → your app → Settings → Basic. Turn on Facebook Login and add https://shop.autozo.org as a valid domain.
+          developers.facebook.com → your app → Settings → Basic. Turn on Facebook Login and add https://bingoor.com as a valid domain.
         </div>
         <div className="field-row">
           <Field label="Facebook App ID">
@@ -159,7 +159,7 @@ export default function IntegrationsPage() {
         </h2>
         <div className="page-subtitle" style={{ marginBottom: 12 }}>
           console.firebase.google.com → create a project → Authentication → turn on <b>Phone</b> sign-in → Project settings → add a <b>Web app</b> and copy its config below.
-          Under Authentication → Settings → Authorized domains add shop.autozo.org. For push: Project settings → Cloud Messaging → Web Push certificates → generate a key pair (the VAPID key), and
+          Under Authentication → Settings → Authorized domains add bingoor.com. For push: Project settings → Cloud Messaging → Web Push certificates → generate a key pair (the VAPID key), and
           Project settings → Service accounts → Generate new private key (paste the whole downloaded JSON below).
         </div>
         <div className="field-row">
@@ -261,7 +261,7 @@ export default function IntegrationsPage() {
         </div>
         <div className="field-row">
           <Field label="API user email">
-            <input value={srEmail} onChange={(e) => setSrEmail(e.target.value)} placeholder="info@autozo.org" autoComplete="off" />
+            <input value={srEmail} onChange={(e) => setSrEmail(e.target.value)} placeholder="info@bingoor.com" autoComplete="off" />
           </Field>
           <Field label={data.shiprocketPasswordSaved ? 'API password (saved - type a new one to replace)' : 'API password'}>
             <input type="password" value={srPass} onChange={(e) => setSrPass(e.target.value)} placeholder={data.shiprocketPasswordSaved ? '••••••••••••' : ''} autoComplete="off" />

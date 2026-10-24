@@ -144,7 +144,7 @@ export default function SettingsPage() {
       <div className="grid grid-2">
         <Card title="Connection" icon={<IconCheck size={16} />}>
           <InfoRow label="API endpoint" value={API_URL} />
-          <InfoRow label="Panel version" value="Autozo Admin v2 · future-ready build" />
+          <InfoRow label="Panel version" value="Bingoor Admin v2 · future-ready build" />
           <InfoRow label="Data refreshed" value={lastUpdated ? formatDate(lastUpdated.toISOString()) : '—'} />
           <InfoRow label="Auto refresh" value="Every 60 seconds, plus whenever you return to this tab" />
         </Card>

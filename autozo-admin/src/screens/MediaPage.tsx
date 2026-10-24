@@ -238,7 +238,7 @@ function MediaForm({ kind, item, nextSortOrder, onClose, onSaved }: { kind: Kind
         )}
 
         <Field label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder={kind === 'photo' ? 'Our Robertsganj warehouse' : 'How Autozo delivers in minutes'} />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder={kind === 'photo' ? 'Our Robertsganj warehouse' : 'How Bingoor delivers in minutes'} />
         </Field>
         <Field label="Short description (optional)">
           <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={300} />

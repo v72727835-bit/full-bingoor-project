@@ -171,7 +171,7 @@ export function CategoriesView() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Categories</h1>
-          <div className="page-subtitle">The category tree you list products under: main, then sub, then child. Need a new category? Ask Autozo support to add it.</div>
+          <div className="page-subtitle">The category tree you list products under: main, then sub, then child. Need a new category? Ask Bingoor support to add it.</div>
         </div>
       </div>
       <div className="card card-pad">{(kids.get('') ?? []).map((c) => node(c, 0))}</div>

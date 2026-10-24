@@ -67,7 +67,7 @@ export default function BulkUpload({
     const cat = catLabels[0] ?? 'Apples';
     const shop = shops[0] ?? 'My Warehouse';
     const sample = (o: Record<string, string>) => columns.map((c) => o[c] ?? '');
-    downloadCsv('autozo-products-template.csv', [
+    downloadCsv('bingoor-products-template.csv', [
       columns,
       sample({ name: 'Shimla Apple', category: cat, price: '120', mrp: '140', unit: '1 kg', stock: '30', warehouse: shop, brand: 'Fresh', description: 'Crisp and sweet', images: 'https://example.com/apple1.jpg|https://example.com/apple2.jpg', video: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', foodType: 'veg', tags: 'fruit|fresh', attributes: 'Premium', points: '2', sortCode: '1', hsn: '0808', gstRate: '0', payment: 'both' }),
       sample({ name: 'Amul Taaza Milk', category: cat, price: '29', mrp: '32', unit: '500 ml', stock: '100', warehouse: shop, brand: 'Amul', foodType: 'veg', hsn: '0401', gstRate: '0', payment: 'cod' }),
@@ -75,7 +75,7 @@ export default function BulkUpload({
   };
 
   const downloadCategories = () =>
-    downloadCsv('autozo-category-names.csv', [['Use this in the "category" column'], ...catLabels.map((l) => [l])]);
+    downloadCsv('bingoor-category-names.csv', [['Use this in the "category" column'], ...catLabels.map((l) => [l])]);
 
   const onFile = async (file: File | undefined) => {
     setReport(null);
@@ -127,7 +127,7 @@ export default function BulkUpload({
   const downloadFailed = () => {
     const byRow = new Map(failed.map((f) => [f.row, f.error ?? '']));
     const headers = Object.keys(rows[0] ?? {});
-    downloadCsv('autozo-products-to-fix.csv', [
+    downloadCsv('bingoor-products-to-fix.csv', [
       [...headers, 'problem'],
       ...rows.flatMap((r, i) => (byRow.has(i + 2) ? [[...headers.map((h) => r[h] ?? ''), byRow.get(i + 2)]] : [])),
     ]);

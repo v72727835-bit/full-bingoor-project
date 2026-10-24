@@ -593,7 +593,7 @@ function LocationPicker({
   );
 }
 
-/** The warehouse's own panel login: it signs in at panel.autozo.org with "Warehouse sign in". */
+/** The warehouse's own panel login: it signs in at admin.bingoor.com with "Warehouse sign in". */
 function LoginModal({ shop, current, onClose, onDone }: { shop: Shop; current?: WarehouseLogin; onClose: () => void; onDone: () => void }) {
   const [phone, setPhone] = useState(current?.phone ?? '');
   const [password, setPassword] = useState('');
@@ -610,7 +610,7 @@ function LoginModal({ shop, current, onClose, onDone }: { shop: Shop; current?: 
     setError('');
     try {
       await setWarehouseLogin(shop._id, { phone, password: password || undefined });
-      window.alert(`Warehouse login saved.\n\nPanel: panel.autozo.org → "Warehouse sign in"\nPhone: ${phone}${password ? `\nPassword: ${password}` : '\n(password unchanged)'}\n\nShare it with the warehouse now - the password cannot be shown again.`);
+      window.alert(`Warehouse login saved.\n\nPanel: admin.bingoor.com → "Warehouse sign in"\nPhone: ${phone}${password ? `\nPassword: ${password}` : '\n(password unchanged)'}\n\nShare it with the warehouse now - the password cannot be shown again.`);
       onDone();
     } catch (err) {
       setError(getErrorMessage(err));

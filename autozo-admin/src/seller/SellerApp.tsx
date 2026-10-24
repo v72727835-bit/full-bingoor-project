@@ -63,7 +63,7 @@ export default function SellerApp() {
     return () => clearInterval(t);
   }, [poll]);
   useEffect(() => {
-    document.title = newOrders > 0 ? `(${newOrders}) New orders · Autozo Warehouse` : 'Autozo Warehouse';
+    document.title = newOrders > 0 ? `(${newOrders}) New orders · Bingoor Warehouse` : 'Bingoor Warehouse';
   }, [newOrders]);
 
   if (!me) return error ? <ErrorBanner message={error} /> : <CenterSpinner />;
@@ -143,9 +143,9 @@ export default function SellerApp() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <img className="logo-mark" src="/logo-mark.png" alt="Autozo" width={36} height={36} />
+          <img className="logo-mark" src="/logo-mark.png" alt="Bingoor" width={36} height={36} />
           <div className="logo-text">
-            <b>Autozo</b>
+            <b>Bingoor</b>
             <span>Warehouse Panel</span>
           </div>
         </div>

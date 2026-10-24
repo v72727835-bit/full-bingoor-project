@@ -51,7 +51,7 @@ export default function Earnings() {
     setError('');
     try {
       await sellerRequestWithdraw(amt, method);
-      setNote('Withdrawal requested. The Autozo team will verify and pay it.');
+      setNote('Withdrawal requested. The Bingoor team will verify and pay it.');
       setAmount('');
       load();
     } catch (e) { setError(getErrorMessage(e)); }
@@ -65,7 +65,7 @@ export default function Earnings() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Earnings</h1>
-          <div className="page-subtitle">Your product sales minus the {w.commissionPct}% platform commission. Withdraw your balance to your UPI or bank; the Autozo team verifies and pays it.</div>
+          <div className="page-subtitle">Your product sales minus the {w.commissionPct}% platform commission. Withdraw your balance to your UPI or bank; the Bingoor team verifies and pays it.</div>
         </div>
       </div>
 
