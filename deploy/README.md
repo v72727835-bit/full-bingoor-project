@@ -67,7 +67,15 @@ Run these as root in the server terminal.
    private key. Then delete it from the server:
    `rm /root/.ssh/bingoor_actions`.
 
-4. First deploy: run the **Deploy to server** workflow from the Actions tab
+4. Turn off aaPanel's global proxy cache for the three sites (Next.js does its
+   own caching, and a cached page or API answer goes stale after a deploy):
+
+   ```
+   for s in bingoor.com admin.bingoor.com api.bingoor.com; do mkdir -p /www/server/panel/vhost/nginx/extension/$s && echo 'proxy_cache off;' > /www/server/panel/vhost/nginx/extension/$s/no-cache.conf; done
+   nginx -t && /etc/init.d/nginx restart
+   ```
+
+5. First deploy: run the **Deploy to server** workflow from the Actions tab
    (or push to `main`). The first run copies the API `.env` and uploads from
    the old pm2 install in `/opt/bingoor`, switches the site from pm2 to
    Docker, and removes the pm2 apps once the containers are healthy.

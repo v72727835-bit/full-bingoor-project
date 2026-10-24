@@ -27,9 +27,11 @@ export BINGOOR_ENV_DIR="${BINGOOR_ENV_DIR:-/opt/bingoor-env}"
 export BINGOOR_DATA_DIR="${BINGOOR_DATA_DIR:-/opt/bingoor-data}"
 LEGACY="${LEGACY_DIR:-/opt/bingoor}"   # the old pm2 install, read on the first run
 LOG_DIR="${LOG_DIR:-/var/log/bingoor-deploy}"
-# aaPanel's reverse-proxy caches; a cached page would ask for the old build's
-# CSS/JS files, so they are emptied after every deploy.
-PROXY_CACHE_DIRS="${PROXY_CACHE_DIRS:-/www/wwwroot/bingoor.com/proxy_cache_dir /www/wwwroot/admin.bingoor.com/proxy_cache_dir /www/wwwroot/api.bingoor.com/proxy_cache_dir}"
+# aaPanel's reverse-proxy caches. Its global proxy.conf caches every proxied
+# site in /www/server/nginx/proxy_cache_dir; a cached page asks for the old
+# build's CSS/JS files, so they are emptied after every deploy (the sites also
+# turn that cache off, see deploy/README.md).
+PROXY_CACHE_DIRS="${PROXY_CACHE_DIRS:-/www/server/nginx/proxy_cache_dir /www/wwwroot/bingoor.com/proxy_cache_dir /www/wwwroot/admin.bingoor.com/proxy_cache_dir /www/wwwroot/api.bingoor.com/proxy_cache_dir}"
 
 SERVICES=(api web admin)
 PM2_APPS=(bingoor-api bingoor-web bingoor-admin)
