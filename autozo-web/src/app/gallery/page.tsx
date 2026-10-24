@@ -33,7 +33,7 @@ export default function GalleryPage() {
     <div className={`page rise ${s.wrap}`}>
       <Crumbs trail={[{ label: 'Gallery' }]} />
       <h1 className="h1" style={{ marginTop: 10 }}>Gallery</h1>
-      <p className="body-sm">A look at Autozo: our warehouses, deliveries and moments.</p>
+      <p className="body-sm">A look at Bingoor: our warehouses, deliveries and moments.</p>
 
       {items.length === 0 ? (
         <div className={s.empty}>

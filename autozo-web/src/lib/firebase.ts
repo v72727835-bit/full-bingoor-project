@@ -107,6 +107,6 @@ export async function onForegroundPush(fb: FirebaseSettings, handler: (m: { titl
   const { isSupported, getMessaging, onMessage } = await import('firebase/messaging');
   if (!(await isSupported())) return () => undefined;
   return onMessage(getMessaging(await getApp(fb.config)), (p) =>
-    handler({ title: p.notification?.title ?? 'Autozo', body: p.notification?.body ?? '', url: p.data?.url }),
+    handler({ title: p.notification?.title ?? 'Bingoor', body: p.notification?.body ?? '', url: p.data?.url }),
   );
 }

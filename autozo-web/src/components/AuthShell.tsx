@@ -27,7 +27,7 @@ export function AuthShell({
       <aside className={s.pitch}>
         <div className={s.logo}>
           <img src="/logo-mark.png" alt="" width={38} height={38} className={s.mark} />
-          <span className={s.word}>Autozo</span>
+          <span className={s.word}>Bingoor</span>
         </div>
         <h2 className={s.pitchTitle}>Everyday essentials, at your door in minutes.</h2>
         <ul className={s.points}>

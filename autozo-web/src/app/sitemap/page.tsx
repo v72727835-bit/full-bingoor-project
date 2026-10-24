@@ -10,7 +10,7 @@ export default function Page() {
   return (
     <div className={`page rise ${s.wrap}`}>
       <h1 className="h1">Sitemap</h1>
-      <p className="body-sm" style={{ margin: '4px 0 22px' }}>Everything on Autozo in one place.</p>
+      <p className="body-sm" style={{ margin: '4px 0 22px' }}>Everything on Bingoor in one place.</p>
       <div className={s.grid}>
         <section className="card card-pad">
           <h2 className="h3">Shop</h2>
@@ -37,8 +37,8 @@ export default function Page() {
             <li><Link href="/blog">Blog</Link></li>
             <li><Link href="/gallery">Gallery</Link></li>
             <li><Link href="/videos">Videos</Link></li>
-            <li><Link href="/delivery-partner">Autozo Delivery Partner</Link></li>
-            <li><Link href="/seller-partner">Autozo Seller Partner</Link></li>
+            <li><Link href="/delivery-partner">Bingoor Delivery Partner</Link></li>
+            <li><Link href="/seller-partner">Bingoor Seller Partner</Link></li>
             <li><Link href="/help">Help & Support</Link></li>
           </ul>
         </section>

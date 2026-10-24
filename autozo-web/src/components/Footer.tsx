@@ -44,7 +44,7 @@ export function Footer() {
           <div className={s.brand}>
             <div className={s.logo}>
               <img src="/logo-mark.png" alt="" width={44} height={44} className={s.mark} />
-              <span className={s.word}>Autozo</span>
+              <span className={s.word}>Bingoor</span>
             </div>
             <p className={s.tag}>Everyday essentials from shops in your neighbourhood, delivered to your door in minutes.</p>
             {settings?.supportPhone ? (

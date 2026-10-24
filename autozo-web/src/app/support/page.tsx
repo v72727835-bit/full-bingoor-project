@@ -250,7 +250,7 @@ function Thread({ id, onClose }: { id: string; onClose: () => void }) {
           <div key={i} className={`${s.msg} ${m.from === 'customer' ? s.msgMine : ''}`}>
             <p className={s.bubble}>{m.text}</p>
             <span className={s.when}>
-              {m.from === 'customer' ? 'You' : 'Autozo care'} ·{' '}
+              {m.from === 'customer' ? 'You' : 'Bingoor care'} ·{' '}
               {new Date(m.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
             </span>
           </div>

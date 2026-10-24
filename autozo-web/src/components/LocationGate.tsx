@@ -67,7 +67,7 @@ export function LocationGate() {
     try {
       const cover = await fetchCoverage(lat, lng);
       if (!cover.serviceable) {
-        setMsg({ tone: 'bad', text: `Sorry, no Autozo warehouse delivers to ${label || 'this place'} yet. Please choose another address or area.` });
+        setMsg({ tone: 'bad', text: `Sorry, no Bingoor warehouse delivers to ${label || 'this place'} yet. Please choose another address or area.` });
         return;
       }
       setDeliveryPoint({ lat, lng, label });

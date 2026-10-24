@@ -11,7 +11,7 @@ import { Alert, Button, Field, Input, Textarea } from '../../components/ui';
 import { getErrorMessage } from '../../lib/client';
 import s from '../contact/contact.module.css';
 
-/** A warehouse registers itself here; the Autozo team approves it, then it signs in to its own panel. */
+/** A warehouse registers itself here; the Bingoor team approves it, then it signs in to its own panel. */
 export default function WarehouseRegisterPage() {
   const [f, setF] = useState({
     name: '', phone: '', email: '', password: '', confirm: '',
@@ -66,7 +66,7 @@ export default function WarehouseRegisterPage() {
       <BackButton />
       <h1 className="h1" style={{ margin: '12px 0 4px' }}>Register your warehouse</h1>
       <p className="body-sm" style={{ marginBottom: 20 }}>
-        Fill this once. The Autozo team reviews it and, after approval, you can sign in to your own panel to add products and send orders to riders.
+        Fill this once. The Bingoor team reviews it and, after approval, you can sign in to your own panel to add products and send orders to riders.
       </p>
 
       {done ? (

@@ -10,7 +10,7 @@ export default function Page() {
   return (
     <div className={`page rise ${s.wrap}`}>
       <h1 className="h1">Blog</h1>
-      <p className="body-sm" style={{ margin: '4px 0 22px' }}>Stories from the Autozo kitchen, shelves and neighbourhood.</p>
+      <p className="body-sm" style={{ margin: '4px 0 22px' }}>Stories from the Bingoor kitchen, shelves and neighbourhood.</p>
       <div className={s.grid}>
         {[
           ['How we deliver in minutes', 'A look at the local warehouse, the riders and the route that gets your order to you fast.'],

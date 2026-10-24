@@ -44,10 +44,10 @@ export function Header() {
     <header className={s.hdr} data-site-header>
       <div className={s.brandBar}>
         <div className={`page ${s.row}`}>
-          <Link href="/" className={s.logo} aria-label="Autozo home">
+          <Link href="/" className={s.logo} aria-label="Bingoor home">
             <img src="/logo-mark.png" alt="" width={38} height={38} className={s.mark} />
             <span className={s.word}>
-              Autozo
+              Bingoor
               <span className={s.promise}>
                 <Icon name="bolt" size={11} strokeWidth={2.4} />
                 {home ? `${shortDelivery(home)}${/delivery/i.test(shortDelivery(home)) ? '' : ' delivery'}` : 'Minutes, not days'}

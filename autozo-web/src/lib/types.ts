@@ -1,5 +1,5 @@
 /**
- * The shapes the Autozo backend actually sends (Mongo documents, so `_id`)
+ * The shapes the Bingoor backend actually sends (Mongo documents, so `_id`)
  * and the shapes this app works with (`id`). Everything crossing the API
  * boundary goes through `normalize.ts` so no component ever sees `_id`.
  */

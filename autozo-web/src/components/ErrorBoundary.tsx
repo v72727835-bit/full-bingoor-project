@@ -20,7 +20,7 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: unknown, info: React.ErrorInfo) {
     // Surfaces in the browser console with the component stack attached.
-    console.error('[Autozo] render error', error, info.componentStack);
+    console.error('[Bingoor] render error', error, info.componentStack);
   }
 
   render() {

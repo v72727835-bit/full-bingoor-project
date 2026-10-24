@@ -36,14 +36,14 @@ const sans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: { default: 'Autozo — groceries in minutes', template: '%s · Autozo' },
+  title: { default: 'Bingoor — groceries in minutes', template: '%s · Bingoor' },
   description:
     'Order groceries, fruits, vegetables and daily essentials from shops near you in Robertsganj. Delivered in minutes.',
   manifest: '/manifest.json',
   icons: { icon: '/icons/icon-32.png', apple: '/icons/icon-180.png' },
-  appleWebApp: { capable: true, title: 'Autozo', statusBarStyle: 'black-translucent' },
+  appleWebApp: { capable: true, title: 'Bingoor', statusBarStyle: 'black-translucent' },
   openGraph: {
-    title: 'Autozo — groceries in minutes',
+    title: 'Bingoor — groceries in minutes',
     description: 'Everyday essentials from shops in your neighbourhood.',
     type: 'website',
   },

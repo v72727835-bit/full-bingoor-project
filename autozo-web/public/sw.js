@@ -1,5 +1,5 @@
 /**
- * Autozo service worker.
+ * Bingoor service worker.
  *
  * The cache strategy differs by request type on purpose:
  *

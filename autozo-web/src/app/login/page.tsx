@@ -70,7 +70,7 @@ function LoginInner() {
       lead="Sign in with your phone number or email."
       footer={
         <>
-          New to Autozo?{' '}
+          New to Bingoor?{' '}
           <Link href={`/signup?next=${encodeURIComponent(next)}`} style={{ color: 'var(--brand-text)', fontWeight: 700 }}>
             Create an account
           </Link>

@@ -15,7 +15,7 @@ export function ShareButtons({ title, compact = false }: { title: string; compac
   const { show } = useToast();
 
   const link = () => (typeof window === 'undefined' ? '' : window.location.href);
-  const text = () => `${title} on Autozo`;
+  const text = () => `${title} on Bingoor`;
 
   const open = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 

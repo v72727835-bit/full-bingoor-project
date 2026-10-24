@@ -7,7 +7,7 @@ import { payWithRazorpay } from '../../lib/razorpay';
 import { Alert, Button, PageLoader } from '../../components/ui';
 
 /**
- * Where the Autozo phone app sends a customer to pay online. The app passes the prepared
+ * Where the Bingoor phone app sends a customer to pay online. The app passes the prepared
  * Razorpay order in the link's #fragment (never sent to any server); the order itself is only
  * created once the server has verified the payment.
  */
@@ -50,7 +50,7 @@ export default function PayPage() {
         <>
           <h1 className="h1">Payment received</h1>
           <p className="body-sm" style={{ margin: '8px 0 20px' }}>
-            Thank you! Your order is placed. Go back to the Autozo app to see it.
+            Thank you! Your order is placed. Go back to the Bingoor app to see it.
           </p>
         </>
       ) : null}

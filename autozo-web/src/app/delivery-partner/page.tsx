@@ -9,10 +9,10 @@ import s from '../static.module.css';
 export default function Page() {
   return (
     <div className={`page rise ${s.wrap}`}>
-      <h1 className="h1">Autozo Delivery Partner</h1>
+      <h1 className="h1">Bingoor Delivery Partner</h1>
       <p className="body-sm" style={{ margin: '4px 0 22px' }}>Earn by delivering groceries in your own neighbourhood.</p>
       <section className="card card-pad">
-        <h2 className="h3">Why deliver with Autozo</h2>
+        <h2 className="h3">Why deliver with Bingoor</h2>
         <ul className={s.list}>
           <li>Short routes from a local warehouse</li>
           <li>Clear earnings and a cash-handling process you can trust</li>

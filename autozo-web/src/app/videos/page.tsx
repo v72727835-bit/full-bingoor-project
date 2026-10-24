@@ -34,7 +34,7 @@ export default function VideosPage() {
     <div className={`page rise ${s.wrap}`}>
       <Crumbs trail={[{ label: 'Videos' }]} />
       <h1 className="h1" style={{ marginTop: 10 }}>Videos</h1>
-      <p className="body-sm">Watch how Autozo brings your groceries in minutes.</p>
+      <p className="body-sm">Watch how Bingoor brings your groceries in minutes.</p>
 
       {items.length === 0 ? (
         <div className={s.empty}>

@@ -1,4 +1,4 @@
-// Generated from public/cat — the illustration set shipped with the Autozo apps.
+// Generated from public/cat — the illustration set shipped with the Bingoor apps.
 export const ART_KEYS = new Set<string>([
   'adhesive-bandage',
   'avocado',
