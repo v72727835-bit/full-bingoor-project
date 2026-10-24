@@ -280,13 +280,7 @@ export default function ProductPage() {
             </button>
           </div>
 
-          {!p.inStock ? (
-            <NotifyMe productId={p.id} />
-          ) : p.stock > 0 && p.stock <= 10 ? (
-            <Alert tone="brand" icon="bolt">
-              Only {p.stock} left in stock.
-            </Alert>
-          ) : null}
+          {!p.inStock ? <NotifyMe productId={p.id} /> : null}
 
           <ul className={s.promises}>
             <li>

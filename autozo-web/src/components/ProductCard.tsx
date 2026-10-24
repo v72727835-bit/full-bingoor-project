@@ -48,7 +48,12 @@ export function ProductCard({
   const toggleWish = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    act(() => wishlist.toggle(product.id));
+    // Tell the customer what happened — the heart alone is easy to miss.
+    const wasWished = wished;
+    act(async () => {
+      await wishlist.toggle(product.id);
+      show(wasWished ? 'Product is removed from wish list' : 'Product is added to wish list', 'success');
+    });
   };
   const save = Math.max(0, Math.round((product.mrp ?? 0) - product.price));
   const [busy, setBusy] = useState(false);

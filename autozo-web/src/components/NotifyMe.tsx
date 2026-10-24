@@ -37,24 +37,28 @@ export function NotifyMe({ productId }: { productId: string }) {
 
   return (
     <div className={s.wrap}>
-      <Alert tone="bad" icon="info">
-        This item is out of stock right now.
-      </Alert>
+      {/* The out-of-stock notice steps aside once the form is open, so the
+          customer is looking at one thing and not a message behind it. */}
+      {open ? null : (
+        <Alert tone="bad" icon="info">
+          This item is out of stock right now.
+        </Alert>
+      )}
 
       {open ? (
         <form className={s.form} onSubmit={submit}>
           {error ? <Alert tone="bad">{error}</Alert> : null}
           <label className={s.label} htmlFor="notify-phone">
-            Where should we send the message?
+            Type your mobile number
           </label>
           <div className={s.row}>
             <input
               id="notify-phone"
               className="input"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ''))}
               inputMode="numeric"
-              placeholder="10-digit mobile number"
+              placeholder="Type your mobile number"
               required
               autoFocus
             />

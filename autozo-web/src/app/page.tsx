@@ -4,7 +4,6 @@ import Link from 'next/link';
 import React from 'react';
 import { useCatalog } from '../context/CatalogContext';
 import { HomeSection } from '../lib/types';
-import { DeliverySlots } from '../components/DeliverySlots';
 import { BannerCarousel } from '../components/BannerCarousel';
 import { CategoryCircle, CategoryTile } from '../components/CategoryTile';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -54,7 +53,6 @@ export default function HomePage() {
             </Alert>
           </div>
         )}
-        <DeliverySlots />
         {rest.map((section) => (
           // Per-section, so one malformed block can't blank the storefront.
           <ErrorBoundary key={section.id} label={section.kind}>
