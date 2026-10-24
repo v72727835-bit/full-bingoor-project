@@ -25,6 +25,7 @@ default `https://api.bingoor.com/api/v1`).
    changes nothing.
 2. Restarts the containers and checks each app answers 200.
 3. If one does not, starts the previous images again and the GitHub run fails.
+4. Empties the aaPanel proxy caches so no cached page points at old CSS/JS.
 
 Logs: `/var/log/bingoor-deploy/` on the server, and the run in the GitHub
 **Actions** tab. To deploy by hand: `bash /opt/bingoor-src/deploy/docker-deploy.sh`.

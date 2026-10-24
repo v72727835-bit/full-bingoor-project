@@ -27,6 +27,9 @@ export BINGOOR_ENV_DIR="${BINGOOR_ENV_DIR:-/opt/bingoor-env}"
 export BINGOOR_DATA_DIR="${BINGOOR_DATA_DIR:-/opt/bingoor-data}"
 LEGACY="${LEGACY_DIR:-/opt/bingoor}"   # the old pm2 install, read on the first run
 LOG_DIR="${LOG_DIR:-/var/log/bingoor-deploy}"
+# aaPanel's reverse-proxy caches; a cached page would ask for the old build's
+# CSS/JS files, so they are emptied after every deploy.
+PROXY_CACHE_DIRS="${PROXY_CACHE_DIRS:-/www/wwwroot/bingoor.com/proxy_cache_dir /www/wwwroot/admin.bingoor.com/proxy_cache_dir /www/wwwroot/api.bingoor.com/proxy_cache_dir}"
 
 SERVICES=(api web admin)
 PM2_APPS=(bingoor-api bingoor-web bingoor-admin)
@@ -126,6 +129,13 @@ if [ "$ON_PM2" = 1 ]; then
   pm2 delete "${PM2_APPS[@]}" >>"$LOG" 2>&1 || true
   pm2 save --force >>"$LOG" 2>&1 || true
 fi
+
+say "Clearing the proxy caches"
+for d in $PROXY_CACHE_DIRS; do
+  [ -d "$d" ] && find "$d" -mindepth 1 -delete
+done
+NGINX="$(command -v nginx || echo /www/server/nginx/sbin/nginx)"
+if [ -x "$NGINX" ]; then "$NGINX" -t >>"$LOG" 2>&1 && "$NGINX" -s reload >>"$LOG" 2>&1 || true; fi
 
 docker image prune -f >>"$LOG" 2>&1 || true
 say "Done. Live on $(git log -1 --format=%h)."
