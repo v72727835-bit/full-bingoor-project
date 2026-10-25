@@ -16,10 +16,11 @@ import Dashboard from './Dashboard';
 import Inventory from './Inventory';
 import Orders from './Orders';
 import Products from './Products';
+import { ProductSellerDashboard, ProductSellerOrders } from './ProductSeller';
 import { AccountView, StoreView } from './Settings';
 
 export type Wh = { _id: string; name: string };
-export type Me = { user: { name: string; phone: string; email?: string; sellerId?: string; sellerProfile?: SellerProfile; sellerWarehouses?: Wh[] }; stats: unknown };
+export type Me = { user: { name: string; phone: string; email?: string; sellerId?: string; sellerProfile?: SellerProfile; sellerWarehouses?: Wh[]; sellerKind?: 'warehouse' | 'product' }; stats: unknown };
 
 /**
  * A warehouse's own panel, laid out like the super admin: a sidebar with the
@@ -68,8 +69,27 @@ export default function SellerApp() {
 
   if (!me) return error ? <ErrorBanner message={error} /> : <CenterSpinner />;
   const warehouses = me.user.sellerWarehouses ?? [];
+  // #45: a product seller only lists products and sees their own sales - no riders, customers or store settings.
+  const lister = me.user.sellerKind === 'product';
 
-  const groups: { title: string; items: { to: string; label: string; icon: React.ReactNode; end?: boolean; badge?: number; warn?: boolean }[] }[] = [
+  const groups: { title: string; items: { to: string; label: string; icon: React.ReactNode; end?: boolean; badge?: number; warn?: boolean }[] }[] = lister ? [
+    {
+      title: 'Overview',
+      items: [
+        { to: '/', label: 'Dashboard', icon: <IconDashboard />, end: true },
+        { to: '/orders', label: 'Orders', icon: <IconReceipt />, badge: newOrders },
+        { to: '/earnings', label: 'Earnings', icon: <IconReceipt /> },
+      ],
+    },
+    {
+      title: 'Catalogue',
+      items: [
+        { to: '/products', label: 'My products', icon: <IconBox /> },
+        { to: '/inventory', label: 'Stock', icon: <IconAlert />, badge: lowStock, warn: true },
+      ],
+    },
+    { title: 'Account', items: [{ to: '/account', label: 'My account', icon: <IconShield /> }] },
+  ] : [
     {
       title: 'Overview',
       items: [
@@ -104,12 +124,14 @@ export default function SellerApp() {
   const flat = groups.flatMap((g) => g.items);
 
   let page: React.ReactNode;
+  const allowed = flat.some((i) => i.to === pathname);
+  if (!allowed) return <Navigate to="/" replace />;
   switch (pathname) {
     case '/':
-      page = <Dashboard />;
+      page = lister ? <ProductSellerDashboard /> : <Dashboard />;
       break;
     case '/orders':
-      page = <Orders onChanged={poll} />;
+      page = lister ? <ProductSellerOrders onSeen={poll} /> : <Orders onChanged={poll} />;
       break;
     case '/products':
       page = <Products warehouses={warehouses} />;
@@ -146,7 +168,7 @@ export default function SellerApp() {
           <img className="logo-mark" src="/logo-mark.png" alt="Bingoor" width={36} height={36} />
           <div className="logo-text">
             <b>Bingoor</b>
-            <span>Warehouse Panel</span>
+            <span>{lister ? 'Seller Panel' : 'Warehouse Panel'}</span>
           </div>
         </div>
         <div className="sidebar-scroll">
@@ -196,7 +218,7 @@ export default function SellerApp() {
               <div className="avatar">{me.user.name.slice(0, 2).toUpperCase()}</div>
               <div>
                 <div className="u-name">{me.user.name}</div>
-                <div className="u-role">Warehouse</div>
+                <div className="u-role">{lister ? 'Seller' : 'Warehouse'}</div>
               </div>
             </div>
           </div>

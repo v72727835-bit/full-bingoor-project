@@ -364,6 +364,7 @@ export interface SellerRow {
   sellerId?: string;
   sellerProfile?: SellerProfile;
   sellerWarehouses?: { _id: string; name: string }[];
+  sellerKind?: 'warehouse' | 'product';
   listings: number;
   createdAt: string;
 }
@@ -371,6 +372,8 @@ export interface SellerRow {
 export interface SellerStats {
   liveListings: number;
   totalListings: number;
+  /** Orders with this seller's products that are not delivered yet. */
+  liveOrders?: number;
   orders: number;
   revenue: number;
   unseenOrders: number;

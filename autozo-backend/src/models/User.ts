@@ -52,6 +52,12 @@ export interface IUser {
   sellerId?: string;
   /** Sellers: the warehouses whose orders they see and where their listings are stocked. */
   sellerWarehouses?: Types.ObjectId[];
+  /**
+   * Sellers: 'product' is a product seller (#45) who only lists products and
+   * sees just product name, quantity and payment of their own orders - never the
+   * customer. Absent / 'warehouse' is the warehouse panel that packs and dispatches.
+   */
+  sellerKind?: 'warehouse' | 'product';
   /** Sellers: the one-time registration form. Once `locked`, only the admin can clear it. */
   sellerProfile?: {
     firm: string;
@@ -154,6 +160,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     facebookId: { type: String, unique: true, sparse: true },
     sellerId: { type: String, unique: true, sparse: true },
     sellerWarehouses: { type: [{ type: Schema.Types.ObjectId, ref: 'Shop' }], default: undefined },
+    sellerKind: { type: String, enum: ['warehouse', 'product'] },
     sellerProfile: {
       type: {
         firm: String,

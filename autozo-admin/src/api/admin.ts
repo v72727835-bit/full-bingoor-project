@@ -299,8 +299,8 @@ export const deleteEnquiry = async (id: string): Promise<void> => {
 };
 
 /* ---------- sellers ---------- */
-export const fetchSellers = (params: { page?: number; limit?: number; q?: string }) => paged<SellerRow>('/admin/sellers', params);
-export const createSeller = async (body: { name: string; phone: string; email?: string; password: string; warehouses: string[] }) =>
+export const fetchSellers = (params: { page?: number; limit?: number; q?: string; kind?: 'warehouse' | 'product' }) => paged<SellerRow>('/admin/sellers', params);
+export const createSeller = async (body: { name: string; phone: string; email?: string; password: string; warehouses: string[]; kind?: 'warehouse' | 'product' }) =>
   (await api.post('/admin/sellers', body)).data.data;
 export const setSellerWarehouses = async (id: string, warehouses: string[]): Promise<void> => {
   await api.patch(`/admin/sellers/${id}/warehouses`, { warehouses });
@@ -314,7 +314,7 @@ export const setSellerActive = async (id: string, isActive: boolean): Promise<vo
 
 /* ---------- seller panel (a seller's own session) ---------- */
 export const sellerMe = async (): Promise<{
-  user: { name: string; phone: string; email?: string; sellerId?: string; sellerProfile?: SellerProfile };
+  user: { name: string; phone: string; email?: string; sellerId?: string; sellerProfile?: SellerProfile; sellerKind?: 'warehouse' | 'product' };
   stats: SellerStats;
 }> => (await api.get('/seller/me')).data.data;
 export const sellerAckOrders = async (): Promise<void> => {

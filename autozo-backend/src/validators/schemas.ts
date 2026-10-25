@@ -624,6 +624,7 @@ export const adminSellerBody = z.object({
   email: z.string().trim().toLowerCase().email().optional().or(z.literal('').transform(() => undefined)),
   password: password,
   warehouses: z.array(objectId).min(1, 'Select at least one warehouse').max(50),
+  kind: z.enum(['warehouse', 'product']).default('warehouse'),
 });
 export const sellerWarehousesBody = z.object({ warehouses: z.array(objectId).min(1, 'Select at least one warehouse').max(50) });
 export const assignRiderBody = z.object({ rider: objectId });
@@ -635,7 +636,7 @@ export const sellerOrdersQuery = pagination.extend({
   q: z.string().trim().max(40).optional(),
   status: z.enum(['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'cancelled', 'rejected']).optional(),
 });
-export const adminSellersQuery = pagination.extend({ q: z.string().trim().max(60).optional() });
+export const adminSellersQuery = pagination.extend({ q: z.string().trim().max(60).optional(), kind: z.enum(['warehouse', 'product']).optional() });
 export const activeBody = z.object({ isActive: z.boolean() });
 
 export const warehouseLoginBody = z.object({

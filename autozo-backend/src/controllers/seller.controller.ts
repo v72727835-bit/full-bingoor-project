@@ -52,12 +52,14 @@ async function sellerStats(sellerId: string, ackAt?: Date, warehouses: Types.Obj
     { $group: { _id: null, orderIds: { $addToSet: '$_id' }, revenue: { $sum: '$items.lineTotal' } } },
     { $project: { orders: { $size: '$orderIds' }, revenue: 1 } },
   ]);
-  const unseen = await Order.countDocuments({ shop: { $in: warehouses }, ...(ackAt ? { createdAt: { $gt: ackAt } } : {}) });
-  return { liveListings: live, totalListings: total, orders: rows[0]?.orders ?? 0, revenue: Math.round((rows[0]?.revenue ?? 0) * 100) / 100, unseenOrders: unseen };
+  const kind = (await User.findById(id).select('sellerKind').lean())?.sellerKind;
+  const unseen = await Order.countDocuments({ ...(kind === 'product' ? { sellerIds: id } : { shop: { $in: warehouses } }), ...(ackAt ? { createdAt: { $gt: ackAt } } : {}) });
+  const liveOrders = await Order.countDocuments({ sellerIds: id, status: { $in: ['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery'] } });
+  return { liveListings: live, totalListings: total, liveOrders, orders: rows[0]?.orders ?? 0, revenue: Math.round((rows[0]?.revenue ?? 0) * 100) / 100, unseenOrders: unseen };
 }
 
 export const getMe = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user!.id).select('name phone email sellerId sellerProfile sellerAckAt sellerWarehouses').populate('sellerWarehouses', 'name').lean();
+  const user = await User.findById(req.user!.id).select('name phone email sellerId sellerProfile sellerAckAt sellerWarehouses sellerKind').populate('sellerWarehouses', 'name').lean();
   if (!user) throw new ApiError(404, 'Seller not found');
   const ids = (user.sellerWarehouses ?? []).map((w) => (w as unknown as { _id: Types.ObjectId })._id);
   ok(res, { user, stats: await sellerStats(req.user!.id, user.sellerAckAt, ids) });
@@ -105,7 +107,7 @@ export const saveProfile = asyncHandler(async (req, res) => {
 
 export const listMyProducts = asyncHandler(async (req, res) => {
   const { page, limit, q, status, category } = req.query as unknown as { page: number; limit: number; q?: string; status?: 'live' | 'off' | 'out' | 'low'; category?: string };
-  const filter: Record<string, unknown> = { shop: { $in: await myWarehouses(req.user!.id) } };
+  const filter: Record<string, unknown> = await myProductScope(req.user!.id);
   if (q) filter.$or = [{ name: { $regex: escapeRegex(q), $options: 'i' } }, { brand: { $regex: escapeRegex(q), $options: 'i' } }];
   if (category) filter.category = category;
   if (status === 'live') Object.assign(filter, { isActive: true, stock: { $gt: 0 } });
@@ -158,13 +160,13 @@ export const updateMyProduct = asyncHandler(async (req, res) => {
     const category = await Category.findOne({ _id: patch.category, level: 3, isActive: true }).select('_id').lean();
     if (!category) throw new ApiError(400, 'Choose the child category your product belongs to.');
   }
-  const product = await Product.findOneAndUpdate({ _id: req.params.id, shop: { $in: await myWarehouses(req.user!.id) } }, { $set: patch }, { new: true }).lean();
+  const product = await Product.findOneAndUpdate({ _id: req.params.id, ...(await myProductScope(req.user!.id)) }, { $set: patch }, { new: true }).lean();
   if (!product) throw new ApiError(404, 'Listing not found');
   ok(res, product);
 });
 
 export const deleteMyProduct = asyncHandler(async (req, res) => {
-  const r = await Product.deleteOne({ _id: req.params.id, shop: { $in: await myWarehouses(req.user!.id) } });
+  const r = await Product.deleteOne({ _id: req.params.id, ...(await myProductScope(req.user!.id)) });
   if (!r.deletedCount) throw new ApiError(404, 'Listing not found');
   ok(res, { deleted: true });
 });
@@ -176,6 +178,51 @@ async function myWarehouses(userId: string): Promise<Types.ObjectId[]> {
   return me?.sellerWarehouses ?? [];
 }
 
+/** Which products this seller may see and edit: a warehouse sees its whole shelf, a product seller only their own listings. */
+async function myProductScope(userId: string): Promise<Record<string, unknown>> {
+  const me = await User.findById(userId).select('sellerWarehouses sellerKind').lean();
+  const shop = { $in: me?.sellerWarehouses ?? [] };
+  return me?.sellerKind === 'product' ? { shop, seller: new Types.ObjectId(userId) } : { shop };
+}
+
+/** Product sellers (#45) do not pack, dispatch or see customers - these routes are for warehouses only. */
+export const warehouseOnly = asyncHandler(async (req, _res, next) => {
+  const me = await User.findById(req.user!.id).select('sellerKind').lean();
+  if (me?.sellerKind === 'product') throw new ApiError(403, 'This is only for warehouse logins.');
+  next();
+});
+
+/**
+ * A product seller's orders: only the lines they listed, with product name,
+ * quantity and payment. No customer name, phone, address or rider.
+ */
+async function listProductSellerOrders(userId: string, page: number, limit: number, status?: string, q?: string) {
+  const id = new Types.ObjectId(userId);
+  const filter: Record<string, unknown> = { sellerIds: id };
+  if (status) filter.status = status;
+  if (q) filter.orderNumber = { $regex: escapeRegex(q), $options: 'i' };
+  const [rows, total] = await Promise.all([
+    Order.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).select('orderNumber status paymentMethod paymentStatus items createdAt').lean(),
+    Order.countDocuments(filter),
+  ]);
+  const orders = rows.map((o) => {
+    const items = (o.items ?? [])
+      .filter((i) => String(i.seller) === userId)
+      .map((i) => ({ name: i.name, unit: i.unit, quantity: i.quantity, price: i.price, lineTotal: i.lineTotal }));
+    return {
+      _id: o._id,
+      orderNumber: o.orderNumber,
+      status: o.status,
+      paymentMethod: o.paymentMethod,
+      paymentStatus: o.paymentStatus,
+      createdAt: (o as { createdAt?: Date }).createdAt,
+      items,
+      amount: Math.round(items.reduce((sum, i) => sum + (i.lineTotal ?? 0), 0) * 100) / 100,
+    };
+  });
+  return { orders, total };
+}
+
 async function assertMyOrder(userId: string, orderId: string) {
   const order = await Order.exists({ _id: orderId, shop: { $in: await myWarehouses(userId) } });
   if (!order) throw new ApiError(404, 'Order not found');
@@ -183,6 +230,11 @@ async function assertMyOrder(userId: string, orderId: string) {
 
 export const listMyOrders = asyncHandler(async (req, res) => {
   const { page, limit, status, q } = req.query as unknown as { page: number; limit: number; status?: string; q?: string };
+  const me = await User.findById(req.user!.id).select('sellerKind').lean();
+  if (me?.sellerKind === 'product') {
+    const { orders, total } = await listProductSellerOrders(req.user!.id, page, limit, status, q);
+    return ok(res, orders, pageMeta(page, limit, total));
+  }
   const filter: Record<string, unknown> = { shop: { $in: await myWarehouses(req.user!.id) } };
   if (status) filter.status = status;
   if (q) filter.orderNumber = { $regex: escapeRegex(q), $options: 'i' };
@@ -282,21 +334,23 @@ export const categoryTree = asyncHandler(async (_req, res) => {
 /* ============ Admin: seller accounts ============ */
 
 export const adminCreateSeller = asyncHandler(async (req, res) => {
-  const { name, phone, email, password, warehouses } = req.body as { name: string; phone: string; email?: string; password: string; warehouses: string[] };
+  const { name, phone, email, password, warehouses, kind } = req.body as { name: string; phone: string; email?: string; password: string; warehouses: string[]; kind: 'warehouse' | 'product' };
   const found = await Shop.countDocuments({ _id: { $in: warehouses } });
   if (found !== new Set(warehouses).size) throw new ApiError(400, 'Warehouse not found');
   const clash = await User.findOne({ role: 'seller', $or: [{ phone }, ...(email ? [{ email }] : [])] }).select('phone');
   if (clash) throw new ApiError(409, 'That phone or email is already registered');
-  const user = await User.create({ name, phone, email, password, role: 'seller', sellerWarehouses: warehouses });
-  created(res, { _id: user._id, name: user.name, phone: user.phone, email: user.email });
+  const user = await User.create({ name, phone, email, password, role: 'seller', sellerWarehouses: warehouses, ...(kind === 'product' ? { sellerKind: 'product' } : {}) });
+  created(res, { _id: user._id, name: user.name, phone: user.phone, email: user.email, sellerId: user.sellerId, sellerKind: user.sellerKind });
 });
 
 export const adminListSellers = asyncHandler(async (req, res) => {
-  const { page, limit, q } = req.query as unknown as { page: number; limit: number; q?: string };
+  const { page, limit, q, kind } = req.query as unknown as { page: number; limit: number; q?: string; kind?: 'warehouse' | 'product' };
   const filter: Record<string, unknown> = { role: 'seller' };
+  if (kind === 'product') filter.sellerKind = 'product';
+  else if (kind === 'warehouse') filter.sellerKind = { $ne: 'product' };
   if (q) filter.$or = [{ name: { $regex: q, $options: 'i' } }, { phone: { $regex: q } }, { sellerId: { $regex: q, $options: 'i' } }];
   const [rows, total] = await Promise.all([
-    User.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).select('name phone email isActive sellerId sellerProfile sellerWarehouses createdAt').populate('sellerWarehouses', 'name').lean(),
+    User.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).select('name phone email isActive sellerId sellerProfile sellerWarehouses sellerKind createdAt').populate('sellerWarehouses', 'name').lean(),
     User.countDocuments(filter),
   ]);
   const counts = await Product.aggregate<{ _id: Types.ObjectId; n: number }>([
@@ -357,7 +411,7 @@ export const createMyRider = asyncHandler(async (req, res) => {
 /* ============ Admin: the login of each warehouse ============ */
 
 export const adminListWarehouseLogins = asyncHandler(async (_req, res) => {
-  const users = await User.find({ role: 'seller', sellerWarehouses: { $exists: true, $ne: [] } }).select('name phone isActive sellerWarehouses').lean();
+  const users = await User.find({ role: 'seller', sellerKind: { $ne: 'product' }, sellerWarehouses: { $exists: true, $ne: [] } }).select('name phone isActive sellerWarehouses').lean();
   ok(res, users.flatMap((u) => (u.sellerWarehouses ?? []).map((w) => ({ shop: String(w), _id: u._id, name: u.name, phone: u.phone, isActive: u.isActive }))));
 });
 
@@ -366,7 +420,7 @@ export const adminSetWarehouseLogin = asyncHandler(async (req, res) => {
   const { name, phone, password, isActive } = req.body as { name?: string; phone: string; password?: string; isActive?: boolean };
   const shop = await Shop.findById(req.params.id).select('name').lean();
   if (!shop) throw new ApiError(404, 'Warehouse not found');
-  const existing = await User.findOne({ role: 'seller', sellerWarehouses: shop._id }).select('+password');
+  const existing = await User.findOne({ role: 'seller', sellerKind: { $ne: 'product' }, sellerWarehouses: shop._id }).select('+password');
   const clash = await User.findOne({ phone, role: 'seller', ...(existing ? { _id: { $ne: existing._id } } : {}) }).select('_id').lean();
   if (clash) throw new ApiError(409, 'That phone is already used by another account');
   if (!existing) {
