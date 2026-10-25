@@ -16,18 +16,20 @@ import { getErrorMessage } from '../../lib/client';
 import { shortDelivery } from '../../lib/deliveryText';
 import { Icon } from '../../components/Icon';
 import { QuantityStepper } from '../../components/QuantityStepper';
-import { RequireAuth } from '../../components/RequireAuth';
 import { Alert, Badge, Button, EmptyState, PageLoader } from '../../components/ui';
 import s from './cart.module.css';
 
 function CartInner() {
-  const { cart, loading, updateItem, removeItem, clear, addItem } = useCart();
+  const { cart, loading, guest, updateItem, removeItem, clear, addItem } = useCart();
   const { home } = useCatalog();
   const { show } = useToast();
   const { t, name } = useLanguage();
   const settings = useSettings();
   const { slot, label } = useSlot();
-  const quote = useQuote(slot, cart?.total);
+  const accountQuote = useQuote(slot, cart?.total);
+  // A visitor's basket carries its own quote (priced for their chosen location).
+  const quote = guest ? (cart?.quote ?? null) : accountQuote;
+  const [askLogin, setAskLogin] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // The hidden points rule: when the basket is short, one top-up product is
@@ -268,7 +270,14 @@ function CartInner() {
                   href="/checkout"
                   className={`btn btn-lg btn-primary btn-full ${blocked ? s.off : ''} ${!cart.points.met ? s.mono : ''}`}
                   aria-disabled={blocked}
-                  onClick={(e) => blocked && e.preventDefault()}
+                  onClick={(e) => {
+                    if (blocked) return e.preventDefault();
+                    // #23: browsing and the cart are open to everyone; an account is needed only to pay.
+                    if (guest) {
+                      e.preventDefault();
+                      setAskLogin(true);
+                    }
+                  }}
                 >
                   {t('proceed')}
                   <Icon name="arrow-right" size={17} />
@@ -282,6 +291,27 @@ function CartInner() {
           </p>
         </aside>
       </div>
+      {askLogin ? (
+        <div className={s.askBack} role="dialog" aria-modal="true" aria-labelledby="ask-login" onClick={() => setAskLogin(false)}>
+          <div className={`card ${s.ask}`} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className={s.askClose} onClick={() => setAskLogin(false)} aria-label="Close">
+              <Icon name="x" size={18} />
+            </button>
+            <h2 id="ask-login" className="h3">
+              Create your account to continue
+            </h2>
+            <p className="body-sm" style={{ margin: '6px 0 16px' }}>
+              Your cart is saved. Make a free account (or sign in) and we will take you straight to payment.
+            </p>
+            <Link href="/signup?next=%2Fcheckout" className="btn btn-lg btn-primary btn-full">
+              Create account
+            </Link>
+            <Link href="/login?next=%2Fcheckout" className="btn btn-lg btn-outline btn-full" style={{ marginTop: 10 }}>
+              I already have an account
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -299,9 +329,5 @@ function Row({ label, value, big, good, was }: { label: string; value: string; b
 }
 
 export default function CartPage() {
-  return (
-    <RequireAuth>
-      <CartInner />
-    </RequireAuth>
-  );
+  return <CartInner />;
 }

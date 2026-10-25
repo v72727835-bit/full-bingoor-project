@@ -544,6 +544,13 @@ export const enquiryBody = z.object({
 });
 export const adminEnquiriesQuery = pagination.extend({ kind: z.enum(ENQUIRY_KINDS).optional() });
 export const riderLongDistanceBody = z.object({ longDistance: z.boolean() });
+export const guestCartBody = z.object({
+  items: z.array(z.object({ productId: objectId, quantity: z.number().int().min(1).max(20) })).max(100).default([]),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  slot: z.enum(['instant', 'twoHour', 'nextDay']).default('instant'),
+});
+
 export const quoteQuery = z.object({
   addressId: z.string().trim().optional(),
   lat: z.coerce.number().min(-90).max(90).optional(),

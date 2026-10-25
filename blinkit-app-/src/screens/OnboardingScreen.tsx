@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { ScrollView, StatusBar, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
 import { colors, gradient, gutter, ms, radius, space, themed } from '../theme';
 import { Button, IconName } from '../ui/Button';
 import { Logo } from '../ui/Logo';
@@ -29,6 +30,7 @@ const PITCH: { icon: IconName; title: string; body: string }[] = [
 
 export function OnboardingScreen() {
   const navigation = useNavigation<AuthNav>();
+  const { browseAsGuest } = useAuth();
 
   return (
     <View style={styles.root}>
@@ -74,6 +76,7 @@ export function OnboardingScreen() {
             onPress={() => navigation.navigate('Login')}
             style={styles.ctaSecondary}
           />
+          <Button label="Skip, look around first" variant="ghostOnBrand" size="lg" onPress={browseAsGuest} style={styles.ctaSecondary} />
         </ScrollView>
       </SafeAreaView>
     </View>

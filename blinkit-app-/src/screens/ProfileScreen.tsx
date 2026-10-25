@@ -18,6 +18,7 @@ import { LogoMark } from '../ui/Logo';
 import { Divider } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { useToast } from '../ui/Toast';
+import { NeedsAccount } from '../components/SignInPrompt';
 
 interface MenuItem {
   icon: IconName;
@@ -29,7 +30,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export function ProfileScreen(_props: TabScreenProps) {
+function ProfileScreenInner(_props: TabScreenProps) {
   const navigation = useNavigation<AppNav>();
   const { user, signOut } = useAuth();
   const { cart } = useCart();
@@ -476,3 +477,12 @@ const styles = themed(({ c }) => ({
   footer: { alignItems: 'center', marginTop: space.xxxl },
   footerMark: { opacity: 0.4, marginBottom: space.sm },
   footerNote: { marginTop: ms(2) },}));
+
+/** #23: visitors can browse and fill a cart; this page needs an account. */
+export function ProfileScreen(_props: TabScreenProps) {
+  return (
+    <NeedsAccount title="Account" message="Sign in to manage your addresses, orders and wish list." tab>
+      <ProfileScreenInner {..._props} />
+    </NeedsAccount>
+  );
+}

@@ -24,6 +24,7 @@ import { Pill } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { TextField } from '../ui/TextField';
 import { useToast } from '../ui/Toast';
+import { NeedsAccount } from '../components/SignInPrompt';
 
 const LABEL_ICON = { home: 'home-outline', work: 'briefcase-outline', other: 'location-outline' } as const;
 
@@ -47,7 +48,7 @@ function describeProblem(p: CheckoutProblem): string {
   return `${where}: ${p.reason.replace(/_/g, ' ')}`;
 }
 
-export function CheckoutScreen() {
+function CheckoutScreenInner() {
   const navigation = useNavigation<AppNav>();
   const { cart, refresh } = useCart();
   const { goToTab } = useTabs();
@@ -628,3 +629,12 @@ const styles = themed(({ c, elevation }) => ({
   barInner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: gutter, paddingVertical: space.md },
   barPrice: { flexShrink: 1, marginRight: space.md },
   barBtn: { flexShrink: 1, paddingHorizontal: space.xl },}));
+
+/** #23: visitors can browse and fill a cart; this page needs an account. */
+export function CheckoutScreen() {
+  return (
+    <NeedsAccount title="Checkout" message="Your cart is saved. Create a free account (or sign in) to place your order.">
+      <CheckoutScreenInner />
+    </NeedsAccount>
+  );
+}

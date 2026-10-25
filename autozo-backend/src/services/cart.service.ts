@@ -30,8 +30,17 @@ export function deliveryFeeFor(shop: Pick<IShop, 'deliveryFee'>, subtotal: numbe
 export async function resolveCart(userId: string): Promise<ResolvedGroup[]> {
   const cart = await Cart.findOne({ user: userId }).lean();
   if (!cart || cart.items.length === 0) return [];
+  const { groups, missing } = await resolveItems(cart.items);
+  if (missing.length) {
+    await Cart.updateOne({ user: userId }, { $pull: { items: { product: { $in: missing } } } });
+  }
+  return groups;
+}
 
-  const products = (await Product.find({ _id: { $in: cart.items.map((i) => i.product) } })
+/** Groups a list of {product, quantity} by shop with live product data; `missing` are ids that no longer exist. */
+export async function resolveItems(items: { product: Types.ObjectId | string; quantity: number }[]): Promise<{ groups: ResolvedGroup[]; missing: Types.ObjectId[] }> {
+  if (items.length === 0) return { groups: [], missing: [] };
+  const products = (await Product.find({ _id: { $in: items.map((i) => i.product) } })
     .populate('shop')
     .lean()) as unknown as Array<Omit<ProductLean, 'shop'> & { shop: ShopLean | null }>;
   const byId = new Map(products.map((p) => [String(p._id), p]));
@@ -39,10 +48,10 @@ export async function resolveCart(userId: string): Promise<ResolvedGroup[]> {
   const groups = new Map<string, ResolvedGroup>();
   const missing: Types.ObjectId[] = [];
 
-  for (const item of cart.items) {
+  for (const item of items) {
     const p = byId.get(String(item.product));
     if (!p || !p.shop) {
-      missing.push(item.product);
+      missing.push(new Types.ObjectId(String(item.product)));
       continue;
     }
     const shop = p.shop;
@@ -53,11 +62,7 @@ export async function resolveCart(userId: string): Promise<ResolvedGroup[]> {
       quantity: item.quantity,
     });
   }
-
-  if (missing.length) {
-    await Cart.updateOne({ user: userId }, { $pull: { items: { product: { $in: missing } } } });
-  }
-  return [...groups.values()];
+  return { groups: [...groups.values()], missing };
 }
 
 export type LineIssue = 'unavailable' | 'out_of_stock' | 'insufficient_stock';
@@ -189,4 +194,10 @@ async function pointsView(groups: ResolvedGroup[]) {
 export async function getCartView(userId: string) {
   const groups = await resolveCart(userId);
   return { ...buildCartView(groups), points: await pointsView(groups) };
+}
+
+/** The same view for a visitor who has not signed in yet: their basket lives in the browser / phone. */
+export async function guestCartView(items: { product: string; quantity: number }[]) {
+  const { groups } = await resolveItems(items);
+  return { groups, view: { ...buildCartView(groups), points: await pointsView(groups) } };
 }

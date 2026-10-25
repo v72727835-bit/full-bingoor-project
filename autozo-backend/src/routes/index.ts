@@ -131,6 +131,7 @@ router.post('/me/wishlist/:productId', ...customerOnly, validate({ params: v.pro
 router.delete('/me/wishlist/:productId', ...customerOnly, validate({ params: v.productIdParam }), me.removeFromWishlist);
 
 /* ============ Cart (login) ============ */
+router.post('/cart/guest', validate({ body: v.guestCartBody }), cart.guestCart);
 router.get('/cart', ...customerOnly, cart.getCart);
 router.get('/cart/quote', ...customerOnly, validate({ query: v.quoteQuery }), cart.quote);
 router.post('/cart/items', ...customerOnly, validate({ body: v.addCartItemBody }), cart.addItem);

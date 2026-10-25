@@ -370,6 +370,8 @@ export interface CartView {
   total: number;
   hasIssues: boolean;
   freeDeliveryAbove: number;
+  /** Only on a visitor's (not signed in) basket: the delivery bill for their chosen location. */
+  quote?: Quote | null;
 }
 
 export type OrderStatus =

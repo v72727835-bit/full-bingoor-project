@@ -35,3 +35,19 @@ export const tokenStore = {
     await Promise.all([remove(ACCESS_SERVICE), remove(REFRESH_SERVICE)]);
   },
 };
+
+/*
+ * Small non-secret values that must survive a restart. The app has no other
+ * storage library, so these ride in the keychain too (one entry each).
+ */
+const GUEST_SERVICE = 'com.bingoor.app.guest';
+const GUEST_CART_SERVICE = 'com.bingoor.app.guestcart';
+
+export const localStore = {
+  /** "1" once the visitor chose to look around without an account. */
+  getGuest: () => get(GUEST_SERVICE),
+  setGuest: (on: boolean) => (on ? set(GUEST_SERVICE, '1') : remove(GUEST_SERVICE)),
+  /** The visitor's basket as JSON: [{ productId, quantity }]. */
+  getGuestCart: () => get(GUEST_CART_SERVICE),
+  setGuestCart: (json: string | null) => (json ? set(GUEST_CART_SERVICE, json) : remove(GUEST_CART_SERVICE)),
+};

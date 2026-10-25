@@ -15,10 +15,11 @@ import { Screen } from '../ui/Screen';
 import { Pill } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { useToast } from '../ui/Toast';
+import { NeedsAccount } from '../components/SignInPrompt';
 
 const LABEL_ICON = { home: 'home-outline', work: 'briefcase-outline', other: 'location-outline' } as const;
 
-export function AddressListScreen() {
+function AddressListScreenInner() {
   const navigation = useNavigation<AppNav>();
   const toast = useToast();
 
@@ -216,3 +217,12 @@ const styles = themed(({ c, elevation }) => ({
     ...elevation.lg,
   },
   barInner: { paddingHorizontal: gutter, paddingVertical: space.md },}));
+
+/** #23: visitors can browse and fill a cart; this page needs an account. */
+export function AddressListScreen() {
+  return (
+    <NeedsAccount title="Addresses" message="Sign in to save your delivery addresses.">
+      <AddressListScreenInner />
+    </NeedsAccount>
+  );
+}

@@ -26,3 +26,9 @@ export async function clearCart(): Promise<CartView> {
   const { data } = await api.delete<ApiEnvelope<CartView>>('/cart');
   return data.data;
 }
+
+/** A visitor's basket (kept on the phone) priced by the server; nothing is stored there. */
+export async function fetchGuestCart(items: { productId: string; quantity: number }[], point?: { lat: number; lng: number } | null): Promise<CartView> {
+  const { data } = await api.post<ApiEnvelope<CartView>>('/cart/guest', { items, ...(point ?? {}) });
+  return data.data;
+}

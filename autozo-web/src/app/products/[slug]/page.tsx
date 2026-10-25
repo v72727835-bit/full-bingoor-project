@@ -105,7 +105,6 @@ export default function ProductPage() {
   const saving = p.mrp ? p.mrp - p.price : 0;
 
   const act = async (fn: () => Promise<void>) => {
-    if (!user) return needLogin();
     setBusy(true);
     try {
       await fn();

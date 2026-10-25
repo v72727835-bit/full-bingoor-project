@@ -19,10 +19,11 @@ import { SmartImage } from '../ui/SmartImage';
 import { Txt } from '../ui/Text';
 import { useToast } from '../ui/Toast';
 import { timeAgo } from '../utils/validation';
+import { NeedsAccount } from '../components/SignInPrompt';
 
 type Filter = 'active' | 'past';
 
-export function OrdersScreen({ active }: TabScreenProps) {
+function OrdersScreenInner({ active }: TabScreenProps) {
   const navigation = useNavigation<AppNav>();
   const { goToTab } = useTabs();
   const { applyCart } = useCart();
@@ -321,3 +322,12 @@ const styles = themed(({ c }) => ({
     backgroundColor: c.brand,
     marginRight: space.xs,
   },}));
+
+/** #23: visitors can browse and fill a cart; this page needs an account. */
+export function OrdersScreen({ active }: TabScreenProps) {
+  return (
+    <NeedsAccount title="Your orders" message="Sign in to see your orders and track deliveries." tab>
+      <OrdersScreenInner active={active} />
+    </NeedsAccount>
+  );
+}

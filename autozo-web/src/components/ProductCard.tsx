@@ -60,11 +60,8 @@ export function ProductCard({
 
   const qty = quantityOf(product.id);
 
+  // Visitors can fill a cart too (#23); they sign in only at payment.
   const act = async (fn: () => Promise<void>) => {
-    if (!user) {
-      router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-      return;
-    }
     setBusy(true);
     try {
       await fn();

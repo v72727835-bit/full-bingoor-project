@@ -32,3 +32,14 @@ export const fetchQuote = async (params: { addressId?: string; slot: SlotKey; pa
   const { data } = await api.get('/cart/quote', { params });
   return data.data as Quote;
 };
+
+/** A visitor's basket (kept in the browser) priced by the server, with the delivery quote for their location. */
+export const fetchGuestCart = async (body: {
+  items: { productId: string; quantity: number }[];
+  lat?: number;
+  lng?: number;
+  slot: SlotKey;
+}): Promise<CartView> => {
+  const { data } = await api.post('/cart/guest', body);
+  return n.cart(data.data);
+};

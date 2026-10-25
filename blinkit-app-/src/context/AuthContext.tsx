@@ -3,7 +3,7 @@ import { fetchMe, loginRequest, logoutRequest, registerRequest, RegisterInput, s
 import { unregisterPush } from '../firebase/push';
 import { setAccessToken, setSessionExpiredHandler } from '../api/client';
 import { setDeliveryPoint, syncPointFromAddresses } from '../store/deliveryPoint';
-import { tokenStore } from '../storage/tokens';
+import { localStore, tokenStore } from '../storage/tokens';
 import { User } from '../types';
 
 interface AuthContextValue {
@@ -20,6 +20,9 @@ interface AuthContextValue {
   /** Push a freshly-saved profile into context without a round trip. */
   applyUser: (user: User) => void;
   refreshUser: () => Promise<void>;
+  /** A visitor looking around without an account (#23): they can browse and fill a cart, and sign in at payment. */
+  guest: boolean;
+  browseAsGuest: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -28,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [welcome, setWelcome] = useState<{ phone: string; password: string } | null>(null);
+  const [guest, setGuest] = useState(false);
 
   // Restore a saved session (the API client refreshes an expired access token by itself)
   useEffect(() => {
@@ -37,7 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const [access, refresh] = await Promise.all([tokenStore.getAccess(), tokenStore.getRefresh()]);
+        const [access, refresh, wasGuest] = await Promise.all([tokenStore.getAccess(), tokenStore.getRefresh(), localStore.getGuest()]);
+        if (!cancelled && wasGuest) setGuest(true);
         if (!access && !refresh) return;
         setAccessToken(access);
         const me = await fetchMe();
@@ -94,6 +99,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const applyUser = useCallback((next: User) => setUser(next), []);
 
+  const browseAsGuest = useCallback(() => {
+    setGuest(true);
+    void localStore.setGuest(true);
+  }, []);
+
   // Scope the catalogue to the signed-in customer's default address pin.
   useEffect(() => {
     if (user) syncPointFromAddresses(user.addresses);
@@ -109,8 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signOut, applyUser, refreshUser }),
-    [user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signOut, applyUser, refreshUser],
+    () => ({ user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signOut, applyUser, refreshUser, guest, browseAsGuest }),
+    [user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signOut, applyUser, refreshUser, guest, browseAsGuest],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
