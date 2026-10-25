@@ -5,7 +5,7 @@ export interface IPaymentIntent {
   user: Types.ObjectId;
   razorpayOrderId: string;
   amount: number;
-  payload: { addressId: string; note?: string; slot: 'instant' | 'twoHour' | 'nextDay'; payOption?: 'upi' | 'debit' | 'netbanking' | 'credit' | 'rupay' };
+  payload: { addressId: string; note?: string; slot: 'instant' | 'twoHour' | 'nextDay'; payOption?: 'upi' | 'debit' | 'netbanking' | 'credit' | 'rupay'; tip?: number };
   status: 'created' | 'paid' | 'refunded' | 'failed';
   paymentId?: string;
 }

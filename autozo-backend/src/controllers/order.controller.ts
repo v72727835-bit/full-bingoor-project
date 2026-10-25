@@ -49,7 +49,7 @@ function distanceTo(
 }
 
 /* ---------------- place order ---------------- */
-type PlaceBody = { addressId: string; paymentMethod: 'cod' | 'online'; payOption?: 'upi' | 'debit' | 'netbanking' | 'credit' | 'rupay'; note?: string; slot?: Slot };
+type PlaceBody = { addressId: string; paymentMethod: 'cod' | 'online'; payOption?: 'upi' | 'debit' | 'netbanking' | 'credit' | 'rupay'; tip?: number; note?: string; slot?: Slot };
 
 /**
  * Validates the cart and, unless this is only a quote, reserves stock and creates
@@ -119,7 +119,8 @@ async function runPlaceOrder(
   if (payOpt && !payOpt.enabled) problems.push({ reason: `pay_option_off_${payOption}` });
   const feePct = paymentFeePct(payOpt, owed);
   if (problems.length) throw new ApiError(409, 'Some items in your cart need attention', problems);
-  if (opts.quote) return { grandTotal: round2(owed + round2((owed * feePct) / 100)) };
+  const tip = Math.max(0, Math.round(body.tip ?? 0));
+  if (opts.quote) return { grandTotal: round2(owed + round2((owed * feePct) / 100) + tip) };
 
   /* ---- reserve stock atomically (rolled back on any failure) ---- */
   const reserved: { product: Types.ObjectId; quantity: number }[] = [];
@@ -163,6 +164,8 @@ async function runPlaceOrder(
       const quote = quoteDelivery(settings, { subtotal, distanceKm: distanceTo(g.shop, address.location), slot });
       const deliveryFee = quote.deliveryFee + quote.twoHourFee;
       const payFee = round2(((subtotal + deliveryFee + quote.handlingFee) * feePct) / 100);
+      // The tip rides on the first order of the checkout only.
+      const orderTip: number = createdOrders.length === 0 ? tip : 0;
       const days = Math.max(quote.days, ...g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0));
 
       const order = await Order.create({
@@ -192,6 +195,7 @@ async function runPlaceOrder(
         paymentMethod,
         payOption,
         paymentFee: payFee,
+        tip: orderTip,
         // Online orders are only created after the gateway confirmed the payment.
         paymentStatus: opts.paid ? 'paid' : 'pending',
         ...(opts.paid ? { paymentRef: opts.paid.ref } : {}),
@@ -200,7 +204,7 @@ async function runPlaceOrder(
         subtotal,
         deliveryFee,
         discount: 0,
-        total: round2(subtotal + deliveryFee + quote.handlingFee + payFee),
+        total: round2(subtotal + deliveryFee + quote.handlingFee + payFee + orderTip),
         note,
         deliveryOtp: String(crypto.randomInt(1000, 10000)),
       });
@@ -236,7 +240,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
       user: userId,
       razorpayOrderId: rzp.id,
       amount: grandTotal,
-      payload: { addressId: body.addressId, note: body.note, slot: body.slot ?? 'instant', payOption: body.payOption ?? 'upi' },
+      payload: { addressId: body.addressId, note: body.note, slot: body.slot ?? 'instant', payOption: body.payOption ?? 'upi', tip: body.tip ?? 0 },
     });
     // The client opens Razorpay showing only the method the customer picked (its charge is already in the amount).
     return created(res, { requiresPayment: true, razorpayOrderId: rzp.id, amount: rzp.amount, currency: rzp.currency, keyId: (await razorpayKeys())!.keyId, payOption: body.payOption ?? 'upi' });

@@ -9,6 +9,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useSlot } from '../../context/SlotContext';
 import { useToast } from '../../context/ToastContext';
+import { getTip, setTip } from '../../lib/tip';
 import { useQuote } from '../../lib/useQuote';
 import { DeliverySlots } from '../../components/DeliverySlots';
 import { fitClass } from '../../lib/art';
@@ -16,6 +17,7 @@ import { getErrorMessage } from '../../lib/client';
 import { shortDelivery } from '../../lib/deliveryText';
 import { Icon } from '../../components/Icon';
 import { QuantityStepper } from '../../components/QuantityStepper';
+import { Rail } from '../../components/Rail';
 import { Alert, Badge, Button, EmptyState, PageLoader } from '../../components/ui';
 import s from './cart.module.css';
 
@@ -37,11 +39,13 @@ function CartInner() {
   // to pick one from the row instead of having it added back.
   const autoTried = useRef(false);
   const [removedAuto, setRemovedAuto] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
   useEffect(() => {
     const pts = cart?.points;
     if (!pts?.enabled) return;
     if (pts.met) {
       autoTried.current = false;
+      setRemovedAuto(false);
       return;
     }
     if (!autoTried.current && pts.autoAddId) {
@@ -51,6 +55,32 @@ function CartInner() {
       setRemovedAuto(true);
     }
   }, [cart?.points, addItem]);
+
+  // #35: the customer took the added product out. They get 60 seconds to pick one
+  // from the rows themselves; after that one is added for them again.
+  useEffect(() => {
+    if (!removedAuto) {
+      setCountdown(null);
+      return;
+    }
+    setCountdown(60);
+    const t = setInterval(() => setCountdown((c) => (c === null ? null : Math.max(0, c - 1))), 1000);
+    return () => clearInterval(t);
+  }, [removedAuto]);
+  useEffect(() => {
+    if (countdown !== 0) return;
+    const id = cart?.points.autoAddId ?? cart?.points.suggestions[0]?.productId;
+    setRemovedAuto(false);
+    if (id) addItem(id).catch(() => undefined);
+  }, [countdown, cart?.points, addItem]);
+
+  const [tip, setTipState] = useState(0);
+  useEffect(() => setTipState(getTip()), []);
+  const chooseTip = (n: number) => {
+    const next = tip === n ? 0 : n;
+    setTipState(next);
+    setTip(next);
+  };
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -221,6 +251,40 @@ function CartInner() {
               </footer>
             </section>
           ))}
+          {cart.points.enabled && !cart.points.met && cart.points.suggestions.length > 0 ? (
+            <section className={`card ${s.topup}`}>
+              <p className={s.topupNote}>
+                {removedAuto
+                  ? 'This product is mandatory to buy for proceed to payment, or add any one product from the list below. Otherwise one product will be added again automatically, then you can proceed to payment.'
+                  : 'Add any one product from below to proceed to payment'}
+                {removedAuto && countdown !== null ? <span className={s.topupTimer}> Adding one in {countdown}s</span> : null}
+              </p>
+              {rowsOf(cart.points.suggestions).map((row, r) => (
+                <Rail key={r} className={s.topupRail}>
+                  {row.map((sg) => (
+                    <div key={sg.productId} className={s.topupItem}>
+                      <Link href={`/products/${sg.slug}`} className={s.topupArt}>
+                        <Image src={sg.image || sg.art} alt="" width={80} height={80} className={s.topupImg} unoptimized />
+                      </Link>
+                      <span className={`${s.topupName} clamp-2`}>{sg.name}</span>
+                      {sg.unit ? <span className={s.topupUnit}>{sg.unit}</span> : null}
+                      <span className={s.topupFoot}>
+                        <span className="num">₹{sg.price}</span>
+                        {sg.mrp && sg.mrp > sg.price ? <s className={s.topupMrp}>₹{sg.mrp}</s> : null}
+                      </span>
+                      <button type="button" className={s.topupAdd} disabled={busy} onClick={() => run(() => addItem(sg.productId))}>
+                        ADD
+                      </button>
+                    </div>
+                  ))}
+                </Rail>
+              ))}
+              <Link href="/cart/more" className={s.topupAll}>
+                See all products
+                <Icon name="arrow-right" size={15} />
+              </Link>
+            </section>
+          ) : null}
         </div>
 
         <aside className={`card side-sticky ${s.summary}`}>
@@ -244,24 +308,16 @@ function CartInner() {
           )}
           {quote && quote.twoHourFee > 0 ? <Row label="2 hour delivery" value={`₹${quote.twoHourFee}`} /> : null}
           <hr className="divider" style={{ margin: '12px 0' }} />
-          <Row label={t('toPay')} value={`₹${quote ? quote.total : cart.total}`} big />
-          {cart.points.enabled && !cart.points.met && cart.points.suggestions.length > 0 ? (
-            <div className={s.topup}>
-              <p className={s.topupNote}>
-                {removedAuto ? 'Please add 1 product from below list for free delivery' : 'Add one of these to continue'}
-              </p>
-              <div className={`rail ${s.topupRail}`}>
-                {cart.points.suggestions.map((sg) => (
-                  <button key={sg.productId} type="button" className={s.topupItem} onClick={() => run(() => addItem(sg.productId))}>
-                    <Image src={sg.image || sg.art} alt="" width={64} height={64} className={s.topupImg} unoptimized />
-                    <span className={`${s.topupName} clamp-2`}>{sg.name}</span>
-                    <span className="num">₹{sg.price}</span>
-                    <span className={s.topupAdd}>+ Add</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {tip > 0 ? <Row label="Tip for delivery partner" value={`₹${tip}`} /> : null}
+          <Row label={t('toPay')} value={`₹${(quote ? quote.total : cart.total) + tip}`} big />
+          <TipPicker tip={tip} onPick={chooseTip} />
+          <div className={s.policy}>
+            <b>Cancellation policy</b>
+            <p>
+              Orders cannot be cancelled once packed for delivery. If an item is damaged, missing or the order is delayed a lot, you get a refund.{' '}
+              <Link href="/cancellation">Read the full policy</Link>
+            </p>
+          </div>
           {(() => {
             const blocked = cart.hasIssues || !cart.points.met || (quote ? !quote.meetsMinOrder : false);
             return (
@@ -330,4 +386,39 @@ function Row({ label, value, big, good, was }: { label: string; value: string; b
 
 export default function CartPage() {
   return <CartInner />;
+}
+
+/** #35: the cart rows - one row up to 8 products, then two, then three, each sliding sideways. */
+function rowsOf<T>(list: T[]): T[][] {
+  const count = list.length > 16 ? 3 : list.length > 8 ? 2 : 1;
+  const size = Math.ceil(list.length / count);
+  return Array.from({ length: count }, (_, i) => list.slice(i * size, (i + 1) * size)).filter((r) => r.length > 0);
+}
+
+function TipPicker({ tip, onPick }: { tip: number; onPick: (n: number) => void }) {
+  const [custom, setCustom] = useState('');
+  return (
+    <div className={s.tip}>
+      <b>Tip your delivery partner</b>
+      <p>Your kindness means a lot. 100% of the tip goes to the delivery partner.</p>
+      <div className={s.tipRow}>
+        {[10, 20, 30, 50].map((n) => (
+          <button key={n} type="button" className={s.tipChip} data-on={tip === n} onClick={() => onPick(n)}>
+            ₹{n}
+          </button>
+        ))}
+        <input
+          className={s.tipInput}
+          inputMode="numeric"
+          placeholder="Other"
+          value={custom}
+          onChange={(e) => setCustom(e.target.value.replace(/\D/g, '').slice(0, 3))}
+          onBlur={() => {
+            const n = Number(custom);
+            if (n > 0) onPick(Math.min(500, n));
+          }}
+        />
+      </div>
+    </div>
+  );
 }

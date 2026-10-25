@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSlot } from '../../context/SlotContext';
+import { getTip, setTip } from '../../lib/tip';
 import { useQuote } from '../../lib/useQuote';
 import { DeliverySlots } from '../../components/DeliverySlots';
 import { useCatalog } from '../../context/CatalogContext';
@@ -63,7 +64,10 @@ function CheckoutInner() {
   const [picked, setPicked] = useState('');
   const [adding, setAdding] = useState(false);
   const [opt, setOpt] = useState<PayKey>('cod');
-  const [tip, setTip] = useState<PayKey | null>(null);
+  const [tipFor, setTipFor] = useState<PayKey | null>(null);
+  // #35: the tip picked on the cart page.
+  const [tip, setTipAmount] = useState(0);
+  useEffect(() => setTipAmount(getTip()), []);
   const pay: 'cod' | 'online' = opt === 'cod' ? 'cod' : 'online';
   const setPay = (v: 'cod' | 'online') => setOpt((cur) => (v === 'cod' ? 'cod' : cur === 'cod' ? 'upi' : cur));
   const [note, setNote] = useState('');
@@ -163,7 +167,7 @@ function CheckoutInner() {
       }
       const known = (user as { email?: string } | null)?.email ?? '';
       if (email.trim() && email.trim() !== known) await updateMe({ email: email.trim() }).catch(() => undefined);
-      let result: PlaceResult = await placeOrder(picked, pay, note.trim() || undefined, slot, opt);
+      let result: PlaceResult = await placeOrder(picked, pay, note.trim() || undefined, slot, opt, tip);
       if (result.kind === 'pay') {
         // The money is taken first; the orders are only created once the server has checked the payment.
         const paid = await payWithRazorpay({
@@ -178,6 +182,7 @@ function CheckoutInner() {
         result = await confirmOnlinePayment(paid);
       }
       if (result.kind !== 'placed') throw new Error('Could not place the order. Please try again.');
+      setTip(0);
       await refresh();
       // Several warehouses can mean several orders; the list shows all of them.
       router.replace(result.count > 1 ? '/orders?placed=1' : `/orders/${result.order.id}?placed=1`);
@@ -196,7 +201,7 @@ function CheckoutInner() {
   const showForm = adding || list.length === 0;
   const chosen = options.find((o) => o.key === opt);
   const payFee = quote?.paymentFees?.[opt] ?? 0;
-  const toPay = Math.round(((quote ? quote.total : cart.total) + payFee) * 100) / 100;
+  const toPay = Math.round(((quote ? quote.total : cart.total) + payFee + tip) * 100) / 100;
 
   // Everything that stops the button from working, in plain words, so it is never a silent grey button.
   const pickedAddress = list.find((a) => a.id === picked);
@@ -344,13 +349,13 @@ function CheckoutInner() {
                           aria-label={`Charges for ${o.label}`}
                           onClick={(e) => {
                             e.preventDefault();
-                            setTip((cur) => (cur === o.key ? null : o.key));
+                            setTipFor((cur) => (cur === o.key ? null : o.key));
                           }}
                         >
                           ?
                         </button>
                       </span>
-                      {tip === o.key ? <span className={s.payBody}>{pctText(o)}</span> : null}
+                      {tipFor === o.key ? <span className={s.payBody}>{pctText(o)}</span> : null}
                       {online && !onlineOn ? <span className={s.payBody}>Coming soon</span> : null}
                       {on ? (
                         <span className={s.payFee}>
@@ -417,6 +422,7 @@ function CheckoutInner() {
           />
           {quote && quote.twoHourFee > 0 ? <Row label="2 hour delivery" value={`₹${quote.twoHourFee}`} /> : null}
           {payFee > 0 ? <Row label={`${chosen?.label ?? 'Payment'} charges`} value={`₹${payFee}`} /> : null}
+          {tip > 0 ? <Row label="Tip for delivery partner" value={`₹${tip}`} /> : null}
           <hr className="divider" style={{ margin: '12px 0' }} />
           <Row label={t('toPay')} value={`₹${toPay}`} big />
           {quote && quote.addForFree > 0 ? (

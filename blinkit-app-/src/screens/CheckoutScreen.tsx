@@ -58,13 +58,15 @@ function CheckoutScreenInner() {
   const [addresses, setAddresses] = useState<Address[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [opt, setOpt] = useState<PayKey>('cod');
-  const [tip, setTip] = useState<PayKey | null>(null);
+  const [helpFor, setHelpFor] = useState<PayKey | null>(null);
   const payment: PaymentMethod = opt === 'cod' ? 'cod' : 'online';
   const setPayment = (v: PaymentMethod) => setOpt((cur) => (v === 'cod' ? 'cod' : cur === 'cod' ? 'upi' : cur));
   const { data: settings } = usePublicSettingsQuery();
   const options = settings?.paymentOptions?.length ? settings.paymentOptions : FALLBACK_OPTIONS;
   const onlineOn = !!settings?.onlinePaymentOn;
   const [quote, setQuote] = useState<CartQuote | null>(null);
+  // #35: a tip for the delivery partner, all of it passed on.
+  const [tip, setTip] = useState(0);
 
   // Items from aisles where the admin turned cash on delivery off.
   const codBlocked = cart.groups
@@ -127,7 +129,7 @@ function CheckoutScreenInner() {
     };
   }, [selectedId, cart.total]);
   const payFee = quote?.paymentFees?.[opt] ?? 0;
-  const toPay = Math.round(((quote ? quote.total : cart.total) + payFee) * 100) / 100;
+  const toPay = Math.round(((quote ? quote.total : cart.total) + payFee + tip) * 100) / 100;
   const chosen = options.find((o) => o.key === opt);
 
   /** Back from the payment page: has the order appeared yet? */
@@ -171,6 +173,7 @@ function CheckoutScreenInner() {
         addressId: selected._id,
         paymentMethod: payment,
         ...(payment === 'online' ? { payOption: opt } : {}),
+        ...(tip > 0 ? { tip } : {}),
         note: note.trim() || undefined,
       });
       if ('requiresPayment' in result) {
@@ -381,11 +384,11 @@ function CheckoutScreenInner() {
                 onPress={() => {
                   if (!off) setOpt(o.key);
                 }}
-                onHelp={() => setTip((cur) => (cur === o.key ? null : o.key))}
+                onHelp={() => setHelpFor((cur) => (cur === o.key ? null : o.key))}
                 icon={PAY_ICON[o.key]}
                 title={o.label}
                 subtitle={[
-                  tip === o.key ? pctText(o) : '',
+                  helpFor === o.key ? pctText(o) : '',
                   online && !onlineOn ? 'Coming soon' : '',
                   !online && quote?.codAllowed === false ? quote.codMessage ?? 'For long distance "COD" option is not available' : '',
                   on ? (fee > 0 ? `${o.label} charges: ${currency(fee)}` : o.note || 'Free') : '',
@@ -450,6 +453,29 @@ function CheckoutScreenInner() {
           />
         </View>
 
+        {/* ----------------------------------------------------- tip -- */}
+        <View style={styles.section}>
+          <Txt variant="h3" style={styles.sectionTitle}>
+            Tip your delivery partner
+          </Txt>
+          <Txt variant="bodySm" tone="muted">
+            100% of the tip goes to the delivery partner.
+          </Txt>
+          <View style={styles.tipRow}>
+            {[10, 20, 30, 50].map((n) => (
+              <Pressable
+                key={n}
+                onPress={() => setTip((cur) => (cur === n ? 0 : n))}
+                accessibilityRole="button"
+                accessibilityState={{ selected: tip === n }}
+                style={[styles.tipChip, tip === n && styles.tipChipOn]}
+              >
+                <Txt variant="label">{currency(n)}</Txt>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {/* ---------------------------------------------------- bill -- */}
         <View style={styles.section}>
           <Txt variant="h3" style={styles.sectionTitle}>
@@ -464,6 +490,7 @@ function CheckoutScreenInner() {
           )}
           {quote && quote.twoHourFee > 0 ? <Row label="2 hour delivery" value={currency(quote.twoHourFee)} /> : null}
           {payFee > 0 ? <Row label={`${chosen?.label ?? 'Payment'} charges`} value={currency(payFee)} /> : null}
+          {tip > 0 ? <Row label="Tip for delivery partner" value={currency(tip)} /> : null}
           <View style={styles.billDivider} />
           <View style={styles.row}>
             <Txt variant="h3">Amount payable</Txt>
@@ -678,6 +705,9 @@ const styles = themed(({ c, elevation }) => ({
   payBody: { flex: 1, marginLeft: space.md },
   paySub: { marginTop: ms(1) },
   payOff: { opacity: 0.5 },
+  tipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
+  tipChip: { paddingHorizontal: space.md, paddingVertical: ms(7), borderRadius: radius.pill, borderWidth: 1.5, borderColor: c.border },
+  tipChipOn: { borderColor: c.brand, backgroundColor: c.brandSurface },
   payHead: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   payQ: {
     width: ms(18),

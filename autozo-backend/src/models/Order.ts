@@ -71,6 +71,8 @@ export interface IOrder {
   /** #36: how the customer chose to pay (UPI, debit card...) and what that choice added to the bill. */
   payOption?: 'upi' | 'cod' | 'debit' | 'netbanking' | 'credit' | 'rupay';
   paymentFee?: number;
+  /** #35: tip for the delivery partner (no GST); credited to the rider with the delivery earning. */
+  tip?: number;
   /** 9-15 km orders go to the rider in red. */
   redOrder?: boolean;
   /** Beyond the last band: only the special long-distance rider sees it. */
@@ -135,6 +137,7 @@ const orderSchema = new Schema<IOrder>(
     handlingFee: { type: Number, default: 0 },
     payOption: { type: String, enum: ['upi', 'cod', 'debit', 'netbanking', 'credit', 'rupay'] },
     paymentFee: { type: Number, default: 0 },
+    tip: { type: Number, default: 0, min: 0 },
     redOrder: { type: Boolean, default: false },
     longDistance: { type: Boolean, default: false, index: true },
     distanceKm: Number,

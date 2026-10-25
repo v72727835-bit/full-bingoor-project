@@ -51,7 +51,7 @@ export function earningFor(km: number, rules: RiderPayRules): number {
  * on the order and adds an "earning" line to the rider's wallet.
  */
 export async function creditDeliveryEarning(orderId: Types.ObjectId | string): Promise<number> {
-  const order = await Order.findById(orderId).select('rider shop address riderEarning deliveredAt orderNumber').lean();
+  const order = await Order.findById(orderId).select('rider shop address riderEarning deliveredAt orderNumber tip').lean();
   if (!order || !order.rider || (order.riderEarning ?? 0) > 0) return 0;
   const { settings } = await loadSettings();
   const rules = payRules(settings);
@@ -64,7 +64,9 @@ export async function creditDeliveryEarning(orderId: Types.ObjectId | string): P
     const c = shop?.location?.coordinates;
     if (c) km = haversineKm(dest.lat, dest.lng, c[1], c[0]);
   }
-  const amount = earningFor(km, rules);
+  // The customer's tip (#35) goes to the rider in full, on top of the delivery pay.
+  const tip = order.tip ?? 0;
+  const amount = earningFor(km, rules) + tip;
   await Order.updateOne({ _id: order._id, riderEarning: { $in: [0, null, undefined] } }, { $set: { riderEarning: amount, riderEarningKm: Math.round(km * 10) / 10 } });
   await WalletTxn.create({
     rider: order.rider,
@@ -73,7 +75,7 @@ export async function creditDeliveryEarning(orderId: Types.ObjectId | string): P
     status: 'completed',
     order: order._id,
     km: Math.round(km * 10) / 10,
-    note: `Delivery #${order.orderNumber}`,
+    note: tip > 0 ? `Delivery #${order.orderNumber} (incl. ₹${tip} tip)` : `Delivery #${order.orderNumber}`,
   });
   return amount;
 }

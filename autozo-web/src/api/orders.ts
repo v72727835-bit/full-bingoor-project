@@ -20,8 +20,9 @@ export const placeOrder = async (
   note?: string,
   slot: SlotKey = 'instant',
   payOption?: string,
+  tip = 0,
 ): Promise<PlaceResult> => {
-  const { data } = await api.post('/orders', { addressId, paymentMethod, note, slot, ...(paymentMethod === 'online' && payOption ? { payOption } : {}) });
+  const { data } = await api.post('/orders', { addressId, paymentMethod, note, slot, tip, ...(paymentMethod === 'online' && payOption ? { payOption } : {}) });
   const body = data.data as { requiresPayment?: boolean; razorpayOrderId?: string; amount?: number; keyId?: string; payOption?: string } & Record<string, unknown>;
   if (body.requiresPayment) {
     return { kind: 'pay', razorpayOrderId: body.razorpayOrderId as string, amount: body.amount as number, keyId: body.keyId as string, payOption: body.payOption };

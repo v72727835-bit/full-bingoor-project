@@ -317,6 +317,13 @@ export interface CartView {
   freeDeliveryAbove: number;
   /** Set when the server trimmed a quantity, e.g. only 3 left in stock. */
   notice?: string;
+  /** #35 hidden cart-points rule: checkout opens once `met`; the rows offer products that close the gap. */
+  points?: {
+    enabled: boolean;
+    met: boolean;
+    autoAddId: string | null;
+    suggestions: { productId: string; name: string; slug: string; image?: string | null; icon?: string; unit?: string; price: number; mrp?: number }[];
+  };
 }
 
 /* ---------------------------------------------------------------- orders -- */

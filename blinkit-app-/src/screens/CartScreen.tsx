@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CartPoints } from '../components/CartPoints';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import { useTabs } from '../navigation/TabsContext';
@@ -37,6 +38,9 @@ export function CartScreen({ active }: TabScreenProps) {
   const slowDays = cart.groups
     .flatMap((g) => g.items)
     .reduce((max, i) => Math.max(max, i.deliveryDays ?? 0), 0);
+
+  // #35: checkout stays grey until the hidden points rule is met.
+  const pointsShort = !!cart.points?.enabled && !cart.points.met;
 
   // Prices and stock move while the user is elsewhere, so re-check on entry.
   useEffect(() => {
@@ -157,6 +161,8 @@ export function CartScreen({ active }: TabScreenProps) {
           ) : null}
         </View>
 
+        <CartPoints />
+
         <Pressable onPress={() => goToTab('home')} accessibilityRole="button" style={styles.keepShopping} hitSlop={8}>
           <Ionicons name="add-circle-outline" size={ms(17)} color={colors.brand} />
           <Txt variant="label" tone="brand" style={styles.keepShoppingText}>
@@ -177,11 +183,11 @@ export function CartScreen({ active }: TabScreenProps) {
             </Txt>
           </View>
           <Button
-            label={cart.hasIssues ? 'Fix items to continue' : 'Proceed to checkout'}
-            iconRight={cart.hasIssues ? undefined : 'arrow-forward'}
+            label={cart.hasIssues ? 'Fix items to continue' : pointsShort ? 'Add 1 product above' : 'Proceed to checkout'}
+            iconRight={cart.hasIssues || pointsShort ? undefined : 'arrow-forward'}
             size="lg"
             block={false}
-            disabled={cart.hasIssues}
+            disabled={cart.hasIssues || pointsShort}
             onPress={() => navigation.navigate('Checkout')}
             style={styles.barBtn}
           />

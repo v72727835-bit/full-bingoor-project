@@ -169,6 +169,8 @@ export const placeOrderBody = z.object({
   paymentMethod: z.enum(['cod', 'online']).default('cod'),
   /** Which online way to pay; each has its own charge (#36). Ignored for COD. */
   payOption: z.enum(['upi', 'debit', 'netbanking', 'credit', 'rupay']).optional(),
+  /** #35: a thank-you for the delivery partner, paid with the order. All of it goes to the rider. */
+  tip: z.coerce.number().int().min(0).max(500).default(0),
   note: z.string().trim().max(300).optional(),
   slot: z.enum(['instant', 'twoHour', 'nextDay']).default('instant'),
 });
