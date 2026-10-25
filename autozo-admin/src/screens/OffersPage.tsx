@@ -274,7 +274,7 @@ function CouponForm({
             <input
               value={form.code}
               onChange={(e) => set('code', e.target.value.toUpperCase())}
-              placeholder="AUTOZO50"
+              placeholder="BINGOOR50"
               required
               autoFocus
             />

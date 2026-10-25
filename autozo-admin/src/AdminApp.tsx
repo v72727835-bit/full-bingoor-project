@@ -78,9 +78,9 @@ function CurrentPage({ pathname }: { pathname: string }) {
     case '/payouts':
       return <PayoutsPage />;
     case '/rider-accounts':
-      return <UsersPage fixedRole="rider" title="Riders" subtitle="Delivery partners authorised to collect and deliver Autozo orders." />;
+      return <UsersPage fixedRole="rider" title="Riders" subtitle="Delivery partners authorised to collect and deliver Bingoor orders." />;
     case '/customers':
-      return <UsersPage fixedRole="customer" title="Customers" subtitle="All customers registered on the Autozo app and website." />;
+      return <UsersPage fixedRole="customer" title="Customers" subtitle="All customers registered on the Bingoor app and website." />;
     case '/team':
       return <UsersPage title="Team & access" subtitle="Grant administrator access or suspend an account." />;
     case '/support':

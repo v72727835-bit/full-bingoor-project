@@ -30,19 +30,19 @@ export default function LoginPage() {
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
         <div className="login-logo">
-          <img className="logo-mark" src="/logo-mark.png" alt="Autozo" width={36} height={36} />
+          <img className="logo-mark" src="/logo-mark.png" alt="Bingoor" width={36} height={36} />
           <div className="logo-text">
-            <b style={{ fontSize: 18 }}>Autozo</b>
+            <b style={{ fontSize: 18 }}>Bingoor</b>
             <span>{seller ? 'Warehouse Panel' : 'Super Admin Panel'}</span>
           </div>
         </div>
-        <div className="login-sub">{seller ? 'Sign in with the warehouse login Autozo gave you to manage products, orders and riders.' : 'Sign in to manage products, orders, riders and offers.'}</div>
+        <div className="login-sub">{seller ? 'Sign in with the warehouse login Bingoor gave you to manage products, orders and riders.' : 'Sign in to manage products, orders, riders and offers.'}</div>
         <ErrorBanner message={error} />
         <Field label="Email or phone">
           <input
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            placeholder="admin@autozo.org"
+            placeholder="admin@bingoor.com"
             autoFocus
             required
           />

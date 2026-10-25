@@ -77,7 +77,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     };
   }, [navigate]);
   useEffect(() => {
-    document.title = pending > 0 ? `(${pending}) New orders · Autozo Admin` : 'Autozo Admin';
+    document.title = pending > 0 ? `(${pending}) New orders · Bingoor Admin` : 'Bingoor Admin';
   }, [pending]);
 
   /* Unanswered customer-care chats, and the dashboard bell's own alerts
@@ -183,9 +183,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <img className="logo-mark" src="/logo-mark.png" alt="Autozo" width={36} height={36} />
+          <img className="logo-mark" src="/logo-mark.png" alt="Bingoor" width={36} height={36} />
           <div className="logo-text">
-            <b>Autozo</b>
+            <b>Bingoor</b>
             <span>Super Admin</span>
           </div>
         </div>
