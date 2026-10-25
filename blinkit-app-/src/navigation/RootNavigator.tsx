@@ -6,8 +6,10 @@ import { AddressFormScreen } from '../screens/AddressFormScreen';
 import { AddressListScreen } from '../screens/AddressListScreen';
 import { CategoryBrowseScreen } from '../screens/CategoryBrowseScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import { ContactScreen } from '../screens/ContactScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
+import { LegalScreen } from '../screens/LegalScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { OrderDetailScreen } from '../screens/OrderDetailScreen';
@@ -62,6 +64,7 @@ function AuthFlow() {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Signup" component={SignupScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <AuthStack.Screen name="Legal" component={LegalScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -88,6 +91,8 @@ function AppFlow() {
       <AppStack.Screen name="Support" component={SupportScreen} />
       <AppStack.Screen name="EditProfile" component={EditProfileScreen} />
       <AppStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+      <AppStack.Screen name="Legal" component={LegalScreen} />
+      <AppStack.Screen name="Contact" component={ContactScreen} />
     </AppStack.Navigator>
   );
 }

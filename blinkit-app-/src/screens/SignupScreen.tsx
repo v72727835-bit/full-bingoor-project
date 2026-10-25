@@ -174,7 +174,15 @@ export function SignupScreen() {
           <Button label="Create account" onPress={submit} loading={busy} size="lg" style={styles.submit} />
 
           <Txt variant="caption" tone="faint" center style={styles.legal}>
-            By continuing you agree to Autozo&apos;s Terms of Service and Privacy Policy.
+            By continuing you agree to Bingoor&apos;s{' '}
+            <Txt variant="caption" tone="brand" onPress={() => navigation.navigate('Legal', { doc: 'terms' })}>
+              Terms & Conditions
+            </Txt>{' '}
+            and{' '}
+            <Txt variant="caption" tone="brand" onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}>
+              Privacy Policy
+            </Txt>
+            .
           </Txt>
         </ScrollView>
 

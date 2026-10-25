@@ -35,7 +35,6 @@ export function ProfileScreen(_props: TabScreenProps) {
   const { cart } = useCart();
   const { items: saved } = useWishlist();
   const { goToTab } = useTabs();
-  const toast = useToast();
 
   const confirmSignOut = () =>
     Alert.alert('Sign out of Autozo?', 'Your cart and saved items stay on your account.', [
@@ -94,11 +93,32 @@ export function ProfileScreen(_props: TabScreenProps) {
       badge: careUnread || undefined,
       onPress: () => navigation.navigate('Support'),
     },
+  ];
+
+  const about: MenuItem[] = [
+    {
+      icon: 'call-outline',
+      title: 'Contact us',
+      subtitle: 'Our office, email and safety tips',
+      onPress: () => navigation.navigate('Contact'),
+    },
     {
       icon: 'shield-checkmark-outline',
-      title: 'Privacy and terms',
+      title: 'Privacy Policy',
       subtitle: 'How your data is used',
-      onPress: () => toast.show('Opening this in the app is coming soon'),
+      onPress: () => navigation.navigate('Legal', { doc: 'privacy' }),
+    },
+    {
+      icon: 'document-text-outline',
+      title: 'Terms & Conditions',
+      subtitle: 'The rules for using Bingoor',
+      onPress: () => navigation.navigate('Legal', { doc: 'terms' }),
+    },
+    {
+      icon: 'close-circle-outline',
+      title: 'Cancellation Policy',
+      subtitle: 'When an order can be cancelled',
+      onPress: () => navigation.navigate('Legal', { doc: 'cancellation' }),
     },
   ];
 
@@ -154,6 +174,7 @@ export function ProfileScreen(_props: TabScreenProps) {
         <Section title="Your account" items={account} />
         <AppearancePicker />
         <Section title="Settings" items={settings} />
+        <Section title="About" items={about} />
 
         <Pressable
           onPress={confirmSignOut}
