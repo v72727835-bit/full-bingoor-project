@@ -31,6 +31,8 @@ export async function payWithRazorpay(opts: {
   name: string;
   phone?: string;
   email?: string;
+  /** #36: the way to pay the customer picked; the window shows only that, since its charge is in the amount. */
+  method?: string;
 }): Promise<RazorpayResponse> {
   await loadScript();
   return new Promise((resolve, reject) => {
@@ -43,6 +45,9 @@ export async function payWithRazorpay(opts: {
       description: 'Your Bingoor order',
       prefill: { name: opts.name, contact: opts.phone, email: opts.email },
       theme: { color: '#B8005F' },
+      ...(opts.method && ONLY[opts.method]
+        ? { config: { display: { blocks: { only: { name: ONLY[opts.method].name, instruments: ONLY[opts.method].instruments } }, sequence: ['block.only'], preferences: { show_default_blocks: false } } } }
+        : {}),
       handler: (r: RazorpayResponse) => resolve(r),
       modal: { ondismiss: () => reject(new Error('Payment was cancelled. Your cart is safe, you can try again.')) },
     });
@@ -50,3 +55,12 @@ export async function payWithRazorpay(opts: {
     rzp.open();
   });
 }
+
+/** Razorpay checkout blocks, one per way to pay at checkout. */
+const ONLY: Record<string, { name: string; instruments: Record<string, unknown>[] }> = {
+  upi: { name: 'Pay by UPI', instruments: [{ method: 'upi' }] },
+  debit: { name: 'Pay by debit card', instruments: [{ method: 'card', types: ['debit'] }] },
+  rupay: { name: 'Pay by RuPay debit card', instruments: [{ method: 'card', types: ['debit'], networks: ['RuPay'] }] },
+  credit: { name: 'Pay by credit card', instruments: [{ method: 'card', types: ['credit'] }] },
+  netbanking: { name: 'Pay by net banking', instruments: [{ method: 'netbanking' }] },
+};

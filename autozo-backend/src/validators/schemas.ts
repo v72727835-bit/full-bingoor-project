@@ -167,6 +167,8 @@ export const updateCartItemBody = z.object({ quantity: z.number().int().min(0).m
 export const placeOrderBody = z.object({
   addressId: objectId,
   paymentMethod: z.enum(['cod', 'online']).default('cod'),
+  /** Which online way to pay; each has its own charge (#36). Ignored for COD. */
+  payOption: z.enum(['upi', 'debit', 'netbanking', 'credit', 'rupay']).optional(),
   note: z.string().trim().max(300).optional(),
   slot: z.enum(['instant', 'twoHour', 'nextDay']).default('instant'),
 });
@@ -512,6 +514,19 @@ export const adminSettingsBody = z
     cartPoints: z
       .object({ enabled: z.boolean(), target: z.coerce.number().int().min(1).max(5000), suggestions: z.array(objectId).max(60) })
       .partial(),
+    paymentOptions: z
+      .array(
+        z.object({
+          key: z.enum(['upi', 'cod', 'debit', 'netbanking', 'credit', 'rupay']),
+          label: z.string().trim().min(1).max(40),
+          note: z.string().trim().max(200).optional(),
+          enabled: z.boolean(),
+          pct: z.coerce.number().min(0).max(10),
+          highPct: z.coerce.number().min(0).max(10).optional(),
+          highFrom: z.coerce.number().min(0).max(10000000).optional(),
+        }),
+      )
+      .max(6),
   })
   .partial();
 

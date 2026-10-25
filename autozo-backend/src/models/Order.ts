@@ -68,6 +68,9 @@ export interface IOrder {
   /** Which home-page slot the customer picked. */
   slot?: 'instant' | 'twoHour' | 'nextDay';
   handlingFee?: number;
+  /** #36: how the customer chose to pay (UPI, debit card...) and what that choice added to the bill. */
+  payOption?: 'upi' | 'cod' | 'debit' | 'netbanking' | 'credit' | 'rupay';
+  paymentFee?: number;
   /** 9-15 km orders go to the rider in red. */
   redOrder?: boolean;
   /** Beyond the last band: only the special long-distance rider sees it. */
@@ -130,6 +133,8 @@ const orderSchema = new Schema<IOrder>(
     deliveryDays: Number,
     slot: { type: String, enum: ['instant', 'twoHour', 'nextDay'] },
     handlingFee: { type: Number, default: 0 },
+    payOption: { type: String, enum: ['upi', 'cod', 'debit', 'netbanking', 'credit', 'rupay'] },
+    paymentFee: { type: Number, default: 0 },
     redOrder: { type: Boolean, default: false },
     longDistance: { type: Boolean, default: false, index: true },
     distanceKm: Number,

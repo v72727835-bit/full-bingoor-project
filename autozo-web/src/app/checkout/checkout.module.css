@@ -115,6 +115,30 @@
   color: var(--ink-3);
 }
 
+/* The (?) next to each way to pay: tap it for the charge in percent. */
+.payQ {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-2, var(--line));
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--ink-3);
+  vertical-align: 1px;
+}
+
+/* Shown under the picked option: "Free" or "Debit card charges: Rs 4". */
+.payFee {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--brand-text);
+}
+
 .summary {
   padding: 20px;
 }

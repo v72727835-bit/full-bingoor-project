@@ -3,7 +3,7 @@ import { Product } from '../models/Product';
 import { Shop } from '../models/Shop';
 import { User } from '../models/User';
 import { getCartView, guestCartView, lineIssue, resolveCart, ResolvedGroup } from '../services/cart.service';
-import { quoteDelivery, Slot } from '../services/pricing.service';
+import { paymentFee, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
 import { codMessage, loadSettings, longDistanceCodMessage, productRules } from '../services/settings.service';
 import { haversineKm } from '../utils/helpers';
 import { ApiError } from '../utils/ApiError';
@@ -103,7 +103,9 @@ async function quoteFor(groups: ResolvedGroup[], point: { lat: number; lng: numb
   );
   const codAllowed = quote.codAllowed && productsAllowCod;
   const message = !quote.codAllowed ? longDistanceCodMessage() : productsAllowCod ? undefined : codMessage();
-  return { ...quote, codAllowed, ...(message ? { codMessage: message } : {}) };
+  // #36: what each way to pay would add to this bill, so checkout can show it next to the option.
+  const paymentFees = Object.fromEntries(paymentOptions(settings).map((o) => [o.key, paymentFee(settings, o.key, quote.total)]));
+  return { ...quote, codAllowed, paymentFees, ...(message ? { codMessage: message } : {}) };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { ISettings } from '../models/Settings';
+import { DEFAULT_PAYMENT_OPTIONS, ISettings, PayOption, PaymentOptionSetting } from '../models/Settings';
 import { round2 } from '../utils/helpers';
 
 export type Slot = 'instant' | 'twoHour' | 'nextDay';
@@ -108,4 +108,23 @@ export function quoteDelivery(
     codAllowed: !(longDistance && (pricing.beyondCodDisabled ?? true)),
     total: round2(subtotal + deliveryFee + handlingFee + twoHourFee),
   };
+}
+
+/** The payment choices with the admin's charges; any the admin never saved fall back to the defaults. */
+export function paymentOptions(settings: Pick<ISettings, 'paymentOptions'> | null): PaymentOptionSetting[] {
+  const saved = settings?.paymentOptions ?? [];
+  return DEFAULT_PAYMENT_OPTIONS.map((d) => ({ ...d, ...(saved.find((s) => s.key === d.key) ?? {}) }));
+}
+
+/** The percent charged for this option on a bill of `amount`. */
+export function paymentFeePct(option: PaymentOptionSetting | undefined, amount: number): number {
+  if (!option) return 0;
+  return option.highPct !== undefined && option.highPct !== null && option.highFrom && amount >= option.highFrom ? option.highPct : option.pct;
+}
+
+/** #36: what paying with `key` adds to a bill of `amount` (rupees, 2 decimals). */
+export function paymentFee(settings: Pick<ISettings, 'paymentOptions'> | null, key: PayOption | undefined, amount: number): number {
+  if (!key) return 0;
+  const option = paymentOptions(settings).find((o) => o.key === key);
+  return round2((amount * paymentFeePct(option, amount)) / 100);
 }

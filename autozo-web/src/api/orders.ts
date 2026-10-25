@@ -6,7 +6,7 @@ import { PageMeta } from './catalog';
 /** What placing an order gives back: the order(s) made, or a payment that still has to be completed. */
 export type PlaceResult =
   | { kind: 'placed'; order: Order; count: number }
-  | { kind: 'pay'; razorpayOrderId: string; amount: number; keyId: string };
+  | { kind: 'pay'; razorpayOrderId: string; amount: number; keyId: string; payOption?: string };
 
 /** One checkout can split into several orders (one per warehouse); the first one is shown. */
 const placed = (data: { orders?: Record<string, unknown>[] } & Record<string, unknown>): PlaceResult => {
@@ -19,11 +19,12 @@ export const placeOrder = async (
   paymentMethod: 'cod' | 'online' = 'cod',
   note?: string,
   slot: SlotKey = 'instant',
+  payOption?: string,
 ): Promise<PlaceResult> => {
-  const { data } = await api.post('/orders', { addressId, paymentMethod, note, slot });
-  const body = data.data as { requiresPayment?: boolean; razorpayOrderId?: string; amount?: number; keyId?: string } & Record<string, unknown>;
+  const { data } = await api.post('/orders', { addressId, paymentMethod, note, slot, ...(paymentMethod === 'online' && payOption ? { payOption } : {}) });
+  const body = data.data as { requiresPayment?: boolean; razorpayOrderId?: string; amount?: number; keyId?: string; payOption?: string } & Record<string, unknown>;
   if (body.requiresPayment) {
-    return { kind: 'pay', razorpayOrderId: body.razorpayOrderId as string, amount: body.amount as number, keyId: body.keyId as string };
+    return { kind: 'pay', razorpayOrderId: body.razorpayOrderId as string, amount: body.amount as number, keyId: body.keyId as string, payOption: body.payOption };
   }
   return placed(body);
 };

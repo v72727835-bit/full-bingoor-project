@@ -49,6 +49,7 @@ export default function DeliveryPricingPage() {
       <SlotsCard settings={settings} onSave={save} />
       <PricingCard settings={settings} onSave={save} />
       <PointsCard settings={settings} onSave={save} />
+      <PaymentOptionsCard settings={settings} onSave={save} />
       <FiltersCard settings={settings} onSave={save} />
     </>
   );
@@ -421,6 +422,91 @@ function FiltersCard({ settings, onSave }: { settings: Settings; onSave: Save })
       <div className="modal-actions">
         <Button onClick={submit} disabled={busy}>
           {busy ? 'Saving…' : 'Save filters'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ ways to pay (#36) ----------------------------- */
+
+const PAY_DEFAULTS: NonNullable<Settings['paymentOptions']> = [
+  { key: 'upi', label: 'UPI ID / UPI scanner', note: 'PhonePe, Google Pay, Paytm, BHIM, CRED UPI or any UPI app / scanner - free', enabled: true, pct: 0 },
+  { key: 'cod', label: 'Cash on delivery', note: 'Free', enabled: true, pct: 0 },
+  { key: 'debit', label: 'Debit card', enabled: true, pct: 0.4, highPct: 0.9, highFrom: 2000 },
+  { key: 'netbanking', label: 'Net banking', enabled: true, pct: 1.8 },
+  { key: 'credit', label: 'Credit card', enabled: true, pct: 2 },
+  { key: 'rupay', label: 'RuPay debit card', note: 'Free', enabled: true, pct: 0 },
+];
+
+function PaymentOptionsCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
+  const [rows, setRows] = useState(() => PAY_DEFAULTS.map((d) => ({ ...d, ...(settings.paymentOptions?.find((s) => s.key === d.key) ?? {}) })));
+  const [busy, setBusy] = useState(false);
+  const set = (i: number, patch: Partial<(typeof rows)[number]>) => setRows((cur) => cur.map((r, j) => (i === j ? { ...r, ...patch } : r)));
+  const num = (v: string) => (v === '' ? undefined : Number(v));
+
+  const submit = async () => {
+    setBusy(true);
+    await onSave({
+      paymentOptions: rows.map((r) => ({
+        ...r,
+        note: r.note || undefined,
+        highPct: r.highPct === undefined || Number.isNaN(r.highPct) ? undefined : r.highPct,
+        highFrom: r.highFrom === undefined || Number.isNaN(r.highFrom) ? undefined : r.highFrom,
+      })),
+    });
+    setBusy(false);
+  };
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 18 }}>
+      <h2 className="card-title">Ways to pay &amp; their charges</h2>
+      <div className="page-subtitle" style={{ marginBottom: 14 }}>
+        The six choices at checkout. The charge is a percent of the customer’s whole bill and is added to it as its own line (for example “Debit card
+        charges ₹4”). “Higher %” replaces the normal percent once the bill reaches “from ₹” (debit card: 0.40% up to ₹1999, 0.90% from ₹2000).
+        Online choices need Razorpay switched on under Login &amp; Payments.
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Show</th>
+              <th>Name</th>
+              <th>Message when picked</th>
+              <th>Charge %</th>
+              <th>Higher %</th>
+              <th>From ₹</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.key}>
+                <td>
+                  <input type="checkbox" checked={r.enabled} onChange={(e) => set(i, { enabled: e.target.checked })} />
+                </td>
+                <td>
+                  <input value={r.label} maxLength={40} onChange={(e) => set(i, { label: e.target.value })} />
+                </td>
+                <td>
+                  <input value={r.note ?? ''} maxLength={200} placeholder="Free" onChange={(e) => set(i, { note: e.target.value })} />
+                </td>
+                <td>
+                  <input type="number" step="0.01" min={0} max={10} value={r.pct} onChange={(e) => set(i, { pct: Number(e.target.value) || 0 })} style={{ width: 80 }} />
+                </td>
+                <td>
+                  <input type="number" step="0.01" min={0} max={10} value={r.highPct ?? ''} onChange={(e) => set(i, { highPct: num(e.target.value) })} style={{ width: 80 }} />
+                </td>
+                <td>
+                  <input type="number" min={0} value={r.highFrom ?? ''} onChange={(e) => set(i, { highFrom: num(e.target.value) })} style={{ width: 100 }} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="modal-actions">
+        <Button onClick={submit} disabled={busy}>
+          {busy ? 'Saving…' : 'Save ways to pay'}
         </Button>
       </div>
     </div>

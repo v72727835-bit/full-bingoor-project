@@ -1,4 +1,5 @@
 import { FilterQuery, SortOrder, Types } from 'mongoose';
+import { paymentOptions } from '../services/pricing.service';
 import { Banner } from '../models/Banner';
 import { Category } from '../models/Category';
 import { IProduct, Product } from '../models/Product';
@@ -635,6 +636,8 @@ export const publicSettings = asyncHandler(async (_req, res) => {
     priceSortEnabled: settings.priceSortEnabled ?? true,
     googleReviewUrl: settings.googleReviewUrl ?? '',
     cartPointsOn: !!settings.cartPoints?.enabled,
+    // #36: the ways to pay at checkout, with the admin's charges (percent of the bill).
+    paymentOptions: paymentOptions(settings).filter((o) => o.enabled),
     onlinePaymentOn: await razorpayEnabled(),
     // Public client ids only; the secrets never leave the server.
     social: { googleClientId: live.googleClientId ?? null, facebookAppId: live.facebookAppId ?? null },

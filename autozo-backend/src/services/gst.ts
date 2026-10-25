@@ -40,6 +40,8 @@ export interface GstResult {
 
 export interface GstInput {
   items: GstItemIn[]; discount: number; deliveryFee: number; handlingFee: number; orderTotal: number;
+  /** The charge for the chosen payment method (#36), e.g. "Debit card charges". */
+  paymentFee?: number; paymentFeeLabel?: string;
   defaultRate: number; serviceRate: number; interState: boolean;
 }
 
@@ -69,6 +71,7 @@ export function computeGst(inp: GstInput): GstResult {
   };
   service('Delivery charge', inp.deliveryFee);
   service('Handling fee', inp.handlingFee);
+  service(inp.paymentFeeLabel || 'Payment charges', inp.paymentFee ?? 0);
 
   const sum = (f: (l: GstLine) => number) => r2(lines.reduce((s, l) => s + f(l), 0));
   const taxable = sum((l) => l.taxable);

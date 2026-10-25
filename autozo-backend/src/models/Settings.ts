@@ -88,7 +88,35 @@ export interface ISettings {
   googleReviewUrl?: string;
   /** Hidden cart-points rule: checkout opens once the basket reaches `target`. */
   cartPoints: { enabled: boolean; target: number; suggestions: Types.ObjectId[] };
+  /**
+   * #36: the payment choices at checkout and what each one costs the customer,
+   * as a percent of the bill. `highPct` replaces `pct` once the bill reaches
+   * `highFrom` (debit card: 0.40% up to 1999, 0.90% from 2000).
+   */
+  paymentOptions: PaymentOptionSetting[];
 }
+
+export type PayOption = 'upi' | 'cod' | 'debit' | 'netbanking' | 'credit' | 'rupay';
+export const PAY_OPTIONS: PayOption[] = ['upi', 'cod', 'debit', 'netbanking', 'credit', 'rupay'];
+export interface PaymentOptionSetting {
+  key: PayOption;
+  label: string;
+  /** Shown under the option once it is picked, e.g. "PhonePe, Google Pay, Paytm, BHIM... are free". */
+  note?: string;
+  enabled: boolean;
+  pct: number;
+  highPct?: number;
+  highFrom?: number;
+}
+
+export const DEFAULT_PAYMENT_OPTIONS: PaymentOptionSetting[] = [
+  { key: 'upi', label: 'UPI ID / UPI scanner', note: 'PhonePe, Google Pay, Paytm, BHIM, CRED UPI or any UPI app / scanner - free', enabled: true, pct: 0 },
+  { key: 'cod', label: 'Cash on delivery', note: 'Free', enabled: true, pct: 0 },
+  { key: 'debit', label: 'Debit card', enabled: true, pct: 0.4, highPct: 0.9, highFrom: 2000 },
+  { key: 'netbanking', label: 'Net banking', enabled: true, pct: 1.8 },
+  { key: 'credit', label: 'Credit card', enabled: true, pct: 2 },
+  { key: 'rupay', label: 'RuPay debit card', note: 'Free', enabled: true, pct: 0 },
+];
 
 const settingsSchema = new Schema<ISettings>(
   {
@@ -193,6 +221,21 @@ const settingsSchema = new Schema<ISettings>(
     },
     priceSortEnabled: { type: Boolean, default: true },
     googleReviewUrl: { type: String, trim: true },
+    paymentOptions: {
+      type: [
+        {
+          key: { type: String, enum: ['upi', 'cod', 'debit', 'netbanking', 'credit', 'rupay'] },
+          label: { type: String, trim: true },
+          note: { type: String, trim: true },
+          enabled: { type: Boolean, default: true },
+          pct: { type: Number, default: 0, min: 0, max: 10 },
+          highPct: { type: Number, min: 0, max: 10 },
+          highFrom: { type: Number, min: 0 },
+          _id: false,
+        },
+      ],
+      default: DEFAULT_PAYMENT_OPTIONS,
+    },
     cartPoints: {
       enabled: { type: Boolean, default: false },
       target: { type: Number, default: 47, min: 1, max: 5000 },
