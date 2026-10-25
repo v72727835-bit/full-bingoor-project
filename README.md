@@ -11,7 +11,12 @@ Quick-commerce platform. One repository, four projects:
 
 Each folder has its own `package.json`; install and run them separately. Secrets (database URL, JWT, payment and login keys) are never stored in this repository: the server keeps them in its environment, and Razorpay / Google / Facebook keys are saved from the admin panel under "Login & Payments".
 
-## Deploying to the cPanel server
+## Deploying
+
+The live site runs in Docker on the VPS and every push to `main` deploys it
+automatically. Setup and details: [deploy/README.md](deploy/README.md).
+
+## Deploying to the old cPanel server
 
 Everything (backend, website, admin panel) goes live with one command in the
 cPanel terminal:
