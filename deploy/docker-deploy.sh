@@ -52,6 +52,10 @@ fail() {
 # One deploy at a time: a second push while one is running waits for it.
 exec 9>/var/lock/bingoor-deploy.lock
 flock 9
+# Anything this script starts that outlives it (nginx after the restart
+# below, the pm2 daemon) would inherit fd 9 and hold the lock forever, so the
+# next deploy would wait on it. Those commands always run with fd 9 closed.
+pm2() { command pm2 "$@" 9>&-; }
 
 cd "$SRC"
 echo "Bingoor deploy started $(date). Log: $LOG"
@@ -139,9 +143,9 @@ done
 # A reload keeps nginx's in-memory cache index, which went on serving the old
 # gzip copy of the homepage; only a full restart drops it.
 if [ -x /etc/init.d/nginx ]; then
-  /etc/init.d/nginx restart >>"$LOG" 2>&1 || true
+  /etc/init.d/nginx restart >>"$LOG" 2>&1 9>&- || true
 elif command -v systemctl >/dev/null 2>&1; then
-  systemctl restart nginx >>"$LOG" 2>&1 || true
+  systemctl restart nginx >>"$LOG" 2>&1 9>&- || true
 fi
 
 docker image prune -f >>"$LOG" 2>&1 || true
