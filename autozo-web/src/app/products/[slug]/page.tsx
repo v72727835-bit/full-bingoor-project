@@ -22,6 +22,7 @@ import { shortDelivery } from '../../../lib/deliveryText';
 import { NotifyMe } from '../../../components/NotifyMe';
 import { ProductCard } from '../../../components/ProductCard';
 import { QuantityStepper } from '../../../components/QuantityStepper';
+import { RichText } from '../../../components/RichText';
 import { ShareButtons } from '../../../components/ShareButtons';
 import {
   Alert,
@@ -325,9 +326,7 @@ export default function ProductPage() {
               <h2 className="h3" style={{ marginBottom: 6 }}>
                 About this product
               </h2>
-              <p className="body-sm" style={{ lineHeight: 1.65 }}>
-                {p.description}
-              </p>
+              <RichText text={p.description} />
             </div>
           ) : null}
         </div>

@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchReviews, submitReview } from '../api/catalog';
 import { getErrorMessage } from '../api/client';
+import { RichDescription } from '../components/RichDescription';
 import { NotifyMeSheet } from '../components/NotifyMeSheet';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
@@ -357,9 +358,7 @@ export function ProductDetailScreen() {
               <Txt variant="h3" style={styles.blockTitle}>
                 About this product
               </Txt>
-              <Txt variant="body" tone="body">
-                {product.description}
-              </Txt>
+              <RichDescription text={product.description} />
               {product.category && typeof product.category === 'object' ? (
                 <Pressable
                   onPress={() =>

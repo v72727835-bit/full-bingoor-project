@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import RichTextField from '../components/RichTextField';
 import BulkUpload from '../components/BulkUpload';
 import ProductVideoField from '../components/ProductVideoField';
 import { sellerBulkProducts, sellerUploadVideo, sellerCategories, sellerCreateProduct, sellerDeleteProduct, sellerProducts, sellerUpdateProduct, sellerUploadImages } from '../api/admin';
@@ -269,7 +270,7 @@ function ProductForm({ product, cats, warehouses, onClose, onSaved }: { product:
           <Field label="Hindi name (optional)"><input value={f.nameHi} onChange={(e) => set('nameHi', e.target.value)} /></Field>
           <Field label="Brand"><input value={f.brand} onChange={(e) => set('brand', e.target.value)} /></Field>
         </div>
-        <Field label="Description"><textarea rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={2000} /></Field>
+        <Field label="Description"><RichTextField value={f.description} onChange={(html) => set('description', html)} minHeight={110} /></Field>
         <div className="field-row">
           <Field label="Selling price ₹"><input type="number" min={0} step="0.01" value={f.price} onChange={(e) => set('price', e.target.value)} required /></Field>
           <Field label={`MRP ₹${off ? ` (${off}% off)` : ''}`}><input type="number" min={0} step="0.01" value={f.mrp} onChange={(e) => set('mrp', e.target.value)} /></Field>
