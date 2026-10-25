@@ -14,7 +14,8 @@ import { useTabs } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { usePublicSettingsQuery } from '../store/catalogApi';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
-import { Address, CheckoutProblem, PaymentMethod } from '../types';
+import { fetchQuote } from '../api/cart';
+import { Address, CartQuote, CheckoutProblem, PaymentMethod, PayKey, PayOptionInfo } from '../types';
 import { AppHeader } from '../ui/AppHeader';
 import { Button } from '../ui/Button';
 import { Banner, EmptyState, FullScreenLoader } from '../ui/Feedback';
@@ -24,6 +25,7 @@ import { Pill } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { TextField } from '../ui/TextField';
 import { useToast } from '../ui/Toast';
+import { NeedsAccount } from '../components/SignInPrompt';
 
 const LABEL_ICON = { home: 'home-outline', work: 'briefcase-outline', other: 'location-outline' } as const;
 
@@ -47,7 +49,7 @@ function describeProblem(p: CheckoutProblem): string {
   return `${where}: ${p.reason.replace(/_/g, ' ')}`;
 }
 
-export function CheckoutScreen() {
+function CheckoutScreenInner() {
   const navigation = useNavigation<AppNav>();
   const { cart, refresh } = useCart();
   const { goToTab } = useTabs();
@@ -55,8 +57,16 @@ export function CheckoutScreen() {
 
   const [addresses, setAddresses] = useState<Address[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [payment, setPayment] = useState<PaymentMethod>('cod');
+  const [opt, setOpt] = useState<PayKey>('cod');
+  const [helpFor, setHelpFor] = useState<PayKey | null>(null);
+  const payment: PaymentMethod = opt === 'cod' ? 'cod' : 'online';
+  const setPayment = (v: PaymentMethod) => setOpt((cur) => (v === 'cod' ? 'cod' : cur === 'cod' ? 'upi' : cur));
   const { data: settings } = usePublicSettingsQuery();
+  const options = settings?.paymentOptions?.length ? settings.paymentOptions : FALLBACK_OPTIONS;
+  const onlineOn = !!settings?.onlinePaymentOn;
+  const [quote, setQuote] = useState<CartQuote | null>(null);
+  // #35: a tip for the delivery partner, all of it passed on.
+  const [tip, setTip] = useState(0);
 
   // Items from aisles where the admin turned cash on delivery off.
   const codBlocked = cart.groups
@@ -107,6 +117,21 @@ export function CheckoutScreen() {
 
   const selected = addresses?.find((a) => a._id === selectedId) ?? null;
 
+  // The real bill for this address: handling fee, distance-based delivery fee and each payment charge (#36).
+  useEffect(() => {
+    if (!selectedId) return;
+    let live = true;
+    fetchQuote(selectedId)
+      .then((q) => live && setQuote(q))
+      .catch(() => live && setQuote(null));
+    return () => {
+      live = false;
+    };
+  }, [selectedId, cart.total]);
+  const payFee = quote?.paymentFees?.[opt] ?? 0;
+  const toPay = Math.round(((quote ? quote.total : cart.total) + payFee + tip) * 100) / 100;
+  const chosen = options.find((o) => o.key === opt);
+
   /** Back from the payment page: has the order appeared yet? */
   const checkPaid = useCallback(async () => {
     try {
@@ -147,12 +172,14 @@ export function CheckoutScreen() {
       const result = await placeOrder({
         addressId: selected._id,
         paymentMethod: payment,
+        ...(payment === 'online' ? { payOption: opt } : {}),
+        ...(tip > 0 ? { tip } : {}),
         note: note.trim() || undefined,
       });
       if ('requiresPayment' in result) {
         // Razorpay's window runs on the website; the order appears once the payment is verified there.
         const token = await tokenStore.getAccess();
-        const hash = `o=${encodeURIComponent(result.razorpayOrderId)}&k=${encodeURIComponent(result.keyId)}&a=${result.amount}&t=${encodeURIComponent(token ?? '')}`;
+        const hash = `o=${encodeURIComponent(result.razorpayOrderId)}&k=${encodeURIComponent(result.keyId)}&a=${result.amount}&m=${encodeURIComponent(opt)}&t=${encodeURIComponent(token ?? '')}`;
         paymentStartedAt.current = Date.now();
         setAwaiting(true);
         await Linking.openURL(`${WEB_URL}/pay#${hash}`);
@@ -344,22 +371,33 @@ export function CheckoutScreen() {
             <Banner tone="warning" message={`Online payment is not available for some items in this order (${onlineBlocked.join(', ')}). Please pay by cash on delivery.`} style={styles.codBanner} />
           ) : null}
 
-          <PaymentOption
-            selected={payment === 'cod'}
-            onPress={() => { if (codBlocked.length === 0) setPayment('cod'); }}
-            icon="cash-outline"
-            title="Cash on delivery"
-            subtitle="Pay the delivery partner when your order arrives"
-          />
-          {settings?.onlinePaymentOn ? (
-            <PaymentOption
-              selected={payment === 'online'}
-              onPress={() => { if (onlineBlocked.length === 0) setPayment('online'); }}
-              icon="card-outline"
-              title="Pay online"
-              subtitle="Debit or credit card, UPI, netbanking and wallets"
-            />
-          ) : null}
+          {options.map((o) => {
+            const online = o.key !== 'cod';
+            const off = online ? !onlineOn || onlineBlocked.length > 0 : codBlocked.length > 0 || quote?.codAllowed === false;
+            const fee = quote?.paymentFees?.[o.key] ?? 0;
+            const on = opt === o.key;
+            return (
+              <PaymentOption
+                key={o.key}
+                selected={on}
+                disabled={off}
+                onPress={() => {
+                  if (!off) setOpt(o.key);
+                }}
+                onHelp={() => setHelpFor((cur) => (cur === o.key ? null : o.key))}
+                icon={PAY_ICON[o.key]}
+                title={o.label}
+                subtitle={[
+                  helpFor === o.key ? pctText(o) : '',
+                  online && !onlineOn ? 'Coming soon' : '',
+                  !online && quote?.codAllowed === false ? quote.codMessage ?? 'For long distance "COD" option is not available' : '',
+                  on ? (fee > 0 ? `${o.label} charges: ${currency(fee)}` : o.note || 'Free') : '',
+                ]
+                  .filter(Boolean)
+                  .join('\n')}
+              />
+            );
+          })}
           {awaiting ? (
             <Banner
               tone="info"
@@ -415,21 +453,52 @@ export function CheckoutScreen() {
           />
         </View>
 
+        {/* ----------------------------------------------------- tip -- */}
+        <View style={styles.section}>
+          <Txt variant="h3" style={styles.sectionTitle}>
+            Tip your delivery partner
+          </Txt>
+          <Txt variant="bodySm" tone="muted">
+            100% of the tip goes to the delivery partner.
+          </Txt>
+          <View style={styles.tipRow}>
+            {[10, 20, 30, 50].map((n) => (
+              <Pressable
+                key={n}
+                onPress={() => setTip((cur) => (cur === n ? 0 : n))}
+                accessibilityRole="button"
+                accessibilityState={{ selected: tip === n }}
+                style={[styles.tipChip, tip === n && styles.tipChipOn]}
+              >
+                <Txt variant="label">{currency(n)}</Txt>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {/* ---------------------------------------------------- bill -- */}
         <View style={styles.section}>
           <Txt variant="h3" style={styles.sectionTitle}>
             Bill details
           </Txt>
           <Row label="Item total" value={currency(cart.subtotal)} />
-          <Row label="Delivery fee" value={cart.deliveryFee === 0 ? 'FREE' : currency(cart.deliveryFee)} highlight={cart.deliveryFee === 0} />
+          {quote ? <Row label="Handling charge" value={currency(quote.handlingFee)} /> : null}
+          {quote ? (
+            <Row label="Delivery fee" value={quote.deliveryFee === 0 ? 'FREE' : currency(quote.deliveryFee)} highlight={quote.deliveryFee === 0} />
+          ) : (
+            <Row label="Delivery fee" value={cart.deliveryFee === 0 ? 'FREE' : currency(cart.deliveryFee)} highlight={cart.deliveryFee === 0} />
+          )}
+          {quote && quote.twoHourFee > 0 ? <Row label="2 hour delivery" value={currency(quote.twoHourFee)} /> : null}
+          {payFee > 0 ? <Row label={`${chosen?.label ?? 'Payment'} charges`} value={currency(payFee)} /> : null}
+          {tip > 0 ? <Row label="Tip for delivery partner" value={currency(tip)} /> : null}
           <View style={styles.billDivider} />
           <View style={styles.row}>
             <Txt variant="h3">Amount payable</Txt>
-            <Txt variant="h2">{currency(cart.total)}</Txt>
+            <Txt variant="h2">{currency(toPay)}</Txt>
           </View>
           {payment === 'cod' ? (
             <Txt variant="caption" tone="faint" style={styles.codNote}>
-              Please keep {currency(cart.total)} ready for the delivery partner.
+              Please keep {currency(toPay)} ready for the delivery partner.
             </Txt>
           ) : null}
         </View>
@@ -465,15 +534,41 @@ export function CheckoutScreen() {
   );
 }
 
+const PAY_ICON: Record<PayKey, React.ComponentProps<typeof Ionicons>['name']> = {
+  upi: 'flash-outline',
+  cod: 'cash-outline',
+  debit: 'card-outline',
+  netbanking: 'business-outline',
+  credit: 'card-outline',
+  rupay: 'card-outline',
+};
+const FALLBACK_OPTIONS: PayOptionInfo[] = [
+  { key: 'upi', label: 'UPI ID / UPI scanner', note: 'PhonePe, Google Pay, Paytm, BHIM, CRED UPI or any UPI app / scanner - free', pct: 0 },
+  { key: 'cod', label: 'Cash on delivery', note: 'Free', pct: 0 },
+  { key: 'debit', label: 'Debit card', pct: 0.4, highPct: 0.9, highFrom: 2000 },
+  { key: 'netbanking', label: 'Net banking', pct: 1.8 },
+  { key: 'credit', label: 'Credit card', pct: 2 },
+  { key: 'rupay', label: 'RuPay debit card', note: 'Free', pct: 0 },
+];
+function pctText(o: PayOptionInfo): string {
+  if (!o.pct && !o.highPct) return 'No extra charge';
+  if (o.highPct !== undefined && o.highFrom) return `${o.pct}% up to ₹${o.highFrom - 1} shopping, ${o.highPct}% from ₹${o.highFrom}`;
+  return `${o.pct}% of the total bill`;
+}
+
 function PaymentOption({
   selected,
+  disabled,
   onPress,
+  onHelp,
   icon,
   title,
   subtitle,
 }: {
   selected: boolean;
+  disabled?: boolean;
   onPress: () => void;
+  onHelp?: () => void;
   icon: React.ComponentProps<typeof Ionicons>['name'];
   title: string;
   subtitle: string;
@@ -482,18 +577,29 @@ function PaymentOption({
     <Pressable
       onPress={onPress}
       accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      style={[styles.payCard, selected && styles.payCardOn]}
+      accessibilityState={{ selected, disabled }}
+      style={[styles.payCard, selected && styles.payCardOn, disabled && styles.payOff]}
     >
       <View style={[styles.radio, selected && styles.radioOn]}>{selected ? <View style={styles.radioDot} /> : null}</View>
       <View style={styles.payIcon}>
         <Ionicons name={icon} size={ms(19)} color={colors.brand} />
       </View>
       <View style={styles.payBody}>
-        <Txt variant="h4">{title}</Txt>
-        <Txt variant="bodySm" tone="muted" style={styles.paySub}>
-          {subtitle}
-        </Txt>
+        <View style={styles.payHead}>
+          <Txt variant="h4">{title}</Txt>
+          {onHelp ? (
+            <Pressable onPress={onHelp} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Charges for ${title}`} style={styles.payQ}>
+              <Txt variant="caption" tone="muted" weight="700">
+                ?
+              </Txt>
+            </Pressable>
+          ) : null}
+        </View>
+        {subtitle ? (
+          <Txt variant="bodySm" tone="muted" style={styles.paySub}>
+            {subtitle}
+          </Txt>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -598,6 +704,20 @@ const styles = themed(({ c, elevation }) => ({
   },
   payBody: { flex: 1, marginLeft: space.md },
   paySub: { marginTop: ms(1) },
+  payOff: { opacity: 0.5 },
+  tipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
+  tipChip: { paddingHorizontal: space.md, paddingVertical: ms(7), borderRadius: radius.pill, borderWidth: 1.5, borderColor: c.border },
+  tipChipOn: { borderColor: c.brand, backgroundColor: c.brandSurface },
+  payHead: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  payQ: {
+    width: ms(18),
+    height: ms(18),
+    borderRadius: ms(9),
+    borderWidth: 1.5,
+    borderColor: c.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   summaryGroup: { marginBottom: space.md },
   summaryHead: { flexDirection: 'row', alignItems: 'center', marginBottom: space.sm },
@@ -628,3 +748,12 @@ const styles = themed(({ c, elevation }) => ({
   barInner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: gutter, paddingVertical: space.md },
   barPrice: { flexShrink: 1, marginRight: space.md },
   barBtn: { flexShrink: 1, paddingHorizontal: space.xl },}));
+
+/** #23: visitors can browse and fill a cart; this page needs an account. */
+export function CheckoutScreen() {
+  return (
+    <NeedsAccount title="Checkout" message="Your cart is saved. Create a free account (or sign in) to place your order.">
+      <CheckoutScreenInner />
+    </NeedsAccount>
+  );
+}

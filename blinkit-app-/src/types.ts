@@ -317,6 +317,13 @@ export interface CartView {
   freeDeliveryAbove: number;
   /** Set when the server trimmed a quantity, e.g. only 3 left in stock. */
   notice?: string;
+  /** #35 hidden cart-points rule: checkout opens once `met`; the rows offer products that close the gap. */
+  points?: {
+    enabled: boolean;
+    met: boolean;
+    autoAddId: string | null;
+    suggestions: { productId: string; name: string; slug: string; image?: string | null; icon?: string; unit?: string; price: number; mrp?: number }[];
+  };
 }
 
 /* ---------------------------------------------------------------- orders -- */
@@ -334,6 +341,29 @@ export const ORDER_STATUSES = [
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export type PaymentMethod = 'cod' | 'online';
+/** #36: the six ways to pay at checkout. */
+export type PayKey = 'upi' | 'cod' | 'debit' | 'netbanking' | 'credit' | 'rupay';
+export interface PayOptionInfo {
+  key: PayKey;
+  label: string;
+  note?: string;
+  pct: number;
+  highPct?: number;
+  highFrom?: number;
+}
+/** The delivery bill for the cart to one address (GET /cart/quote). */
+export interface CartQuote {
+  subtotal: number;
+  handlingFee: number;
+  deliveryFee: number;
+  baseDeliveryFee: number;
+  twoHourFee: number;
+  total: number;
+  days: number;
+  codAllowed: boolean;
+  codMessage?: string;
+  paymentFees?: Partial<Record<PayKey, number>>;
+}
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refund_pending' | 'refunded';
 
 export interface OrderItem {
@@ -440,6 +470,7 @@ export interface PublicSettings {
   codMessage?: string;
   /** True once the admin saved Razorpay keys. */
   onlinePaymentOn?: boolean;
+  paymentOptions?: PayOptionInfo[];
   /** Public sign-in ids; null while that provider is not set up. */
   social?: { googleClientId: string | null; facebookAppId: string | null };
   deliverySlots?: { key: 'instant' | 'twoHour' | 'nextDay'; label: string }[];

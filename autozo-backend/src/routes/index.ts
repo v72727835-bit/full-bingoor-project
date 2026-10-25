@@ -14,6 +14,7 @@ import * as wallet from '../controllers/riderWallet.controller';
 import * as extra from '../controllers/adminExtra.controller';
 import * as support from '../controllers/support.controller';
 import * as seller from '../controllers/seller.controller';
+import * as blog from '../controllers/blog.controller';
 import { authorize, customerOnly, protect } from '../middleware/auth';
 
 import { catalogCache, invalidateOnWrite } from '../middleware/cache';
@@ -66,6 +67,8 @@ router.get('/products/:id/reviews', catalogCache, validate({ params: v.idParam, 
 router.get('/settings/public', catalogCache, catalog.publicSettings);
 router.get('/festival', catalogCache, validate({ query: v.homeQuery }), catalog.festival);
 router.get('/notices', catalogCache, support.listNotices);
+router.get('/blog', catalogCache, validate({ query: v.pagination }), blog.listPosts);
+router.get('/blog/:slug', catalogCache, validate({ params: v.blogSlugParam }), blog.getPost);
 router.get('/gallery', catalogCache, extra.listMediaPublic('photo'));
 router.get('/videos', catalogCache, extra.listMediaPublic('video'));
 router.post('/enquiries', authLimiter, validate({ body: v.enquiryBody }), support.createEnquiry);
@@ -89,23 +92,23 @@ router.post('/seller/uploads/images', ...sellerOnly, uploadSellerImages, uploads
 router.post('/seller/uploads/video', ...sellerOnly, uploadSellerVideo, uploads.uploadVideo);
 router.get('/seller/categories', ...sellerOnly, seller.categoryTree);
 router.get('/seller/products', ...sellerOnly, validate({ query: v.sellerProductsQuery }), seller.listMyProducts);
-router.get('/seller/dashboard', ...sellerOnly, seller.warehouseDashboard);
-router.get('/seller/shops', ...sellerOnly, seller.listMyShops);
-router.patch('/seller/shops/:id', ...sellerOnly, validate({ params: v.idParam, body: v.sellerShopBody }), seller.updateMyShop);
-router.get('/seller/customers', ...sellerOnly, validate({ query: v.sellerCustomersQuery }), seller.listMyCustomers);
+router.get('/seller/dashboard', ...sellerOnly, seller.warehouseOnly, seller.warehouseDashboard);
+router.get('/seller/shops', ...sellerOnly, seller.warehouseOnly, seller.listMyShops);
+router.patch('/seller/shops/:id', ...sellerOnly, seller.warehouseOnly, validate({ params: v.idParam, body: v.sellerShopBody }), seller.updateMyShop);
+router.get('/seller/customers', ...sellerOnly, seller.warehouseOnly, validate({ query: v.sellerCustomersQuery }), seller.listMyCustomers);
 router.post('/seller/change-password', ...sellerOnly, validate({ body: v.changePasswordBody }), seller.changeMyPassword);
 router.post('/seller/products/bulk', ...sellerOnly, invalidateOnWrite, validate({ body: v.bulkProductsBody }), seller.bulkCreateMyProducts);
 router.post('/seller/products', ...sellerOnly, invalidateOnWrite, validate({ body: v.sellerProductBody }), seller.createMyProduct);
 router.delete('/seller/products/:id', ...sellerOnly, invalidateOnWrite, validate({ params: v.idParam }), seller.deleteMyProduct);
-router.get('/seller/riders', ...sellerOnly, seller.listMyRiders);
-router.post('/seller/riders', ...sellerOnly, validate({ body: v.sellerRiderBody }), seller.createMyRider);
-router.post('/seller/orders/:id/invoice-link', ...sellerOnly, validate({ params: v.idParam }), invoices.sellerInvoiceLink);
+router.get('/seller/riders', ...sellerOnly, seller.warehouseOnly, seller.listMyRiders);
+router.post('/seller/riders', ...sellerOnly, seller.warehouseOnly, validate({ body: v.sellerRiderBody }), seller.createMyRider);
+router.post('/seller/orders/:id/invoice-link', ...sellerOnly, seller.warehouseOnly, validate({ params: v.idParam }), invoices.sellerInvoiceLink);
 router.get('/seller/orders', ...sellerOnly, validate({ query: v.sellerOrdersQuery }), seller.listMyOrders);
-router.patch('/seller/orders/:id/status', ...sellerOnly, validate({ params: v.idParam, body: v.sellerOrderStatusBody }), seller.setMyOrderStatus);
-router.get('/seller/orders/:id/riders', ...sellerOnly, validate({ params: v.idParam }), seller.myOrderRiders);
-router.get('/seller/orders/:id/free-riders', ...sellerOnly, validate({ params: v.idParam }), seller.myOrderFreeRiders);
-router.post('/seller/orders/:id/assign-rider', ...sellerOnly, validate({ params: v.idParam, body: v.assignRiderBody }), seller.assignRiderMyOrder);
-router.post('/seller/orders/:id/assign-shiprocket', ...sellerOnly, validate({ params: v.idParam }), seller.assignShiprocketMyOrder);
+router.patch('/seller/orders/:id/status', ...sellerOnly, seller.warehouseOnly, validate({ params: v.idParam, body: v.sellerOrderStatusBody }), seller.setMyOrderStatus);
+router.get('/seller/orders/:id/riders', ...sellerOnly, seller.warehouseOnly, validate({ params: v.idParam }), seller.myOrderRiders);
+router.get('/seller/orders/:id/free-riders', ...sellerOnly, seller.warehouseOnly, validate({ params: v.idParam }), seller.myOrderFreeRiders);
+router.post('/seller/orders/:id/assign-rider', ...sellerOnly, seller.warehouseOnly, validate({ params: v.idParam, body: v.assignRiderBody }), seller.assignRiderMyOrder);
+router.post('/seller/orders/:id/assign-shiprocket', ...sellerOnly, seller.warehouseOnly, validate({ params: v.idParam }), seller.assignShiprocketMyOrder);
 router.get('/seller/wallet', ...sellerOnly, seller.getMyWallet);
 router.get('/seller/wallet/txns', ...sellerOnly, validate({ query: v.walletTxnsQuery }), seller.listMyWalletTxns);
 router.post('/seller/wallet/account', ...sellerOnly, validate({ body: v.walletAccountBody }), seller.saveMyAccount);
@@ -131,6 +134,8 @@ router.post('/me/wishlist/:productId', ...customerOnly, validate({ params: v.pro
 router.delete('/me/wishlist/:productId', ...customerOnly, validate({ params: v.productIdParam }), me.removeFromWishlist);
 
 /* ============ Cart (login) ============ */
+router.get('/cart/points-products', catalog.pointsProducts);
+router.post('/cart/guest', validate({ body: v.guestCartBody }), cart.guestCart);
 router.get('/cart', ...customerOnly, cart.getCart);
 router.get('/cart/quote', ...customerOnly, validate({ query: v.quoteQuery }), cart.quote);
 router.post('/cart/items', ...customerOnly, validate({ body: v.addCartItemBody }), cart.addItem);

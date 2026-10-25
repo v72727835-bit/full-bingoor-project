@@ -342,6 +342,16 @@ export interface CartPoints {
 export type SlotKey = 'instant' | 'twoHour' | 'nextDay';
 
 /** What this basket costs to deliver to an address, from the admin's pricing rules. */
+export type PayKey = 'upi' | 'cod' | 'debit' | 'netbanking' | 'credit' | 'rupay';
+export interface PaymentOption {
+  key: PayKey;
+  label: string;
+  note?: string;
+  pct: number;
+  highPct?: number;
+  highFrom?: number;
+}
+
 export interface Quote {
   distanceKm: number | null;
   subtotal: number;
@@ -359,6 +369,8 @@ export interface Quote {
   codAllowed: boolean;
   codMessage?: string;
   total: number;
+  /** What each way to pay adds to this bill (#36). */
+  paymentFees?: Partial<Record<PayKey, number>>;
 }
 
 export interface CartView {
@@ -370,6 +382,8 @@ export interface CartView {
   total: number;
   hasIssues: boolean;
   freeDeliveryAbove: number;
+  /** Only on a visitor's (not signed in) basket: the delivery bill for their chosen location. */
+  quote?: Quote | null;
 }
 
 export type OrderStatus =
@@ -447,6 +461,8 @@ export interface PublicSettings {
   googleReviewUrl?: string;
   /** True once the server has its Razorpay keys. */
   onlinePaymentOn?: boolean;
+  /** #36: the ways to pay at checkout and their charge, as a percent of the bill. */
+  paymentOptions?: PaymentOption[];
   /** Public sign-in client ids; null while that provider is not set up. */
   social?: { googleClientId: string | null; facebookAppId: string | null };
   firebase?: {

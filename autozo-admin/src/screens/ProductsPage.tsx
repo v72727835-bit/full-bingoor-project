@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import RichTextField from '../components/RichTextField';
 import { useSearchParams } from '../navigation';
 import BulkUpload from '../components/BulkUpload';
 import ProductVideoField from '../components/ProductVideoField';
@@ -744,7 +745,7 @@ function ProductForm({
         </Field>
 
         <Field label="Description">
-          <textarea value={form.description} onChange={(e) => set('description', e.target.value)} />
+          <RichTextField value={form.description} onChange={(html) => set('description', html)} />
         </Field>
 
         <div className="checkbox-row">

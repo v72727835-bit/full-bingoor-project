@@ -40,6 +40,10 @@ export interface GstResult {
 
 export interface GstInput {
   items: GstItemIn[]; discount: number; deliveryFee: number; handlingFee: number; orderTotal: number;
+  /** The charge for the chosen payment method (#36), e.g. "Debit card charges". */
+  paymentFee?: number; paymentFeeLabel?: string;
+  /** Tip for the delivery partner: passed on in full, no GST. */
+  tip?: number;
   defaultRate: number; serviceRate: number; interState: boolean;
 }
 
@@ -69,6 +73,11 @@ export function computeGst(inp: GstInput): GstResult {
   };
   service('Delivery charge', inp.deliveryFee);
   service('Handling fee', inp.handlingFee);
+  service(inp.paymentFeeLabel || 'Payment charges', inp.paymentFee ?? 0);
+  if ((inp.tip ?? 0) > 0) {
+    const tip = inp.tip!;
+    lines.push({ name: 'Tip for delivery partner', hsn: '', quantity: 1, mrp: tip, price: tip, gross: tip, discount: 0, rate: 0, ...split(tip, 0, inp.interState), total: tip, isService: true });
+  }
 
   const sum = (f: (l: GstLine) => number) => r2(lines.reduce((s, l) => s + f(l), 0));
   const taxable = sum((l) => l.taxable);

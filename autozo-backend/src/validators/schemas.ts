@@ -167,6 +167,10 @@ export const updateCartItemBody = z.object({ quantity: z.number().int().min(0).m
 export const placeOrderBody = z.object({
   addressId: objectId,
   paymentMethod: z.enum(['cod', 'online']).default('cod'),
+  /** Which online way to pay; each has its own charge (#36). Ignored for COD. */
+  payOption: z.enum(['upi', 'debit', 'netbanking', 'credit', 'rupay']).optional(),
+  /** #35: a thank-you for the delivery partner, paid with the order. All of it goes to the rider. */
+  tip: z.coerce.number().int().min(0).max(500).default(0),
   note: z.string().trim().max(300).optional(),
   slot: z.enum(['instant', 'twoHour', 'nextDay']).default('instant'),
 });
@@ -228,7 +232,7 @@ export const adminProductBody = z.object({
   category: objectId,
   name: z.string().trim().min(2).max(150),
   brand: z.string().trim().max(60).optional(),
-  description: z.string().trim().max(2000).optional(),
+  description: z.string().trim().max(20000).optional(),
   images: z.array(z.string().url()).max(10).default([]),
   video: z.string().trim().url('The video must be a full link').max(500).optional().or(z.literal('')),
   icon: z.string().trim().max(80).optional(),
@@ -512,6 +516,19 @@ export const adminSettingsBody = z
     cartPoints: z
       .object({ enabled: z.boolean(), target: z.coerce.number().int().min(1).max(5000), suggestions: z.array(objectId).max(60) })
       .partial(),
+    paymentOptions: z
+      .array(
+        z.object({
+          key: z.enum(['upi', 'cod', 'debit', 'netbanking', 'credit', 'rupay']),
+          label: z.string().trim().min(1).max(40),
+          note: z.string().trim().max(200).optional(),
+          enabled: z.boolean(),
+          pct: z.coerce.number().min(0).max(10),
+          highPct: z.coerce.number().min(0).max(10).optional(),
+          highFrom: z.coerce.number().min(0).max(10000000).optional(),
+        }),
+      )
+      .max(6),
   })
   .partial();
 
@@ -544,6 +561,13 @@ export const enquiryBody = z.object({
 });
 export const adminEnquiriesQuery = pagination.extend({ kind: z.enum(ENQUIRY_KINDS).optional() });
 export const riderLongDistanceBody = z.object({ longDistance: z.boolean() });
+export const guestCartBody = z.object({
+  items: z.array(z.object({ productId: objectId, quantity: z.number().int().min(1).max(20) })).max(100).default([]),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  slot: z.enum(['instant', 'twoHour', 'nextDay']).default('instant'),
+});
+
 export const quoteQuery = z.object({
   addressId: z.string().trim().optional(),
   lat: z.coerce.number().min(-90).max(90).optional(),
@@ -570,7 +594,7 @@ export const sellerProductBody = z.object({
   name: z.string().trim().min(2).max(150),
   nameHi: z.string().trim().max(150).optional(),
   brand: z.string().trim().max(60).optional(),
-  description: z.string().trim().max(2000).optional(),
+  description: z.string().trim().max(20000).optional(),
   images: z.array(z.string().url()).max(10).default([]),
   video: z.string().trim().url('The video must be a full link').max(500).optional().or(z.literal('')),
   price: z.number().min(0),
@@ -617,6 +641,7 @@ export const adminSellerBody = z.object({
   email: z.string().trim().toLowerCase().email().optional().or(z.literal('').transform(() => undefined)),
   password: password,
   warehouses: z.array(objectId).min(1, 'Select at least one warehouse').max(50),
+  kind: z.enum(['warehouse', 'product']).default('warehouse'),
 });
 export const sellerWarehousesBody = z.object({ warehouses: z.array(objectId).min(1, 'Select at least one warehouse').max(50) });
 export const assignRiderBody = z.object({ rider: objectId });
@@ -628,7 +653,7 @@ export const sellerOrdersQuery = pagination.extend({
   q: z.string().trim().max(40).optional(),
   status: z.enum(['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'cancelled', 'rejected']).optional(),
 });
-export const adminSellersQuery = pagination.extend({ q: z.string().trim().max(60).optional() });
+export const adminSellersQuery = pagination.extend({ q: z.string().trim().max(60).optional(), kind: z.enum(['warehouse', 'product']).optional() });
 export const activeBody = z.object({ isActive: z.boolean() });
 
 export const warehouseLoginBody = z.object({
@@ -764,3 +789,15 @@ export const bulkProductsBody = z.object({
   /** Check everything and report, but save nothing. */
   dryRun: z.boolean().optional(),
 });
+
+/* ---------- blog (#38) ---------- */
+export const blogPostBody = z.object({
+  title: z.string().trim().min(3).max(160),
+  excerpt: z.string().trim().max(300).optional(),
+  body: z.string().max(100000).default(''),
+  cover: z.string().trim().max(500).optional(),
+  author: z.string().trim().max(80).optional(),
+  published: z.boolean().default(false),
+});
+export const blogPostUpdateBody = blogPostBody.partial();
+export const blogSlugParam = z.object({ slug: z.string().trim().min(1).max(200) });

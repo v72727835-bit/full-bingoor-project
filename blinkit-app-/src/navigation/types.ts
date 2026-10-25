@@ -37,6 +37,9 @@ export type AppStackParamList = {
   ChangePassword: undefined;
   Legal: { doc: LegalDoc };
   Contact: undefined;
+  Login: { phone?: string } | undefined;
+  Signup: undefined;
+  ForgotPassword: undefined;
 };
 
 export type AppNav = NativeStackNavigationProp<AppStackParamList>;

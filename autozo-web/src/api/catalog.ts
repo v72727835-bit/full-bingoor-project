@@ -158,3 +158,26 @@ export const fetchCoverage = async (lat: number, lng: number): Promise<Coverage>
   const { data } = await api.get('/coverage', { params: { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 } });
   return data.data as Coverage;
 };
+
+/** #35 "See all" under the cart: the products the admin picked for the cart rows, in their sort-code order. */
+export const fetchPointsProducts = async (): Promise<Product[]> => {
+  const { data } = await api.get('/cart/points-products');
+  return ((data.data ?? []) as RawProduct[]).map(n.product);
+};
+
+/* #38: blog posts written in the admin panel. */
+export interface BlogPost {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  body?: string;
+  cover?: string;
+  author?: string;
+  publishedAt?: string;
+}
+export const fetchBlogPosts = async (page = 1): Promise<{ items: BlogPost[]; totalPages: number }> => {
+  const { data } = await api.get('/blog', { params: { page, limit: 12 } });
+  return { items: (data.data ?? []) as BlogPost[], totalPages: data.meta?.totalPages ?? 1 };
+};
+export const fetchBlogPost = async (slug: string): Promise<BlogPost> => (await api.get(`/blog/${encodeURIComponent(slug)}`)).data.data;

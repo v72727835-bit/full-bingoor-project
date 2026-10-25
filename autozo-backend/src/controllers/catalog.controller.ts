@@ -1,4 +1,6 @@
 import { FilterQuery, SortOrder, Types } from 'mongoose';
+import { pointsProductIds } from '../services/cart.service';
+import { paymentOptions } from '../services/pricing.service';
 import { Banner } from '../models/Banner';
 import { Category } from '../models/Category';
 import { IProduct, Product } from '../models/Product';
@@ -635,6 +637,8 @@ export const publicSettings = asyncHandler(async (_req, res) => {
     priceSortEnabled: settings.priceSortEnabled ?? true,
     googleReviewUrl: settings.googleReviewUrl ?? '',
     cartPointsOn: !!settings.cartPoints?.enabled,
+    // #36: the ways to pay at checkout, with the admin's charges (percent of the bill).
+    paymentOptions: paymentOptions(settings).filter((o) => o.enabled),
     onlinePaymentOn: await razorpayEnabled(),
     // Public client ids only; the secrets never leave the server.
     social: { googleClientId: live.googleClientId ?? null, facebookAppId: live.facebookAppId ?? null },
@@ -647,4 +651,12 @@ export const publicSettings = asyncHandler(async (_req, res) => {
       pushEnabled: live.firebase.pushEnabled && !!live.firebase.serviceAccount,
     },
   });
+});
+
+/** #35: the full page behind "See all" under the cart - the admin's cart-row products, by sort code. */
+export const pointsProducts = asyncHandler(async (_req, res) => {
+  const ids = await pointsProductIds();
+  const rows = await Product.find({ _id: { $in: ids } }).select(CARD_FIELDS).populate('shop', 'name slug isOpen').lean();
+  const byId = new Map(rows.map((r) => [String(r._id), r]));
+  ok(res, ids.map((id) => byId.get(String(id))).filter(Boolean).map((p) => toCard(p!)));
 });

@@ -30,8 +30,17 @@ export function deliveryFeeFor(shop: Pick<IShop, 'deliveryFee'>, subtotal: numbe
 export async function resolveCart(userId: string): Promise<ResolvedGroup[]> {
   const cart = await Cart.findOne({ user: userId }).lean();
   if (!cart || cart.items.length === 0) return [];
+  const { groups, missing } = await resolveItems(cart.items);
+  if (missing.length) {
+    await Cart.updateOne({ user: userId }, { $pull: { items: { product: { $in: missing } } } });
+  }
+  return groups;
+}
 
-  const products = (await Product.find({ _id: { $in: cart.items.map((i) => i.product) } })
+/** Groups a list of {product, quantity} by shop with live product data; `missing` are ids that no longer exist. */
+export async function resolveItems(items: { product: Types.ObjectId | string; quantity: number }[]): Promise<{ groups: ResolvedGroup[]; missing: Types.ObjectId[] }> {
+  if (items.length === 0) return { groups: [], missing: [] };
+  const products = (await Product.find({ _id: { $in: items.map((i) => i.product) } })
     .populate('shop')
     .lean()) as unknown as Array<Omit<ProductLean, 'shop'> & { shop: ShopLean | null }>;
   const byId = new Map(products.map((p) => [String(p._id), p]));
@@ -39,10 +48,10 @@ export async function resolveCart(userId: string): Promise<ResolvedGroup[]> {
   const groups = new Map<string, ResolvedGroup>();
   const missing: Types.ObjectId[] = [];
 
-  for (const item of cart.items) {
+  for (const item of items) {
     const p = byId.get(String(item.product));
     if (!p || !p.shop) {
-      missing.push(item.product);
+      missing.push(new Types.ObjectId(String(item.product)));
       continue;
     }
     const shop = p.shop;
@@ -53,11 +62,7 @@ export async function resolveCart(userId: string): Promise<ResolvedGroup[]> {
       quantity: item.quantity,
     });
   }
-
-  if (missing.length) {
-    await Cart.updateOne({ user: userId }, { $pull: { items: { product: { $in: missing } } } });
-  }
-  return [...groups.values()];
+  return { groups: [...groups.values()], missing };
 }
 
 export type LineIssue = 'unavailable' | 'out_of_stock' | 'insufficient_stock';
@@ -160,19 +165,28 @@ async function pointsView(groups: ResolvedGroup[]) {
   if (needed === 0) return { enabled: true, met: true, suggestions: [], autoAddId: null };
 
   const pool = (await Product.find({ _id: { $in: rule.suggestions ?? [] }, isActive: true, stock: { $gt: 0 } })
-    .select('name slug images icon unit price mrp points stock')
-    .lean()) as unknown as (Pick<IProduct, 'name' | 'slug' | 'images' | 'icon' | 'unit' | 'price' | 'mrp' | 'points' | 'stock'> & { _id: Types.ObjectId })[];
+    .select('name slug images icon unit price mrp points stock sortCode category')
+    .lean()) as unknown as (Pick<IProduct, 'name' | 'slug' | 'images' | 'icon' | 'unit' | 'price' | 'mrp' | 'points' | 'stock' | 'sortCode' | 'category'> & { _id: Types.ObjectId })[];
   const usable = pool.filter((p) => !inCart.has(String(p._id)) && p.points > 0);
-  // The cheapest single product that closes the gap; otherwise the biggest one we have.
-  const enough = usable.filter((p) => p.points >= needed).sort((a, b) => a.price - b.price)[0];
-  const pick = enough ?? [...usable].sort((a, b) => b.points - a.points)[0];
+
+  // The child category the customer has put the most into: the product added for them comes from there when it can (#35).
+  const qtyByCategory = new Map<string, number>();
+  for (const g of groups) for (const l of g.lines) qtyByCategory.set(String(l.product.category), (qtyByCategory.get(String(l.product.category)) ?? 0) + l.quantity);
+  const favourite = [...qtyByCategory].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const closes = (p: (typeof usable)[number]) => p.points >= needed;
+  const cheapest = (list: typeof usable) => [...list].sort((a, b) => a.price - b.price)[0];
+  const pick =
+    cheapest(usable.filter((p) => closes(p) && String(p.category) === favourite)) ??
+    cheapest(usable.filter(closes)) ??
+    [...usable].sort((a, b) => b.points - a.points)[0];
   return {
     enabled: true,
     met: false,
     autoAddId: pick ? String(pick._id) : null,
+    // The admin's sort code decides the order of the rows under the cart.
     suggestions: usable
-      .sort((a, b) => Number(b.points >= needed) - Number(a.points >= needed) || a.price - b.price)
-      .slice(0, 12)
+      .sort((a, b) => (a.sortCode ?? 1_000_000) - (b.sortCode ?? 1_000_000) || a.price - b.price)
+      .slice(0, 36)
       .map((p) => ({
         productId: p._id,
         name: p.name,
@@ -189,4 +203,21 @@ async function pointsView(groups: ResolvedGroup[]) {
 export async function getCartView(userId: string) {
   const groups = await resolveCart(userId);
   return { ...buildCartView(groups), points: await pointsView(groups) };
+}
+
+/** The same view for a visitor who has not signed in yet: their basket lives in the browser / phone. */
+export async function guestCartView(items: { product: string; quantity: number }[]) {
+  const { groups } = await resolveItems(items);
+  return { groups, view: { ...buildCartView(groups), points: await pointsView(groups) } };
+}
+
+/** #35 "See all": every product the admin picked for the cart rows, in sort-code order. */
+export async function pointsProductIds(): Promise<Types.ObjectId[]> {
+  const { settings } = await loadSettings();
+  if (!settings.cartPoints?.enabled) return [];
+  const rows = await Product.find({ _id: { $in: settings.cartPoints.suggestions ?? [] }, isActive: true, stock: { $gt: 0 }, points: { $gt: 0 } })
+    .sort({ sortCode: 1, name: 1 })
+    .select('_id')
+    .lean();
+  return rows.map((r) => r._id as Types.ObjectId);
 }

@@ -66,7 +66,7 @@ export function notifyOrderPlaced(o: OrderLike, paid: boolean) {
       });
       const staff = await User.find({
         isActive: true,
-        $or: [{ role: 'admin' }, { role: 'seller', sellerWarehouses: idOf(o.shop) }],
+        $or: [{ role: 'admin' }, { role: 'seller', sellerKind: { $ne: 'product' }, sellerWarehouses: idOf(o.shop) }],
       })
         .select('_id')
         .lean();

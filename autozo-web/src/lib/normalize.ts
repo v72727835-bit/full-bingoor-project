@@ -362,6 +362,7 @@ export function cart(raw: Record<string, unknown>): CartView {
   };
 
   return {
+    quote: (raw.quote as CartView['quote']) ?? null,
     points,
     groups,
     itemCount: (raw.itemCount as number) ?? 0,

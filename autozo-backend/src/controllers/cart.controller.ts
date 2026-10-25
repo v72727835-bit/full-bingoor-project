@@ -2,8 +2,8 @@ import { Cart, MAX_QTY_PER_ITEM } from '../models/Cart';
 import { Product } from '../models/Product';
 import { Shop } from '../models/Shop';
 import { User } from '../models/User';
-import { getCartView, lineIssue, resolveCart } from '../services/cart.service';
-import { quoteDelivery, Slot } from '../services/pricing.service';
+import { getCartView, guestCartView, lineIssue, resolveCart, ResolvedGroup } from '../services/cart.service';
+import { paymentFee, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
 import { codMessage, loadSettings, longDistanceCodMessage, productRules } from '../services/settings.service';
 import { haversineKm } from '../utils/helpers';
 import { ApiError } from '../utils/ApiError';
@@ -77,15 +77,19 @@ export const quote = asyncHandler(async (req, res) => {
   const { addressId, lat, lng, slot } = req.query as unknown as { addressId?: string; lat?: number; lng?: number; slot: Slot };
   const groups = await resolveCart(req.user!.id);
 
-  let subtotal = 0;
-  for (const g of groups) for (const l of g.lines) if (!lineIssue(g, l)) subtotal += l.product.price * l.quantity;
-
   let point = lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
   if (!point && addressId) {
     const user = await User.findById(req.user!.id).select('addresses').lean();
     const a = user?.addresses?.find((x) => String(x._id) === addressId);
     if (a?.location?.lat && a.location.lng) point = { lat: a.location.lat, lng: a.location.lng };
   }
+  ok(res, await quoteFor(groups, point, slot));
+});
+
+async function quoteFor(groups: ResolvedGroup[], point: { lat: number; lng: number } | undefined, slot: Slot) {
+  let subtotal = 0;
+  for (const g of groups) for (const l of g.lines) if (!lineIssue(g, l)) subtotal += l.product.price * l.quantity;
+
   const c = groups[0]?.shop.location?.coordinates;
   const km = point && c ? haversineKm(point.lat, point.lng, c[1], c[0]) : null;
 
@@ -99,5 +103,23 @@ export const quote = asyncHandler(async (req, res) => {
   );
   const codAllowed = quote.codAllowed && productsAllowCod;
   const message = !quote.codAllowed ? longDistanceCodMessage() : productsAllowCod ? undefined : codMessage();
-  ok(res, { ...quote, codAllowed, ...(message ? { codMessage: message } : {}) });
+  // #36: what each way to pay would add to this bill, so checkout can show it next to the option.
+  const paymentFees = Object.fromEntries(paymentOptions(settings).map((o) => [o.key, paymentFee(settings, o.key, quote.total)]));
+  return { ...quote, codAllowed, paymentFees, ...(message ? { codMessage: message } : {}) };
+}
+
+/**
+ * A visitor's basket before they sign in (#23): the items live in their browser
+ * or phone and are priced here exactly like a saved cart, with the delivery
+ * quote for their chosen location. Nothing is stored.
+ */
+export const guestCart = asyncHandler(async (req, res) => {
+  const { items, lat, lng, slot } = req.body as { items: { productId: string; quantity: number }[]; lat?: number; lng?: number; slot: Slot };
+  // The same product twice adds up, and each line is capped like a real cart.
+  const merged = new Map<string, number>();
+  for (const i of items) merged.set(i.productId, Math.min(MAX_QTY_PER_ITEM, (merged.get(i.productId) ?? 0) + i.quantity));
+  const { groups, view } = await guestCartView([...merged].map(([product, quantity]) => ({ product, quantity })));
+  const point = lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
+  ok(res, { ...view, quote: await quoteFor(groups, point, slot) });
 });
+

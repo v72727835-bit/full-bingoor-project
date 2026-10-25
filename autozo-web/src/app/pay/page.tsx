@@ -29,7 +29,7 @@ export default function PayPage() {
     }
     try {
       setState('paying');
-      const paid = await payWithRazorpay({ keyId, orderId, amountPaise: amount, name: '' });
+      const paid = await payWithRazorpay({ keyId, orderId, amountPaise: amount, name: '', method: p.get('m') || undefined });
       await axios.post(`${API_URL}/orders/online/confirm`, paid, { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 });
       setState('done');
     } catch (e) {

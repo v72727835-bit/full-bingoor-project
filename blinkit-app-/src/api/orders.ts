@@ -4,6 +4,8 @@ import { api } from './client';
 export async function placeOrder(input: {
   addressId: string;
   paymentMethod: PaymentMethod;
+  payOption?: string;
+  tip?: number;
   note?: string;
 }): Promise<PlaceOrderResult | PaymentRequired> {
   const { data } = await api.post<ApiEnvelope<PlaceOrderResult | PaymentRequired>>('/orders', input);

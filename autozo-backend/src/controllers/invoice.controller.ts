@@ -68,6 +68,7 @@ export const renderInvoice = asyncHandler(async (req, res) => {
   const interState = !!to && to.code !== from.code;
   const gst = computeGst({
     items, discount: order.discount ?? 0, deliveryFee: order.deliveryFee ?? 0, handlingFee: order.handlingFee ?? 0, orderTotal: order.total,
+    paymentFee: order.paymentFee ?? 0, paymentFeeLabel: payFeeLabel(order.payOption), tip: order.tip ?? 0,
     defaultRate: settings?.gst?.defaultRate ?? 0, serviceRate: settings?.gst?.deliveryRate ?? 18, interState,
   });
   const shopAddress = shop?.address ? [shop.address.line1, shop.address.city, shop.address.state, shop.address.pincode].filter(Boolean).join(', ') : '';
@@ -92,3 +93,9 @@ export const renderInvoice = asyncHandler(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.type('html').send(html);
 });
+
+/** "Debit card charges", "Net banking charges"... for the bill line of the payment charge. */
+function payFeeLabel(option?: string): string {
+  const names: Record<string, string> = { upi: 'UPI', debit: 'Debit card', netbanking: 'Net banking', credit: 'Credit card', rupay: 'RuPay card', cod: 'Cash on delivery' };
+  return `${names[option ?? ''] ?? 'Payment'} charges`;
+}

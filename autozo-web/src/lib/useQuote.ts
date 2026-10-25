@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fetchAddresses } from '../api/account';
 import { fetchQuote } from '../api/cart';
+import { useAuth } from '../context/AuthContext';
 import { Quote, SlotKey } from './types';
 
 /**
@@ -12,8 +13,14 @@ import { Quote, SlotKey } from './types';
  */
 export function useQuote(slot: SlotKey, refreshKey: unknown, addressId?: string): Quote | null {
   const [quote, setQuote] = useState<Quote | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
+    // A visitor's quote comes with their basket (see CartContext), not from here.
+    if (!user) {
+      setQuote(null);
+      return;
+    }
     let live = true;
     (async () => {
       try {
@@ -31,7 +38,7 @@ export function useQuote(slot: SlotKey, refreshKey: unknown, addressId?: string)
     return () => {
       live = false;
     };
-  }, [slot, refreshKey, addressId]);
+  }, [slot, refreshKey, addressId, user]);
 
   return quote;
 }

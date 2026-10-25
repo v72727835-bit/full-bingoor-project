@@ -9,11 +9,12 @@ import { confirmOnlinePayment, placeOrder, PlaceResult } from '../../api/orders'
 import { payWithRazorpay } from '../../lib/razorpay';
 import { getErrorMessage } from '../../lib/client';
 import { fitClass } from '../../lib/art';
-import { Address } from '../../lib/types';
+import { Address, PayKey, PaymentOption } from '../../lib/types';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSlot } from '../../context/SlotContext';
+import { getTip, setTip } from '../../lib/tip';
 import { useQuote } from '../../lib/useQuote';
 import { DeliverySlots } from '../../components/DeliverySlots';
 import { useCatalog } from '../../context/CatalogContext';
@@ -26,18 +27,26 @@ import { RequireAuth } from '../../components/RequireAuth';
 import { Alert, Badge, Button, EmptyState, Field, Input, PageLoader, Textarea } from '../../components/ui';
 import s from './checkout.module.css';
 
-const COD_OPTION: { value: 'cod' | 'online'; title: string; body: string; icon: IconName } = {
-  value: 'cod',
-  title: 'Cash on delivery',
-  body: 'Pay the rider when your order arrives',
-  icon: 'wallet',
-};
-const ONLINE_OPTION: { value: 'cod' | 'online'; title: string; body: string; icon: IconName } = {
-  value: 'online',
-  title: 'Pay online',
-  body: 'Debit or credit card, UPI, netbanking and wallets',
-  icon: 'shield',
-};
+/*
+ * #36: six ways to pay. Each shows what it costs once it is picked, and the (?)
+ * next to it gives the charge as a percent. The charge is added to the bill.
+ * The names, notes and percents come from the admin panel.
+ */
+const PAY_ICON: Record<PayKey, IconName> = { upi: 'bolt', cod: 'wallet', debit: 'shield', netbanking: 'store', credit: 'shield', rupay: 'shield' };
+const FALLBACK_OPTIONS: PaymentOption[] = [
+  { key: 'upi', label: 'UPI ID / UPI scanner', note: 'PhonePe, Google Pay, Paytm, BHIM, CRED UPI or any UPI app / scanner - free', pct: 0 },
+  { key: 'cod', label: 'Cash on delivery', note: 'Free', pct: 0 },
+  { key: 'debit', label: 'Debit card', pct: 0.4, highPct: 0.9, highFrom: 2000 },
+  { key: 'netbanking', label: 'Net banking', pct: 1.8 },
+  { key: 'credit', label: 'Credit card', pct: 2 },
+  { key: 'rupay', label: 'RuPay debit card', note: 'Free', pct: 0 },
+];
+
+function pctText(o: PaymentOption): string {
+  if (!o.pct && !o.highPct) return 'No extra charge';
+  if (o.highPct !== undefined && o.highFrom) return `${o.pct}% up to ₹${o.highFrom - 1} shopping, ${o.highPct}% from ₹${o.highFrom}`;
+  return `${o.pct}% of the total bill`;
+}
 
 function CheckoutInner() {
   const router = useRouter();
@@ -48,12 +57,19 @@ function CheckoutInner() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { slot, label } = useSlot();
-  const PAYMENTS = settings?.onlinePaymentOn ? [ONLINE_OPTION, COD_OPTION] : [COD_OPTION];
+  const options = settings?.paymentOptions?.length ? settings.paymentOptions : FALLBACK_OPTIONS;
+  const onlineOn = !!settings?.onlinePaymentOn;
 
   const [list, setList] = useState<Address[] | null>(null);
   const [picked, setPicked] = useState('');
   const [adding, setAdding] = useState(false);
-  const [pay, setPay] = useState<'cod' | 'online'>('cod');
+  const [opt, setOpt] = useState<PayKey>('cod');
+  const [tipFor, setTipFor] = useState<PayKey | null>(null);
+  // #35: the tip picked on the cart page.
+  const [tip, setTipAmount] = useState(0);
+  useEffect(() => setTipAmount(getTip()), []);
+  const pay: 'cod' | 'online' = opt === 'cod' ? 'cod' : 'online';
+  const setPay = (v: 'cod' | 'online') => setOpt((cur) => (v === 'cod' ? 'cod' : cur === 'cod' ? 'upi' : cur));
   const [note, setNote] = useState('');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
@@ -151,7 +167,7 @@ function CheckoutInner() {
       }
       const known = (user as { email?: string } | null)?.email ?? '';
       if (email.trim() && email.trim() !== known) await updateMe({ email: email.trim() }).catch(() => undefined);
-      let result: PlaceResult = await placeOrder(picked, pay, note.trim() || undefined, slot);
+      let result: PlaceResult = await placeOrder(picked, pay, note.trim() || undefined, slot, opt, tip);
       if (result.kind === 'pay') {
         // The money is taken first; the orders are only created once the server has checked the payment.
         const paid = await payWithRazorpay({
@@ -161,10 +177,12 @@ function CheckoutInner() {
           name: user?.name ?? '',
           phone: user?.phone,
           email: email.trim() || undefined,
+          method: result.payOption,
         });
         result = await confirmOnlinePayment(paid);
       }
       if (result.kind !== 'placed') throw new Error('Could not place the order. Please try again.');
+      setTip(0);
       await refresh();
       // Several warehouses can mean several orders; the list shows all of them.
       router.replace(result.count > 1 ? '/orders?placed=1' : `/orders/${result.order.id}?placed=1`);
@@ -181,6 +199,9 @@ function CheckoutInner() {
   };
 
   const showForm = adding || list.length === 0;
+  const chosen = options.find((o) => o.key === opt);
+  const payFee = quote?.paymentFees?.[opt] ?? 0;
+  const toPay = Math.round(((quote ? quote.total : cart.total) + payFee + tip) * 100) / 100;
 
   // Everything that stops the button from working, in plain words, so it is never a silent grey button.
   const pickedAddress = list.find((a) => a.id === picked);
@@ -308,18 +329,43 @@ function CheckoutInner() {
               </div>
             ) : null}
             <div className={s.pays}>
-              {PAYMENTS.map((o) => (
-                <label key={o.value} className={s.pay} data-on={pay === o.value} style={(o.value === 'online' && onlineBlocked.length > 0) || (o.value === 'cod' && (codBlocked.length > 0 || codTooFar)) ? { opacity: 0.5 } : undefined}>
-                  <input type="radio" name="pay" checked={pay === o.value} disabled={(o.value === 'online' && onlineBlocked.length > 0) || (o.value === 'cod' && codBlocked.length > 0)} onChange={() => setPay(o.value)} />
-                  <span className={s.payIcon}>
-                    <Icon name={o.icon} size={19} />
-                  </span>
-                  <span>
-                    <span className={s.payTitle}>{o.title}</span>
-                    <span className={s.payBody}>{o.body}</span>
-                  </span>
-                </label>
-              ))}
+              {options.map((o) => {
+                const online = o.key !== 'cod';
+                const off = (online && (!onlineOn || onlineBlocked.length > 0)) || (!online && (codBlocked.length > 0 || codTooFar));
+                const fee = quote?.paymentFees?.[o.key] ?? 0;
+                const on = opt === o.key;
+                return (
+                  <label key={o.key} className={s.pay} data-on={on} style={off ? { opacity: 0.5 } : undefined}>
+                    <input type="radio" name="pay" checked={on} disabled={(online && (!onlineOn || onlineBlocked.length > 0)) || (!online && codBlocked.length > 0)} onChange={() => setOpt(o.key)} />
+                    <span className={s.payIcon}>
+                      <Icon name={PAY_ICON[o.key]} size={19} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span className={s.payTitle}>
+                        {o.label}
+                        <button
+                          type="button"
+                          className={s.payQ}
+                          aria-label={`Charges for ${o.label}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setTipFor((cur) => (cur === o.key ? null : o.key));
+                          }}
+                        >
+                          ?
+                        </button>
+                      </span>
+                      {tipFor === o.key ? <span className={s.payBody}>{pctText(o)}</span> : null}
+                      {online && !onlineOn ? <span className={s.payBody}>Coming soon</span> : null}
+                      {on ? (
+                        <span className={s.payFee}>
+                          {o.key === 'cod' && codTooFar ? farCodMessage : fee > 0 ? `${o.label} charges: ₹${fee}` : o.note || 'Free'}
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
 
           </section>
@@ -375,8 +421,10 @@ function CheckoutInner() {
             good={(quote ? quote.deliveryFee : cart.deliveryFee) === 0}
           />
           {quote && quote.twoHourFee > 0 ? <Row label="2 hour delivery" value={`₹${quote.twoHourFee}`} /> : null}
+          {payFee > 0 ? <Row label={`${chosen?.label ?? 'Payment'} charges`} value={`₹${payFee}`} /> : null}
+          {tip > 0 ? <Row label="Tip for delivery partner" value={`₹${tip}`} /> : null}
           <hr className="divider" style={{ margin: '12px 0' }} />
-          <Row label={t('toPay')} value={`₹${quote ? quote.total : cart.total}`} big />
+          <Row label={t('toPay')} value={`₹${toPay}`} big />
           {quote && quote.addForFree > 0 ? (
             <p className={`body-sm ${s.hint}`}>For free delivery, shop ₹{quote.freeAbove} — add ₹{quote.addForFree} more.</p>
           ) : null}
@@ -389,7 +437,7 @@ function CheckoutInner() {
               disabled={!picked || blockers.length > 0}
               onClick={place}
             >
-              {t('placeOrder')} · ₹{quote ? quote.total : cart.total}
+              {t('placeOrder')} · ₹{toPay}
             </Button>
           </div>
 

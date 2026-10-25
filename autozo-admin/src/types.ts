@@ -318,6 +318,8 @@ export interface Settings {
   priceSortEnabled: boolean;
   googleReviewUrl?: string;
   cartPoints: { enabled: boolean; target: number; suggestions: (string | { _id: string; name: string; unit?: string })[] };
+  /** #36: ways to pay at checkout and their charge (percent of the bill). */
+  paymentOptions?: { key: 'upi' | 'cod' | 'debit' | 'netbanking' | 'credit' | 'rupay'; label: string; note?: string; enabled: boolean; pct: number; highPct?: number; highFrom?: number }[];
 }
 
 export const ENQUIRY_LABELS: Record<string, string> = {
@@ -364,6 +366,7 @@ export interface SellerRow {
   sellerId?: string;
   sellerProfile?: SellerProfile;
   sellerWarehouses?: { _id: string; name: string }[];
+  sellerKind?: 'warehouse' | 'product';
   listings: number;
   createdAt: string;
 }
@@ -371,6 +374,8 @@ export interface SellerRow {
 export interface SellerStats {
   liveListings: number;
   totalListings: number;
+  /** Orders with this seller's products that are not delivered yet. */
+  liveOrders?: number;
   orders: number;
   revenue: number;
   unseenOrders: number;
