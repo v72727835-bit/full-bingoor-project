@@ -136,6 +136,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         { to: '/banners', label: 'Home Banners', icon: <IconImage /> },
         { to: '/gallery', label: 'Gallery', icon: <IconImage /> },
         { to: '/videos', label: 'Videos', icon: <IconVideo /> },
+        { to: '/blog', label: 'Blog', icon: <IconImage /> },
         { to: '/store-settings', label: 'Store Settings', icon: <IconSettings /> },
         { to: '/integrations', label: 'Login & Payments', icon: <IconShield /> },
         { to: '/delivery-pricing', label: 'Delivery & Pricing', icon: <IconTag /> },
@@ -319,6 +320,7 @@ const PAGES: { label: string; to: string }[] = [
   { label: 'Home Banners', to: '/banners' },
   { label: 'Gallery (photos)', to: '/gallery' },
   { label: 'Videos', to: '/videos' },
+  { label: 'Blog posts', to: '/blog' },
   { label: 'Offers & Coupons', to: '/offers' },
 
   { label: 'Warehouses', to: '/shops' },

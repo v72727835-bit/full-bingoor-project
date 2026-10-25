@@ -14,6 +14,7 @@ import * as wallet from '../controllers/riderWallet.controller';
 import * as extra from '../controllers/adminExtra.controller';
 import * as support from '../controllers/support.controller';
 import * as seller from '../controllers/seller.controller';
+import * as blog from '../controllers/blog.controller';
 import { authorize, customerOnly, protect } from '../middleware/auth';
 
 import { catalogCache, invalidateOnWrite } from '../middleware/cache';
@@ -66,6 +67,8 @@ router.get('/products/:id/reviews', catalogCache, validate({ params: v.idParam, 
 router.get('/settings/public', catalogCache, catalog.publicSettings);
 router.get('/festival', catalogCache, validate({ query: v.homeQuery }), catalog.festival);
 router.get('/notices', catalogCache, support.listNotices);
+router.get('/blog', catalogCache, validate({ query: v.pagination }), blog.listPosts);
+router.get('/blog/:slug', catalogCache, validate({ params: v.blogSlugParam }), blog.getPost);
 router.get('/gallery', catalogCache, extra.listMediaPublic('photo'));
 router.get('/videos', catalogCache, extra.listMediaPublic('video'));
 router.post('/enquiries', authLimiter, validate({ body: v.enquiryBody }), support.createEnquiry);

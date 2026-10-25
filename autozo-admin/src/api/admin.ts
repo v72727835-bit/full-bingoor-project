@@ -536,3 +536,23 @@ export const sellerChangePassword = async (currentPassword: string, newPassword:
 export interface OrderRider { _id: string; name: string; phone: string; lastSeenAt?: string; state: 'free' | 'busy' | 'offline' | 'paused' | 'long_distance_only' | 'not_long_distance'; free: boolean }
 export interface OrderRiders { warehouse: string; radiusKm: number | null; distanceKm: number | null; longDistance: boolean; riders: OrderRider[] }
 export const sellerOrderRiders = async (orderId: string): Promise<OrderRiders> => (await api.get(`/seller/orders/${orderId}/riders`)).data.data;
+
+/* ---------- blog (#38) ---------- */
+export interface BlogPost {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  body: string;
+  cover?: string;
+  author?: string;
+  published: boolean;
+  publishedAt?: string;
+  createdAt: string;
+}
+export const fetchBlogPosts = (params: { page?: number; limit?: number }) => paged<BlogPost>('/admin/blog', params);
+export const createBlogPost = async (body: Partial<BlogPost>): Promise<BlogPost> => (await api.post('/admin/blog', body)).data.data;
+export const updateBlogPost = async (id: string, body: Partial<BlogPost>): Promise<BlogPost> => (await api.patch(`/admin/blog/${id}`, body)).data.data;
+export const deleteBlogPost = async (id: string): Promise<void> => {
+  await api.delete(`/admin/blog/${id}`);
+};

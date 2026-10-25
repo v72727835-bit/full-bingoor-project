@@ -28,6 +28,7 @@ const ProductsPage = dynamic(() => import('./screens/ProductsPage'), { ssr: fals
 const SettingsPage = dynamic(() => import('./screens/SettingsPage'), { ssr: false });
 const ShopsPage = dynamic(() => import('./screens/ShopsPage'), { ssr: false });
 const DeliveryPricingPage = dynamic(() => import('./screens/DeliveryPricingPage'), { ssr: false });
+const BlogPage = dynamic(() => import('./screens/BlogPage'), { ssr: false });
 const ProductSellersPage = dynamic(() => import('./screens/ProductSellersPage'), { ssr: false });
 const WarehouseRequestsPage = dynamic(() => import('./screens/WarehouseRequestsPage'), { ssr: false });
 const EnquiriesPage = dynamic(() => import('./screens/EnquiriesPage'), { ssr: false });
@@ -90,6 +91,8 @@ function CurrentPage({ pathname }: { pathname: string }) {
       return <NoticesPage />;
     case '/delivery-pricing':
       return <DeliveryPricingPage />;
+    case '/blog':
+      return <BlogPage />;
     case '/product-sellers':
       return <ProductSellersPage />;
     case '/warehouse-requests':

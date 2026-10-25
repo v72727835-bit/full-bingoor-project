@@ -789,3 +789,15 @@ export const bulkProductsBody = z.object({
   /** Check everything and report, but save nothing. */
   dryRun: z.boolean().optional(),
 });
+
+/* ---------- blog (#38) ---------- */
+export const blogPostBody = z.object({
+  title: z.string().trim().min(3).max(160),
+  excerpt: z.string().trim().max(300).optional(),
+  body: z.string().max(100000).default(''),
+  cover: z.string().trim().max(500).optional(),
+  author: z.string().trim().max(80).optional(),
+  published: z.boolean().default(false),
+});
+export const blogPostUpdateBody = blogPostBody.partial();
+export const blogSlugParam = z.object({ slug: z.string().trim().min(1).max(200) });
