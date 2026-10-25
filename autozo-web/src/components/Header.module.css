@@ -273,8 +273,13 @@
     height: 60px;
     gap: 8px;
   }
-  .strip {
-    display: none;
+  /* Phones keep the menu strip too (Diwali, Grocery...), just slimmer. */
+  .stripRow {
+    height: 42px;
+  }
+  .stripLink {
+    padding: 6px 11px;
+    font-size: 12.5px;
   }
 
   /* The bottom bar already carries Account, and the Profile page carries the

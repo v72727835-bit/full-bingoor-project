@@ -13,7 +13,6 @@ import { Crumbs } from '../../../components/Crumbs';
 import { Icon } from '../../../components/Icon';
 import { SearchBar } from '../../../components/SearchBar';
 import { ProductListView } from '../../../components/ProductListView';
-import { Rail } from '../../../components/Rail';
 import { ShareButtons } from '../../../components/ShareButtons';
 import s from '../categories.module.css';
 
@@ -42,9 +41,10 @@ export default function CategoryPage() {
     ? `color-mix(in srgb, ${category.tint} var(--tint-mix), var(--surface))`
     : 'var(--brand-tint)';
 
-  // The aisle rail: the aisles beside this one, or this one's own aisles.
-  const rail = category ? (category.siblings && category.siblings.length > 0 ? category.siblings : category.children ?? []) : [];
-  const heading = category && category.siblings && category.siblings.length > 0 && category.parentCategory ? category.parentCategory : category;
+  // The aisle rail: this aisle's own child aisles (Blinkit style), else the aisles beside it.
+  const kids = category?.children ?? [];
+  const rail = category ? (kids.length > 0 ? [category, ...kids] : category.siblings ?? []) : [];
+  const heading = category && kids.length === 0 && category.siblings && category.siblings.length > 0 && category.parentCategory ? category.parentCategory : category;
   const goBack = () => {
     if (window.history.length > 1) router.back();
     else router.push('/categories');
@@ -92,28 +92,6 @@ export default function CategoryPage() {
         {category ? <ShareButtons title={category.name} compact /> : null}
       </header>
 
-      {/* Child aisles first, so a deep catalogue stays browsable. */}
-      {category?.children && category.children.length > 0 ? (
-        <Rail className={s.childRail}>
-          {category.children.map((c) => (
-            <Link key={c.id} href={`/categories/${c.slug}`} className={s.childChip}>
-              {/* A photo fills its frame by absolute position, so the frame must be its own positioned box. */}
-              <span className={s.childFrame}>
-                <Image
-                  src={c.image || c.art}
-                  alt=""
-                  width={40}
-                  height={40}
-                  className={fitClass(c.image, s.childArt)}
-                  unoptimized
-                />
-              </span>
-              {name(c)}
-            </Link>
-          ))}
-        </Rail>
-      ) : null}
-
       <div className={s.catBody}>
         {rail.length > 0 ? (
           <nav className={s.sideRail} aria-label="Aisles">
@@ -122,7 +100,7 @@ export default function CategoryPage() {
                 <span className={s.railFrame}>
                   <Image src={c.image || c.art} alt="" width={56} height={56} className={fitClass(c.image, s.railArt)} unoptimized />
                 </span>
-                <span className={s.railName}>{name(c)}</span>
+                <span className={s.railName}>{kids.length > 0 && c.slug === slug ? 'All' : name(c)}</span>
               </Link>
             ))}
           </nav>

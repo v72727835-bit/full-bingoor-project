@@ -80,7 +80,6 @@ export function ProductCard({
       <article className={s.cCard}>
         <Link href={`/products/${product.slug}`} className={s.cArt} aria-label={product.name} style={{ ['--tile' as string]: tile(tint) }}>
           <Image src={product.photo} alt="" width={240} height={240} className={fitClass(product.photo, s.cImg)} unoptimized />
-          {!product.inStock ? <span className={s.cOos}>Out of stock</span> : null}
         </Link>
         <button type="button" className={s.heart} data-on={wished} onClick={toggleWish} aria-label={wished ? 'Remove from wishlist' : 'Save to wishlist'}>
           <Icon name={wished ? 'heart-fill' : 'heart'} size={16} />
@@ -138,11 +137,6 @@ export function ProductCard({
         <Image src={product.photo} alt="" width={240} height={240} className={fitClass(product.photo, s.artImg)} unoptimized />
         {product.discountPercent > 0 ? (
           <span className={`num ${s.off}`}>{product.discountPercent}% OFF</span>
-        ) : null}
-        {!product.inStock ? (
-          <span className={s.oos}>
-            <span>Out of stock</span>
-          </span>
         ) : null}
       </Link>
       <button type="button" className={s.heart} data-on={wished} onClick={toggleWish} aria-label={wished ? 'Remove from wishlist' : 'Save to wishlist'}>
