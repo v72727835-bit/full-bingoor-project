@@ -8,7 +8,7 @@ export interface IIntegrations {
   key: 'global';
   google?: { clientId?: string };
   facebook?: { appId?: string; appSecretEnc?: string };
-  razorpay?: { keyId?: string; keySecretEnc?: string; enabled?: boolean };
+  razorpay?: { keyId?: string; keySecretEnc?: string; webhookSecretEnc?: string; enabled?: boolean };
   /** Firebase: phone OTP (sign-up / login) and push notifications. */
   firebase?: {
     webConfig?: { apiKey?: string; authDomain?: string; projectId?: string; appId?: string; messagingSenderId?: string; storageBucket?: string; vapidKey?: string };
@@ -28,7 +28,7 @@ const schema = new Schema<IIntegrations>(
     key: { type: String, default: 'global', unique: true },
     google: { clientId: { type: String, trim: true } },
     facebook: { appId: { type: String, trim: true }, appSecretEnc: String },
-    razorpay: { keyId: { type: String, trim: true }, keySecretEnc: String, enabled: { type: Boolean, default: true } },
+    razorpay: { keyId: { type: String, trim: true }, keySecretEnc: String, webhookSecretEnc: String, enabled: { type: Boolean, default: true } },
     firebase: {
       webConfig: {
         apiKey: { type: String, trim: true },

@@ -160,8 +160,8 @@ export const updateMyProduct = asyncHandler(async (req, res) => {
     const category = await Category.findOne({ _id: patch.category, level: 3, isActive: true }).select('_id').lean();
     if (!category) throw new ApiError(400, 'Choose the child category your product belongs to.');
   }
-  const product = await Product.findOneAndUpdate({ _id: req.params.id, ...(await myProductScope(req.user!.id)) }, { $set: patch }, { new: true }).lean();
-  if (!product) throw new ApiError(404, 'Listing not found');
+  const product = await Product.findOneAndUpdate({ _id: req.params.id, ...(await myProductScope(req.user!.id)) }, { $set: patch }, { new: true, runValidators: true }).lean();
+  if (!product) throw new ApiError(404, 'Listing not found or access denied');
   ok(res, product);
 });
 
@@ -348,7 +348,7 @@ export const adminListSellers = asyncHandler(async (req, res) => {
   const filter: Record<string, unknown> = { role: 'seller' };
   if (kind === 'product') filter.sellerKind = 'product';
   else if (kind === 'warehouse') filter.sellerKind = { $ne: 'product' };
-  if (q) filter.$or = [{ name: { $regex: q, $options: 'i' } }, { phone: { $regex: q } }, { sellerId: { $regex: q, $options: 'i' } }];
+  if (q) filter.$or = [{ name: { $regex: escapeRegex(q), $options: 'i' } }, { phone: { $regex: escapeRegex(q) } }, { sellerId: { $regex: escapeRegex(q), $options: 'i' } }];
   const [rows, total] = await Promise.all([
     User.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).select('name phone email isActive sellerId sellerProfile sellerWarehouses sellerKind createdAt').populate('sellerWarehouses', 'name').lean(),
     User.countDocuments(filter),

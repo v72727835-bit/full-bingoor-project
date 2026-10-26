@@ -20,7 +20,16 @@ services:
         value: 15m
       - key: JWT_REFRESH_EXPIRES
         value: 30d
+      # Explicit allow-list (never "*" with credentials). Add every browser
+      # front-end origin that calls the API; mobile apps send no Origin and are
+      # always allowed. Edit in the Render dashboard if domains change.
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://bingoor.com,https://www.bingoor.com,https://admin.bingoor.com"
+      # Dedicated key for admin-saved integration secrets (decouples from JWT).
+      - key: ENCRYPTION_SECRET
+        sync: false
+      # Razorpay webhook signing secret (can also be set in the admin panel).
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
       - key: FREE_DELIVERY_ABOVE
         value: "499"

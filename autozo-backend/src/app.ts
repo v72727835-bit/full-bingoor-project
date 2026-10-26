@@ -18,14 +18,45 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1); // running behind nginx / a load balancer
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+/**
+ * CORS: with `credentials: true` we must never reflect an arbitrary Origin, or
+ * any website could make authenticated requests from a logged-in customer's
+ * browser. So:
+ *  - requests with no Origin (mobile apps, curl, server-to-server) are allowed;
+ *  - any Origin is allowed only in development, or when CORS_ORIGINS is left as
+ *    the "*" placeholder in a non-production environment;
+ *  - otherwise the Origin must be in the explicit, lowercased whitelist.
+ */
+const corsWhitelist = new Set(
+  env.CORS_ORIGINS.split(',')
+    .map((s) => s.trim().toLowerCase().replace(/\/$/, ''))
+    .filter((s) => s && s !== '*'),
+);
+const allowAllOrigins = env.NODE_ENV !== 'production' && (env.CORS_ORIGINS === '*' || corsWhitelist.size === 0);
 app.use(
   cors({
-    origin: env.CORS_ORIGINS === '*' ? true : env.CORS_ORIGINS.split(',').map((s) => s.trim()),
+    origin(origin, callback) {
+      if (!origin) return callback(null, true); // mobile apps / curl / same-origin
+      if (allowAllOrigins) return callback(null, true);
+      const normalized = origin.toLowerCase().replace(/\/$/, '');
+      if (corsWhitelist.has(normalized)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   }),
 );
 app.use(compression());
-app.use(express.json({ limit: '1mb' }));
+// `verify` keeps the raw request body so webhook signatures (Razorpay) can be
+// checked against exactly what the provider signed, not a re-serialized copy.
+app.use(
+  express.json({
+    limit: '1mb',
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 /* Uploaded images are served from the database; files written to disk by
    older builds are still served below for as long as they exist. */
 app.get('/uploads/products/:name', async (req, res, next) => {

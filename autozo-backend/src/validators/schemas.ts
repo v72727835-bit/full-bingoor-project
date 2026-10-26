@@ -688,6 +688,8 @@ export const integrationsBody = z.object({
   razorpayKeyId: z.string().trim().max(100).optional(),
   razorpayKeySecret: z.string().trim().max(200).optional(),
   clearRazorpaySecret: z.boolean().optional(),
+  razorpayWebhookSecret: z.string().trim().max(200).optional(),
+  clearRazorpayWebhook: z.boolean().optional(),
   razorpayEnabled: z.boolean().optional(),
   firebaseWeb: z
     .object({

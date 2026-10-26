@@ -10,6 +10,11 @@ export async function razorpayKeys(): Promise<{ keyId: string; keySecret: string
 
 export const razorpayEnabled = async (): Promise<boolean> => !!(await razorpayKeys());
 
+/** The webhook signing secret set in the admin panel (or the RAZORPAY_WEBHOOK_SECRET env fallback). */
+export async function razorpayWebhookSecret(): Promise<string | undefined> {
+  return (await getIntegrations()).razorpayWebhookSecret;
+}
+
 async function call<T>(method: 'POST' | 'GET', path: string, body?: unknown, keys?: { keyId: string; keySecret: string }): Promise<T> {
   const k = keys ?? (await razorpayKeys());
   if (!k) throw new ApiError(503, 'Online payment is not switched on.');
