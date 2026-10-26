@@ -2,19 +2,28 @@
  * One-off script to create (or promote) an admin-panel login.
  *
  * Usage:
- *   npm run create-admin -- "Admin Name" 9876543210 admin@autozo.org MySecretPass123
+ *   ADMIN_PASSWORD=MySecretPass123 npm run create-admin -- "Admin Name" 9876543210 admin@autozo.org
+ *   # or omit ADMIN_PASSWORD and type it in when prompted (hidden)
  *
  * Phone is required (every user needs one); email + password are what you'll
- * actually log in to the admin panel with. Re-running with the same phone or
- * email updates the existing account instead of making a duplicate.
+ * actually log in to the admin panel with. The password is read from the
+ * ADMIN_PASSWORD env var or a hidden prompt, never from the command line
+ * (ISSUE-15). Re-running with the same phone or email updates the existing
+ * account instead of making a duplicate.
  */
 import { connectDB, disconnectDB } from './config/db';
 import { User } from './models/User';
+import { readSecret } from './utils/promptSecret';
 
 async function main() {
-  const [name, phone, email, password] = process.argv.slice(2);
-  if (!name || !phone || !email || !password) {
-    console.error('Usage: npm run create-admin -- "Admin Name" 9876543210 admin@autozo.org MySecretPass123');
+  const [name, phone, email] = process.argv.slice(2);
+  if (!name || !phone || !email) {
+    console.error('Usage: ADMIN_PASSWORD=... npm run create-admin -- "Admin Name" 9876543210 admin@autozo.org');
+    process.exit(1);
+  }
+  const password = await readSecret('ADMIN_PASSWORD', 'Admin password');
+  if (!password) {
+    console.error('A password is required (set ADMIN_PASSWORD or type it when prompted).');
     process.exit(1);
   }
 

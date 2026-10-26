@@ -42,6 +42,7 @@ export const tokenStore = {
  */
 const GUEST_SERVICE = 'com.bingoor.app.guest';
 const GUEST_CART_SERVICE = 'com.bingoor.app.guestcart';
+const USER_SERVICE = 'com.bingoor.app.user';
 
 export const localStore = {
   /** "1" once the visitor chose to look around without an account. */
@@ -50,4 +51,11 @@ export const localStore = {
   /** The visitor's basket as JSON: [{ productId, quantity }]. */
   getGuestCart: () => get(GUEST_CART_SERVICE),
   setGuestCart: (json: string | null) => (json ? set(GUEST_CART_SERVICE, json) : remove(GUEST_CART_SERVICE)),
+  /**
+   * The last known signed-in profile as JSON. Used only to keep the customer
+   * logged in across a cold start when the server is briefly unreachable (e.g. a
+   * Render cold start) instead of bouncing them to the login screen (F-05).
+   */
+  getUser: () => get(USER_SERVICE),
+  setUser: (json: string | null) => (json ? set(USER_SERVICE, json) : remove(USER_SERVICE)),
 };

@@ -93,6 +93,14 @@ productSchema.index({ isActive: 1, shop: 1, soldCount: -1, rating: -1 });
 productSchema.index({ isActive: 1, standardCategories: 1, sortCode: 1, name: 1 });
 productSchema.index({ name: 1 });
 productSchema.index({ isActive: 1, brand: 1 });
+// ISSUE-13: cover the default browse sort ({ sortCode, name }), "newest" and
+// "rating" sorts so they do not fall back to in-memory sorts / the 32 MB limit.
+productSchema.index({ isActive: 1, sortCode: 1, name: 1 });
+productSchema.index({ isActive: 1, createdAt: -1 });
+productSchema.index({ isActive: 1, rating: -1, ratingCount: -1 });
+// Full-text search over name, brand and tags (brand weighted below name) so the
+// search box does not rely on unindexed $regex scans.
+productSchema.index({ name: 'text', brand: 'text', tags: 'text' }, { weights: { name: 10, brand: 5, tags: 1 }, name: 'product_text' });
 
 productSchema.pre('validate', function (next) {
   if (!this.slug) this.slug = uniqueSlug(this.name);

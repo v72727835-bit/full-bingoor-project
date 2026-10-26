@@ -4,7 +4,8 @@ import { deliveryPointParams } from '../store/deliveryPoint';
 import { tokenStore } from '../storage/tokens';
 import { ApiEnvelope, AuthResult } from '../types';
 
-export const api = axios.create({ baseURL: API_URL, timeout: 15000 });
+// 30s (not 15s) so a backend cold start doesn't time out before it wakes.
+export const api = axios.create({ baseURL: API_URL, timeout: 30000 });
 
 let accessToken: string | null = null;
 let onSessionExpired: (() => void) | null = null;
@@ -72,6 +73,16 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/**
+ * True when the request never got a reply (offline, DNS, or a timeout such as a
+ * Render cold start). Distinguishes "can't reach the server" from a real
+ * 401/403, so the app can keep a valid session instead of logging the user out
+ * on a transient blip (F-05).
+ */
+export function isNetworkError(err: unknown): boolean {
+  return axios.isAxiosError(err) && !err.response;
+}
 
 /** Human-friendly message for any error thrown by the API layer. */
 type Problem = { shop?: string; name?: string; reason?: string };

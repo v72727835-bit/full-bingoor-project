@@ -12,6 +12,12 @@ const schema = z.object({
   JWT_ACCESS_EXPIRES: z.string().default('15m'),
   JWT_REFRESH_EXPIRES: z.string().default('30d'),
   CORS_ORIGINS: z.string().default('*'),
+  /**
+   * Optional: dedicated key for encrypting admin-saved integration secrets.
+   * When set, rotating JWT_REFRESH_SECRET no longer breaks stored payment/login
+   * keys. Falls back to the JWT refresh secret when unset (see utils/secretBox).
+   */
+  ENCRYPTION_SECRET: z.string().min(16, 'ENCRYPTION_SECRET must be at least 16 chars').optional(),
   /** Optional: online payments switch on when both are set. */
   /** Optional: Continue with Google / Facebook switch on when these are set. */
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -19,6 +25,8 @@ const schema = z.object({
   FACEBOOK_APP_SECRET: z.string().optional(),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  /** Optional: Razorpay webhook signing secret (admin panel value takes precedence). */
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   FREE_DELIVERY_ABOVE: z.coerce.number().min(0).default(499),
 });
 

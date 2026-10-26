@@ -501,6 +501,7 @@ async function integrationsView() {
     facebookSecretSaved: !!doc?.facebook?.appSecretEnc,
     razorpayKeyId: doc?.razorpay?.keyId ?? '',
     razorpaySecretSaved: !!doc?.razorpay?.keySecretEnc,
+    razorpayWebhookSaved: !!doc?.razorpay?.webhookSecretEnc,
     razorpayEnabled: doc?.razorpay?.enabled ?? true,
     firebaseWeb: { apiKey: '', authDomain: '', projectId: '', appId: '', messagingSenderId: '', storageBucket: '', vapidKey: '', ...(doc?.firebase?.webConfig ?? {}) },
     firebaseServiceAccountSaved: !!doc?.firebase?.serviceAccountEnc,
@@ -544,6 +545,8 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
     razorpayKeyId?: string;
     razorpayKeySecret?: string;
     clearRazorpaySecret?: boolean;
+    razorpayWebhookSecret?: string;
+    clearRazorpayWebhook?: boolean;
     razorpayEnabled?: boolean;
     firebaseWeb?: Record<string, string | undefined>;
     firebaseServiceAccount?: string;
@@ -580,6 +583,8 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
   }
   if (b.razorpayKeySecret?.trim()) set['razorpay.keySecretEnc'] = seal(b.razorpayKeySecret.trim());
   else if (b.clearRazorpaySecret) unset['razorpay.keySecretEnc'] = 1;
+  if (b.razorpayWebhookSecret?.trim()) set['razorpay.webhookSecretEnc'] = seal(b.razorpayWebhookSecret.trim());
+  else if (b.clearRazorpayWebhook) unset['razorpay.webhookSecretEnc'] = 1;
   if (b.razorpayEnabled !== undefined) set['razorpay.enabled'] = b.razorpayEnabled;
   for (const [k, v] of Object.entries(b.firebaseWeb ?? {})) if (v !== undefined) set[`firebase.webConfig.${k}`] = v;
   if (b.firebaseServiceAccount) {

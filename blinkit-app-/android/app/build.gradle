@@ -89,6 +89,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Cleartext HTTP is off by default (release); debug turns it back on so a
+        // local http://10.0.2.2 backend still works (customer audit F-06).
+        manifestPlaceholders = [usesCleartextTraffic: "false"]
     }
     signingConfigs {
         debug {
@@ -97,15 +100,29 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Production signing: provide RELEASE_STORE_FILE/… via gradle.properties
+        // or CI env. Without them the release falls back to the debug keystore
+        // with a warning, so a Play Store build must supply a real keystore.
+        release {
+            if (project.hasProperty('RELEASE_STORE_FILE')) {
+                storeFile file(project.property('RELEASE_STORE_FILE'))
+                storePassword project.property('RELEASE_STORE_PASSWORD')
+                keyAlias project.property('RELEASE_KEY_ALIAS')
+                keyPassword project.property('RELEASE_KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            manifestPlaceholders = [usesCleartextTraffic: "true"]
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            def hasReleaseKeystore = project.hasProperty('RELEASE_STORE_FILE')
+            if (!hasReleaseKeystore) {
+                logger.warn("WARNING: no RELEASE_STORE_FILE set — signing the release build with the DEBUG keystore. Do NOT publish this APK to Google Play. See https://reactnative.dev/docs/signed-apk-android")
+            }
+            signingConfig hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }

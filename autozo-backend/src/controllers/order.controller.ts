@@ -1,6 +1,6 @@
 import { notifyOrderPlaced, notifyOrderStatus } from '../services/orderNotify.service';
 import crypto from 'crypto';
-import { FilterQuery, Types } from 'mongoose';
+import mongoose, { ClientSession, FilterQuery, HydratedDocument, Types } from 'mongoose';
 import { Cart, MAX_QTY_PER_ITEM } from '../models/Cart';
 import { CUSTOMER_CANCELLABLE, IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
@@ -8,7 +8,7 @@ import { User } from '../models/User';
 import { cartPointsTotal, getCartView, lineIssue, resolveCart } from '../services/cart.service';
 import { paymentFeePct, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
 import { loadSettings, productRules } from '../services/settings.service';
-import { createRazorpayOrder, razorpayEnabled, razorpayKeys, refundRazorpayPayment, verifyRazorpaySignature } from '../services/razorpay.service';
+import { createRazorpayOrder, razorpayEnabled, razorpayKeys, razorpayWebhookSecret, refundRazorpayPayment, verifyRazorpaySignature } from '../services/razorpay.service';
 import { PaymentIntent } from '../models/PaymentIntent';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -16,6 +16,17 @@ import { haversineKm, round2 } from '../utils/helpers';
 import { created, ok, pageMeta } from '../utils/response';
 
 const ACTIVE_STATUSES = ['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery'];
+
+/** True when an error means the MongoDB deployment does not support transactions (standalone). */
+function transactionsUnsupported(err: unknown): boolean {
+  const e = err as { code?: number; codeName?: string; message?: string };
+  const msg = e?.message ?? '';
+  return (
+    e?.code === 20 ||
+    e?.codeName === 'IllegalOperation' ||
+    /Transaction numbers are only allowed on a replica set|Transactions are not supported|requires a replica set|replica set\/mongos|this deployment does not support/i.test(msg)
+  );
+}
 
 function newOrderNumber(): string {
   const d = new Date();
@@ -112,6 +123,12 @@ async function runPlaceOrder(
     const km = distanceTo(g.shop, address.location);
     const quote = quoteDelivery(settings, { subtotal, distanceKm: km, slot });
     if (!quote.meetsMinOrder) problems.push({ shop: g.shop.name, reason: `min_order_${quote.minOrder}` });
+    // Beyond the last distance band COD is refused (too far to send a rider out
+    // with cash). The /cart/quote already reports this; enforce it at checkout
+    // too so a client can't place a COD order the quote said was unavailable.
+    if (paymentMethod === 'cod' && !quote.codAllowed) {
+      problems.push({ shop: g.shop.name, reason: 'cod_unavailable' });
+    }
     owed += subtotal + quote.deliveryFee + quote.twoHourFee + quote.handlingFee;
   }
   // #36: the chosen way to pay can carry a charge (a percent of the whole bill).
@@ -122,110 +139,137 @@ async function runPlaceOrder(
   const tip = Math.max(0, Math.round(body.tip ?? 0));
   if (opts.quote) return { grandTotal: round2(owed + round2((owed * feePct) / 100) + tip) };
 
-  /* ---- reserve stock atomically (rolled back on any failure) ---- */
-  const reserved: { product: Types.ObjectId; quantity: number }[] = [];
-  const createdOrders: Types.ObjectId[] = [];
+  /* ---- build the order documents (pure computation, no writes yet) ---- */
   const checkoutId = crypto.randomUUID();
+  const reservations = groups.flatMap((g) =>
+    g.lines.map((l) => ({ product: l.product._id, quantity: l.quantity, name: l.product.name })),
+  );
+  const orderDocs = groups.map((g, idx) => {
+    const items = g.lines.map((l) => ({
+      product: l.product._id,
+      name: l.product.name,
+      image: l.product.images[0],
+      icon: l.product.icon,
+      unit: l.product.unit,
+      price: l.product.price,
+      mrp: l.product.mrp,
+      quantity: l.quantity,
+      lineTotal: round2(l.product.price * l.quantity),
+      ...(l.product.hsn ? { hsn: l.product.hsn } : {}),
+      ...(l.product.gstRate !== undefined && l.product.gstRate !== null ? { gstRate: l.product.gstRate } : {}),
+      ...(l.product.seller ? { seller: l.product.seller } : {}),
+    }));
+    const sellerIds = [...new Set(items.filter((i) => i.seller).map((i) => String(i.seller)))];
+    const subtotal = round2(items.reduce((s, i) => s + i.lineTotal, 0));
+    const quote = quoteDelivery(settings, { subtotal, distanceKm: distanceTo(g.shop, address.location), slot });
+    const deliveryFee = quote.deliveryFee + quote.twoHourFee;
+    const payFee = round2(((subtotal + deliveryFee + quote.handlingFee) * feePct) / 100);
+    // The tip rides on the first order of the checkout only.
+    const orderTip = idx === 0 ? tip : 0;
+    const days = Math.max(quote.days, ...g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0));
+    return {
+      orderNumber: newOrderNumber(),
+      checkoutId,
+      user: userId,
+      shop: g.shop._id,
+      ...(days ? { deliveryDays: days } : {}),
+      slot,
+      handlingFee: quote.handlingFee,
+      redOrder: quote.redOrder,
+      longDistance: quote.longDistance,
+      ...(sellerIds.length ? { sellerIds } : {}),
+      ...(quote.distanceKm !== null ? { distanceKm: quote.distanceKm } : {}),
+      items,
+      address: {
+        name: address.name,
+        phone: address.phone,
+        line1: address.line1,
+        line2: address.line2,
+        landmark: address.landmark,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        location: address.location,
+      },
+      paymentMethod,
+      payOption,
+      paymentFee: payFee,
+      tip: orderTip,
+      // Online orders are only created after the gateway confirmed the payment.
+      paymentStatus: opts.paid ? 'paid' : 'pending',
+      ...(opts.paid ? { paymentRef: opts.paid.ref } : {}),
+      status: 'placed',
+      statusHistory: [{ status: 'placed', at: new Date() }],
+      subtotal,
+      deliveryFee,
+      discount: 0,
+      total: round2(subtotal + deliveryFee + quote.handlingFee + payFee + orderTip),
+      note,
+      deliveryOtp: String(crypto.randomInt(1000, 10000)),
+    };
+  });
 
-  try {
-    for (const g of groups) {
-      for (const l of g.lines) {
-        const r = await Product.updateOne(
-          { _id: l.product._id, isActive: true, stock: { $gte: l.quantity } },
-          { $inc: { stock: -l.quantity, soldCount: l.quantity } },
+  /**
+   * ISSUE-06: reserve stock, create the orders and clear the cart as one unit.
+   * On a replica set (e.g. Atlas) this runs inside a real ACID transaction, so a
+   * crash or error mid-way leaves nothing half-done. On a standalone MongoDB
+   * (which does not support transactions) we fall back to the previous approach:
+   * atomic per-product decrements with an explicit compensation that restores
+   * stock and deletes any created orders if a later step fails.
+   */
+  const place = async (session?: ClientSession) => {
+    const reserved: { product: Types.ObjectId; quantity: number }[] = [];
+    let created: HydratedDocument<IOrder>[] = [];
+    try {
+      for (const r of reservations) {
+        const upd = await Product.updateOne(
+          { _id: r.product, isActive: true, stock: { $gte: r.quantity } },
+          { $inc: { stock: -r.quantity, soldCount: r.quantity } },
+          session ? { session } : {},
         );
-        if (r.modifiedCount !== 1) {
-          throw new ApiError(409, `"${l.product.name}" just went out of stock`, [
-            { productId: String(l.product._id), name: l.product.name, reason: 'out_of_stock' },
+        if (upd.modifiedCount !== 1) {
+          throw new ApiError(409, `"${r.name}" just went out of stock`, [
+            { productId: String(r.product), name: r.name, reason: 'out_of_stock' },
           ]);
         }
-        reserved.push({ product: l.product._id, quantity: l.quantity });
+        reserved.push({ product: r.product, quantity: r.quantity });
       }
+      created = await Order.create(orderDocs, session ? { session } : {});
+      await Cart.updateOne({ user: userId }, { $set: { items: [] } }, session ? { session } : {});
+      return created;
+    } catch (err) {
+      // Inside a transaction the abort rolls everything back, so only the
+      // standalone (no-session) path needs manual compensation.
+      if (!session) {
+        if (created.length) await Order.deleteMany({ _id: { $in: created.map((o) => o._id) } });
+        if (reserved.length) await restoreStock(reserved);
+      }
+      throw err;
     }
+  };
 
-    const orders = [];
-    for (const g of groups) {
-      const items = g.lines.map((l) => ({
-        product: l.product._id,
-        name: l.product.name,
-        image: l.product.images[0],
-        icon: l.product.icon,
-        unit: l.product.unit,
-        price: l.product.price,
-        mrp: l.product.mrp,
-        quantity: l.quantity,
-        lineTotal: round2(l.product.price * l.quantity),
-        ...(l.product.hsn ? { hsn: l.product.hsn } : {}),
-        ...(l.product.gstRate !== undefined && l.product.gstRate !== null ? { gstRate: l.product.gstRate } : {}),
-        ...(l.product.seller ? { seller: l.product.seller } : {}),
-      }));
-      const sellerIds = [...new Set(items.filter((i) => i.seller).map((i) => String(i.seller)))];
-      const subtotal = round2(items.reduce((s, i) => s + i.lineTotal, 0));
-      const quote = quoteDelivery(settings, { subtotal, distanceKm: distanceTo(g.shop, address.location), slot });
-      const deliveryFee = quote.deliveryFee + quote.twoHourFee;
-      const payFee = round2(((subtotal + deliveryFee + quote.handlingFee) * feePct) / 100);
-      // The tip rides on the first order of the checkout only.
-      const orderTip: number = createdOrders.length === 0 ? tip : 0;
-      const days = Math.max(quote.days, ...g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0));
-
-      const order = await Order.create({
-        orderNumber: newOrderNumber(),
-        checkoutId,
-        user: userId,
-        shop: g.shop._id,
-        ...(days ? { deliveryDays: days } : {}),
-        slot,
-        handlingFee: quote.handlingFee,
-        redOrder: quote.redOrder,
-        longDistance: quote.longDistance,
-        ...(sellerIds.length ? { sellerIds } : {}),
-        ...(quote.distanceKm !== null ? { distanceKm: quote.distanceKm } : {}),
-        items,
-        address: {
-          name: address.name,
-          phone: address.phone,
-          line1: address.line1,
-          line2: address.line2,
-          landmark: address.landmark,
-          city: address.city,
-          state: address.state,
-          pincode: address.pincode,
-          location: address.location,
-        },
-        paymentMethod,
-        payOption,
-        paymentFee: payFee,
-        tip: orderTip,
-        // Online orders are only created after the gateway confirmed the payment.
-        paymentStatus: opts.paid ? 'paid' : 'pending',
-        ...(opts.paid ? { paymentRef: opts.paid.ref } : {}),
-        status: 'placed',
-        statusHistory: [{ status: 'placed', at: new Date() }],
-        subtotal,
-        deliveryFee,
-        discount: 0,
-        total: round2(subtotal + deliveryFee + quote.handlingFee + payFee + orderTip),
-        note,
-        deliveryOtp: String(crypto.randomInt(1000, 10000)),
-      });
-      createdOrders.push(order._id);
-      orders.push(order);
-    }
-
-    await Cart.updateOne({ user: userId }, { $set: { items: [] } });
-    if (!opts.quote) for (const o of orders) notifyOrderPlaced(o, !!opts.paid);
-
-    return {
-      checkoutId,
-      orders: orders.map((o) => presentOrder(o.toObject())),
-      grandTotal: round2(orders.reduce((s, o) => s + o.total, 0)),
-    };
+  let orders: HydratedDocument<IOrder>[] | undefined;
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      orders = await place(session);
+    });
   } catch (err) {
-    // Undo partial work so the customer's cart and shop stock stay consistent
-    if (createdOrders.length) await Order.deleteMany({ _id: { $in: createdOrders } });
-    if (reserved.length) await restoreStock(reserved);
-    throw err;
+    if (!transactionsUnsupported(err)) throw err;
+    // Standalone MongoDB: run without a transaction (manual compensation).
+    orders = await place();
+  } finally {
+    await session.endSession();
   }
+  const placed = orders!;
+
+  if (!opts.quote) for (const o of placed) notifyOrderPlaced(o, !!opts.paid);
+
+  return {
+    checkoutId,
+    orders: placed.map((o) => presentOrder(o.toObject())),
+    grandTotal: round2(placed.reduce((s, o) => s + o.total, 0)),
+  };
 }
 
 export const placeOrder = asyncHandler(async (req, res) => {
@@ -277,6 +321,71 @@ export const confirmOnlinePayment = asyncHandler(async (req, res) => {
     await PaymentIntent.updateOne({ _id: intent._id }, { $set: { status: 'refunded' } });
     throw err instanceof ApiError ? new ApiError(err.statusCode, `${err.message}. Your payment is being refunded.`, err.details) : err;
   }
+});
+
+/**
+ * Server-to-server fallback for online payments (ISSUE-02).
+ *
+ * The client-driven flow (`/orders/online/confirm`) only completes if the app
+ * is alive after payment. If the phone dies, the app crashes or the network
+ * drops right after the customer pays, Razorpay still charged them but no order
+ * would ever be created. Razorpay also calls this webhook, so the order is
+ * placed (or the payment refunded) regardless of the client.
+ *
+ * Verification uses HMAC-SHA256 over the RAW request body (captured in app.ts)
+ * compared with crypto.timingSafeEqual. Claiming the PaymentIntent atomically
+ * (status: 'created' -> 'paid') makes this idempotent and safe against a race
+ * with `/orders/online/confirm`: whichever arrives first creates the order, the
+ * other is a no-op.
+ */
+export const razorpayWebhook = asyncHandler(async (req, res) => {
+  const secret = await razorpayWebhookSecret();
+  const signature = req.headers['x-razorpay-signature'];
+  const raw = (req as typeof req & { rawBody?: Buffer }).rawBody;
+  // Nothing to verify against (webhook secret not configured) or no raw body:
+  // acknowledge so Razorpay stops retrying, but do not act on an unverified call.
+  if (!secret || typeof signature !== 'string' || !raw) return res.status(200).json({ received: true });
+
+  const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(400).json({ success: false, message: 'Invalid signature' });
+  }
+
+  const body = req.body as {
+    event?: string;
+    payload?: { payment?: { entity?: { id?: string; order_id?: string } }; order?: { entity?: { id?: string } } };
+  };
+  const payment = body.payload?.payment?.entity;
+  const razorpayOrderId = payment?.order_id ?? body.payload?.order?.entity?.id;
+  const paymentId = payment?.id;
+
+  if ((body.event === 'payment.captured' || body.event === 'order.paid') && razorpayOrderId) {
+    // Claim once: if the client's confirm already placed the order, status is no
+    // longer 'created' and this returns null (no duplicate order).
+    const intent = await PaymentIntent.findOneAndUpdate(
+      { razorpayOrderId, status: 'created' },
+      { $set: { status: 'paid', ...(paymentId ? { paymentId } : {}) } },
+      { new: true },
+    );
+    if (intent) {
+      try {
+        await runPlaceOrder(
+          String(intent.user),
+          { ...intent.payload, paymentMethod: 'online' },
+          { paid: { ref: paymentId ?? intent.razorpayOrderId } },
+        );
+      } catch {
+        // Paid but the order could not be created (e.g. stock changed): refund.
+        if (paymentId) await refundRazorpayPayment(paymentId, intent.amount).catch(() => undefined);
+        await PaymentIntent.updateOne({ _id: intent._id }, { $set: { status: 'refunded' } });
+      }
+    }
+  }
+
+  // Always 200 once handled, so Razorpay does not keep retrying.
+  res.status(200).json({ received: true });
 });
 
 /* ---------------- read ---------------- */
@@ -347,6 +456,20 @@ export const cancelOrder = asyncHandler(async (req, res) => {
   }
 
   await restoreStock(order.items);
+
+  // ISSUE-01: a paid online order must get its money back, not just be flagged
+  // refund_pending. Try the refund now; if it fails, leave it refund_pending so
+  // an admin can retry via POST /admin/orders/:id/refund.
+  if (existing.paymentStatus === 'paid' && order.paymentMethod === 'online' && order.paymentRef) {
+    try {
+      await refundRazorpayPayment(order.paymentRef, order.total);
+      order.paymentStatus = 'refunded';
+      await Order.updateOne({ _id: order._id }, { $set: { paymentStatus: 'refunded' } });
+    } catch {
+      // keep refund_pending (already set above); admin can retry the refund.
+    }
+  }
+
   notifyOrderStatus(order, 'cancelled');
   ok(res, presentOrder(order.toObject()));
 });

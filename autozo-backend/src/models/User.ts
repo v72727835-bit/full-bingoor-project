@@ -213,6 +213,8 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
 );
 
 // One phone number / email may be used once per kind of account: the same person can be a customer, a rider and a warehouse owner.
+// Faster "riders of this warehouse, who is online" lookups (listMyRiders).
+userSchema.index({ role: 1, warehouse: 1, lastSeenAt: -1 });
 userSchema.index({ phone: 1, role: 1 }, { unique: true });
 userSchema.index({ email: 1, role: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
 

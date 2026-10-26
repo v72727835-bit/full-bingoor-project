@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { Cart, MAX_QTY_PER_ITEM } from '../models/Cart';
 import { Product } from '../models/Product';
 import { Shop } from '../models/Shop';
@@ -5,7 +6,7 @@ import { User } from '../models/User';
 import { getCartView, guestCartView, lineIssue, resolveCart, ResolvedGroup } from '../services/cart.service';
 import { paymentFee, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
 import { codMessage, loadSettings, longDistanceCodMessage, productRules } from '../services/settings.service';
-import { haversineKm } from '../utils/helpers';
+import { haversineKm, round2 } from '../utils/helpers';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ok } from '../utils/response';
@@ -23,16 +24,50 @@ export const addItem = asyncHandler(async (req, res) => {
   if (!(await Shop.exists({ _id: product.shop, isActive: true }))) throw new ApiError(404, 'This shop is not available');
   if (product.stock <= 0) throw new ApiError(409, 'This product is out of stock');
 
-  const cart = await Cart.findOneAndUpdate({ user: userId }, { $setOnInsert: { user: userId } }, { upsert: true, new: true });
-
   const limit = Math.min(MAX_QTY_PER_ITEM, product.stock);
-  const existing = cart.items.find((i) => String(i.product) === productId);
-  const wanted = (existing?.quantity ?? 0) + quantity;
-  const finalQty = Math.min(wanted, limit);
 
-  if (existing) existing.quantity = finalQty;
-  else cart.items.push({ product: product._id, quantity: finalQty });
-  await cart.save();
+  // ISSUE-14: add atomically so two quick taps can't overwrite each other (the
+  // old load-modify-save pattern lost one of the increments). The pipeline bumps
+  // an existing line (clamped to `limit`) or appends a new one, all in one op.
+  // `new: false` returns the pre-image so we can still tell the user when their
+  // requested quantity was clamped to available stock.
+  const before = await Cart.findOneAndUpdate(
+    { user: userId },
+    [
+      {
+        $set: {
+          items: {
+            $let: {
+              vars: { items: { $ifNull: ['$items', []] } },
+              in: {
+                $cond: [
+                  { $in: [product._id, { $map: { input: '$$items', in: '$$this.product' } }] },
+                  {
+                    $map: {
+                      input: '$$items',
+                      in: {
+                        $cond: [
+                          { $eq: ['$$this.product', product._id] },
+                          { product: '$$this.product', quantity: { $min: [{ $add: ['$$this.quantity', quantity] }, limit] } },
+                          '$$this',
+                        ],
+                      },
+                    },
+                  },
+                  { $concatArrays: ['$$items', [{ product: product._id, quantity: { $min: [quantity, limit] } }]] },
+                ],
+              },
+            },
+          },
+        },
+      },
+    ],
+    { upsert: true, new: false },
+  );
+
+  const prevQty = before?.items.find((i) => String(i.product) === productId)?.quantity ?? 0;
+  const wanted = prevQty + quantity;
+  const finalQty = Math.min(wanted, limit);
 
   const view = await getCartView(userId);
   ok(res, { ...view, ...(finalQty < wanted ? { notice: `Only ${finalQty} available - quantity adjusted` } : {}) });
@@ -43,18 +78,21 @@ export const updateItem = asyncHandler(async (req, res) => {
   const { quantity } = req.body as { quantity: number };
   const userId = req.user!.id;
 
-  const cart = await Cart.findOne({ user: userId });
-  const item = cart?.items.find((i) => String(i.product) === productId);
-  if (!cart || !item) throw new ApiError(404, 'Item is not in your cart');
-
   if (quantity === 0) {
-    cart.items = cart.items.filter((i) => String(i.product) !== productId);
+    const r = await Cart.updateOne({ user: userId }, { $pull: { items: { product: productId } } });
+    if (!r.modifiedCount) throw new ApiError(404, 'Item is not in your cart');
   } else {
     const product = await Product.findOne({ _id: productId, isActive: true }).select('stock').lean();
     if (!product || product.stock <= 0) throw new ApiError(409, 'This product is no longer available');
-    item.quantity = Math.min(quantity, MAX_QTY_PER_ITEM, product.stock);
+    const qty = Math.min(quantity, MAX_QTY_PER_ITEM, product.stock);
+    // Atomic positional set so a concurrent add/update can't clobber the line.
+    const r = await Cart.updateOne(
+      { user: userId, 'items.product': productId },
+      { $set: { 'items.$[el].quantity': qty } },
+      { arrayFilters: [{ 'el.product': new Types.ObjectId(productId) }] },
+    );
+    if (!r.matchedCount) throw new ApiError(404, 'Item is not in your cart');
   }
-  await cart.save();
   ok(res, await getCartView(userId));
 });
 
@@ -87,25 +125,71 @@ export const quote = asyncHandler(async (req, res) => {
 });
 
 async function quoteFor(groups: ResolvedGroup[], point: { lat: number; lng: number } | undefined, slot: Slot) {
-  let subtotal = 0;
-  for (const g of groups) for (const l of g.lines) if (!lineIssue(g, l)) subtotal += l.product.price * l.quantity;
-
-  const c = groups[0]?.shop.location?.coordinates;
-  const km = point && c ? haversineKm(point.lat, point.lng, c[1], c[0]) : null;
-
   const { settings } = await loadSettings();
-  const quote = quoteDelivery(settings, { subtotal, distanceKm: km, slot });
+
+  // ISSUE-07: fees must be computed PER SHOP, exactly like checkout
+  // (runPlaceOrder). A multi-shop cart is charged one handling + delivery +
+  // two-hour fee per shop, so quoting a single combined fee under-charged the
+  // customer and never matched the amount sent to Razorpay. For a single-shop
+  // cart (the common case) this is identical to the old behaviour.
+  const perGroup = groups.map((g) => {
+    const subtotal = g.lines.reduce((s, l) => (lineIssue(g, l) ? s : s + l.product.price * l.quantity), 0);
+    const c = g.shop.location?.coordinates;
+    const km = point && c ? haversineKm(point.lat, point.lng, c[1], c[0]) : null;
+    const q = quoteDelivery(settings, { subtotal, distanceKm: km, slot });
+    return { shop: String(g.shop._id), name: g.shop.name, ...q };
+  });
+
+  const sum = (pick: (q: (typeof perGroup)[number]) => number) => round2(perGroup.reduce((s, q) => s + pick(q), 0));
+  const subtotal = sum((q) => q.subtotal);
+  const handlingFee = sum((q) => q.handlingFee);
+  const deliveryFee = sum((q) => q.deliveryFee);
+  const twoHourFee = sum((q) => q.twoHourFee);
+  const total = sum((q) => q.total);
+  // Distances/bands differ per shop; report the worst case to the customer.
+  const distances = perGroup.map((q) => q.distanceKm).filter((d): d is number => d !== null);
+  const distanceKm = distances.length ? Math.max(...distances) : null;
+  const days = perGroup.reduce((d, q) => Math.max(d, q.days), 0);
+  const redOrder = perGroup.some((q) => q.redOrder);
+  const longDistance = perGroup.some((q) => q.longDistance);
+  const addForFree = sum((q) => q.addForFree);
+  const freeAbove = perGroup[0]?.freeAbove ?? 0;
+  const minOrder = perGroup.reduce((m, q) => Math.max(m, q.minOrder), 0);
+  const meetsMinOrder = perGroup.every((q) => q.meetsMinOrder);
+  const baseDeliveryFee = sum((q) => q.baseDeliveryFee);
+
   // Two separate reasons COD can be off: something in the basket, or the
   // customer being past the last distance band. Distance is reported first,
   // since it is the one they cannot fix by editing their cart.
+  const distanceCodAllowed = perGroup.every((q) => q.codAllowed);
   const productsAllowCod = groups.every((g) =>
     g.lines.every((l) => productRules(l.product.category, l.product.paymentMode).codAvailable),
   );
-  const codAllowed = quote.codAllowed && productsAllowCod;
-  const message = !quote.codAllowed ? longDistanceCodMessage() : productsAllowCod ? undefined : codMessage();
+  const codAllowed = distanceCodAllowed && productsAllowCod;
+  const message = !distanceCodAllowed ? longDistanceCodMessage() : productsAllowCod ? undefined : codMessage();
   // #36: what each way to pay would add to this bill, so checkout can show it next to the option.
-  const paymentFees = Object.fromEntries(paymentOptions(settings).map((o) => [o.key, paymentFee(settings, o.key, quote.total)]));
-  return { ...quote, codAllowed, paymentFees, ...(message ? { codMessage: message } : {}) };
+  const paymentFees = Object.fromEntries(paymentOptions(settings).map((o) => [o.key, paymentFee(settings, o.key, total)]));
+  return {
+    distanceKm,
+    subtotal,
+    minOrder,
+    meetsMinOrder,
+    handlingFee,
+    baseDeliveryFee,
+    deliveryFee,
+    freeAbove,
+    addForFree,
+    twoHourFee,
+    days,
+    redOrder,
+    longDistance,
+    codAllowed,
+    total,
+    paymentFees,
+    ...(message ? { codMessage: message } : {}),
+    // Per-shop breakdown so multi-shop checkout can show each store's fees.
+    groups: perGroup,
+  };
 }
 
 /**

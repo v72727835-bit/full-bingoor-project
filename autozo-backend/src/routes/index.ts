@@ -47,8 +47,12 @@ router.post('/devices', protect, validate({ body: v.deviceBody }), device.regist
 router.delete('/devices', protect, validate({ body: v.deviceDeleteBody }), device.removeDevice);
 router.post('/auth/change-password', ...customerOnly, validate({ body: v.changePasswordBody }), auth.changePassword);
 
-/* ============ Webhooks (no login; verified by re-fetching from the provider) ============ */
+/* ============ Webhooks (no login; verified by signature or by re-fetching from the provider) ============ */
 router.post('/webhooks/razorpayx', extra.razorpayxWebhook);
+// Razorpay payment webhook: places (or refunds) the order even if the client
+// never calls /orders/online/confirm. Verified by HMAC signature on the raw body.
+router.post('/orders/online/webhook', orders.razorpayWebhook);
+router.post('/webhooks/razorpay', orders.razorpayWebhook);
 
 /* ============ Public catalog (no login needed) ============ */
 router.get('/home', catalogCache, validate({ query: v.homeQuery }), catalog.home);

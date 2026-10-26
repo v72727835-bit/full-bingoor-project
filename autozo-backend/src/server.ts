@@ -1,15 +1,14 @@
 import app from './app';
 import { connectDB, disconnectDB } from './config/db';
 import { env } from './config/env';
-import { Product } from './models/Product';
 
 async function main() {
   await connectDB();
+  // Note: the legacy sortCode backfill is a one-off migration, not a per-boot
+  // job (it scanned every product on each restart and delayed health checks).
+  // Run it with `npm run migrate:sort-code` when needed (ISSUE-09).
   const server = app.listen(env.PORT, () => {
     console.log(`Autozo API running on http://localhost:${env.PORT} (${env.NODE_ENV})`);
-    // Legacy backfill must not block Passenger startup or the health route.
-    void Product.updateMany({ sortCode: { $exists: false } }, { $set: { sortCode: 1_000_000 } })
-      .catch((error) => console.error('Product sort-code backfill failed:', error));
   });
 
   const shutdown = async (signal: string) => {
