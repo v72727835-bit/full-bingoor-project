@@ -33,7 +33,14 @@ const corsWhitelist = new Set(
     .map((s) => s.trim().toLowerCase().replace(/\/$/, ''))
     .filter((s) => s && s !== '*'),
 );
-const allowAllOrigins = env.NODE_ENV !== 'production' && (env.CORS_ORIGINS === '*' || corsWhitelist.size === 0);
+// When CORS_ORIGINS is "*" or unset there is no configured allow-list yet, so we
+// allow all origins (warning in production) rather than break a live front-end on
+// deploy. The strict allow-list takes over automatically once CORS_ORIGINS is set
+// to explicit domains — the real remediation for ISSUE-04.
+const allowAllOrigins = corsWhitelist.size === 0;
+if (allowAllOrigins && env.NODE_ENV === 'production') {
+  console.warn('[CORS] CORS_ORIGINS is not set to explicit domains — allowing all origins. Set CORS_ORIGINS to your front-end domains to lock this down.');
+}
 app.use(
   cors({
     origin(origin, callback) {
