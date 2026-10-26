@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { fetchMe, loginRequest, logoutRequest, registerRequest, RegisterInput, socialLoginRequest } from '../api/auth';
 import { unregisterPush } from '../firebase/push';
-import { setAccessToken, setSessionExpiredHandler } from '../api/client';
+import { isNetworkError, setAccessToken, setSessionExpiredHandler } from '../api/client';
 import { setDeliveryPoint, syncPointFromAddresses } from '../store/deliveryPoint';
 import { localStore, tokenStore } from '../storage/tokens';
 import { User } from '../types';
@@ -37,7 +37,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    setSessionExpiredHandler(() => setUser(null));
+    // A genuine auth failure clears the saved profile too; a network blip must not.
+    setSessionExpiredHandler(() => {
+      setUser(null);
+      void localStore.setUser(null);
+    });
 
     (async () => {
       try {
@@ -47,9 +51,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccessToken(access);
         const me = await fetchMe();
         if (!cancelled) setUser(me);
-      } catch {
-        // Offline or session gone - user simply sees the login screen
-        setAccessToken(null);
+        void localStore.setUser(JSON.stringify(me));
+      } catch (err) {
+        // F-05: don't discard a valid session on a transient network error /
+        // backend cold start. Only a real auth failure (handled by the API
+        // client's 401 path, which clears the tokens) should log the user out.
+        // On a network error, keep the stored tokens and restore the last known
+        // profile so the customer stays signed in; a later request refreshes it.
+        if (isNetworkError(err)) {
+          const cached = await localStore.getUser();
+          if (!cancelled && cached) {
+            try {
+              setUser(JSON.parse(cached) as User);
+            } catch {
+              /* ignore a corrupt cache */
+            }
+          }
+        } else {
+          setAccessToken(null);
+        }
       } finally {
         if (!cancelled) setInitializing(false);
       }
@@ -61,20 +81,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Keep the on-device profile cache in step with context (used for offline restore).
+  const rememberUser = useCallback((next: User) => {
+    setUser(next);
+    void localStore.setUser(JSON.stringify(next));
+  }, []);
+
   const signIn = useCallback(async (identifier: string, password: string, firebaseIdToken?: string) => {
     const result = await loginRequest(identifier, password, firebaseIdToken);
     await tokenStore.save(result.accessToken, result.refreshToken);
     setAccessToken(result.accessToken);
-    setUser(result.user);
-  }, []);
+    rememberUser(result.user);
+  }, [rememberUser]);
 
   const signUp = useCallback(async (input: RegisterInput) => {
     const result = await registerRequest(input);
     await tokenStore.save(result.accessToken, result.refreshToken);
     setAccessToken(result.accessToken);
     setWelcome({ phone: input.phone, password: input.password });
-    setUser(result.user);
-  }, []);
+    rememberUser(result.user);
+  }, [rememberUser]);
 
   const dismissWelcome = useCallback(() => setWelcome(null), []);
 
@@ -82,8 +108,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await socialLoginRequest(provider, accessToken);
     await tokenStore.save(result.accessToken, result.refreshToken);
     setAccessToken(result.accessToken);
-    setUser(result.user);
-  }, []);
+    rememberUser(result.user);
+  }, [rememberUser]);
 
   const signOut = useCallback(async () => {
     await unregisterPush();
@@ -93,11 +119,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       /* server unreachable - still log out locally */
     }
     await tokenStore.clear();
+    await localStore.setUser(null);
     setAccessToken(null);
     setUser(null);
   }, []);
 
-  const applyUser = useCallback((next: User) => setUser(next), []);
+  const applyUser = useCallback((next: User) => rememberUser(next), [rememberUser]);
 
   const browseAsGuest = useCallback(() => {
     setGuest(true);
@@ -112,11 +139,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      setUser(await fetchMe());
+      rememberUser(await fetchMe());
     } catch {
       /* keep the cached profile if the refresh fails */
     }
-  }, []);
+  }, [rememberUser]);
 
   const value = useMemo(
     () => ({ user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signOut, applyUser, refreshUser, guest, browseAsGuest }),
