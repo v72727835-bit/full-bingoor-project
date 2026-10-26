@@ -62,7 +62,7 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -95,7 +95,9 @@ android {
         }
         versionCode 2
         versionName "1.1"
-        manifestPlaceholders = [MAPS_API_KEY: project.findProperty("MAPS_API_KEY") ?: ""]
+        // Cleartext HTTP is off by default (release); the debug build type turns it
+        // back on below so a local http://10.0.2.2 backend still works.
+        manifestPlaceholders = [MAPS_API_KEY: project.findProperty("MAPS_API_KEY") ?: "", usesCleartextTraffic: "false"]
     }
     externalNativeBuild {
         cmake {
@@ -110,16 +112,33 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Production signing. Provide these via gradle.properties or (preferably)
+        // CI/CD env vars (ORG_GRADLE_PROJECT_RELEASE_STORE_FILE, ...). When they
+        // are not set, the release build falls back to the debug keystore below
+        // with a loud warning, so local/dev release builds still work but a real
+        // Play Store build must supply a proper keystore (rider audit Issue 1).
+        release {
+            if (project.hasProperty('RELEASE_STORE_FILE')) {
+                storeFile file(project.property('RELEASE_STORE_FILE'))
+                storePassword project.property('RELEASE_STORE_PASSWORD')
+                keyAlias project.property('RELEASE_KEY_ALIAS')
+                keyPassword project.property('RELEASE_KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            manifestPlaceholders = [MAPS_API_KEY: project.findProperty("MAPS_API_KEY") ?: "", usesCleartextTraffic: "true"]
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            def hasReleaseKeystore = project.hasProperty('RELEASE_STORE_FILE')
+            if (!hasReleaseKeystore) {
+                logger.warn("WARNING: no RELEASE_STORE_FILE set — signing the release build with the DEBUG keystore. Do NOT publish this APK to Google Play. See https://reactnative.dev/docs/signed-apk-android")
+            }
+            signingConfig hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }

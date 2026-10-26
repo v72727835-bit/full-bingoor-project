@@ -1,10 +1,11 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { fetchRiderProfile } from '../api/rider';
 import { useAuth } from '../context/AuthContext';
+import { useForegroundPoll } from '../utils/useForegroundPoll';
 import { RiderProfile } from '../types';
 import { colors, radius, shadow } from '../theme';
 import { CrossFade } from '../components/anim';
@@ -36,7 +37,7 @@ export default function RiderHome() {
   const [bellOpen, setBellOpen] = useState(false);
 
   const loadProfile = useCallback(() => { fetchRiderProfile().then(setProfile).catch(() => undefined); }, []);
-  useEffect(() => { loadProfile(); const t = setInterval(loadProfile, 30000); return () => clearInterval(t); }, [loadProfile]);
+  useForegroundPoll(loadProfile, 30000);
   const notices = profile?.notices ?? [];
 
   const hour = new Date().getHours();

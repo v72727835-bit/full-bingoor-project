@@ -9,6 +9,7 @@ import { getErrorMessage } from '../api/client';
 import { Button } from '../components/Button';
 import { ErrorBanner } from '../components/AuthLayout';
 import { RiderOrder, RiderProfile } from '../types';
+import { useForegroundPoll } from '../utils/useForegroundPoll';
 import { colors, radius, shadow } from '../theme';
 
 
@@ -49,14 +50,16 @@ export default function OrdersScreen() {
     catch (err) { setError(getErrorMessage(err)); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
-  // Every 10 s so a new pickup reaches the rider quickly.
-  useEffect(() => { load(); const timer = setInterval(() => load(true), 10000); return () => clearInterval(timer); }, [load]);
+  // Every 10 s (while the app is open) so a new pickup reaches the rider quickly.
+  const pollOrders = useCallback(() => { void load(true); }, [load]);
+  useForegroundPoll(pollOrders, 10000);
 
   // Cash in hand, the counts and the bell messages, refreshed alongside.
   const loadProfile = useCallback(async () => {
     try { setProfile(await fetchRiderProfile()); } catch { /* keep the last figures */ }
   }, []);
-  useEffect(() => { void loadProfile(); const timer = setInterval(loadProfile, 30000); return () => clearInterval(timer); }, [loadProfile]);
+  const pollProfile = useCallback(() => { void loadProfile(); }, [loadProfile]);
+  useForegroundPoll(pollProfile, 30000);
 
   const visible = useMemo(() => orders.filter((o) => tab === 'available' ? isNew(o) : tab === 'active' ? o.status === 'out_for_delivery' : o.status === 'delivered'), [orders, tab]);  const activeOrder = orders.find((order) => order.status === 'out_for_delivery');
   const carrying = !!activeOrder;
