@@ -79,7 +79,6 @@ export const stats = asyncHandler(async (req, res) => {
     lowStockList,
     recentCustomers,
     todayAgg,
-    yesterdayAgg,
   ] = await Promise.all([
     Product.countDocuments({}),
     Product.countDocuments({ isActive: true }),
@@ -136,7 +135,6 @@ export const stats = asyncHandler(async (req, res) => {
         },
       },
     ]),
-    Promise.resolve(null),
   ]);
 
   const statusCounts: Record<string, number> = {};
@@ -176,7 +174,6 @@ export const stats = asyncHandler(async (req, res) => {
   const yKey = istDayKey(new Date(Date.now() - 86_400_000));
   const today = todayMap.get(todayKey) ?? { orders: 0, revenue: 0 };
   const yesterday = todayMap.get(yKey) ?? { orders: 0, revenue: 0 };
-  void yesterdayAgg;
 
   ok(res, {
     products: { total: productCount, active: activeProductCount, lowStock: lowStockCount },

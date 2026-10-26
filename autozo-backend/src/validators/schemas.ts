@@ -328,14 +328,14 @@ export const adminOrdersQuery = pagination.extend({
 });
 
 export const adminUsersQuery = pagination.extend({
-  role: z.enum(['customer', 'rider', 'shop', 'admin']).optional(),
+  role: z.enum(['customer', 'rider', 'shop', 'admin', 'seller']).optional(),
   q: z.string().trim().max(60).optional(),
 });
 
 export const adminUserUpdateBody = z
   .object({
     isActive: z.boolean(),
-    role: z.enum(['customer', 'rider', 'shop', 'admin']),
+    role: z.enum(['customer', 'rider', 'shop', 'admin', 'seller']),
     warehouse: objectId.nullable(),
     warehouses: z.array(objectId).min(1, 'Choose at least one warehouse').max(30),
     name: z.string().trim().min(2).max(80),

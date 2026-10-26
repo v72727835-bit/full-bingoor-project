@@ -204,5 +204,12 @@ const orderSchema = new Schema<IOrder>(
 );
 
 orderSchema.index({ user: 1, createdAt: -1 });
+// ISSUE-08: POST /rider/location runs updateMany({ rider, status }) on every
+// heartbeat; without this index each heartbeat is a full collection scan.
+orderSchema.index({ rider: 1, status: 1 });
+// Seller/warehouse order lists and the admin order feed filter by shop/status
+// and sort by newest.
+orderSchema.index({ shop: 1, status: 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
 
 export const Order = model<IOrder>('Order', orderSchema);

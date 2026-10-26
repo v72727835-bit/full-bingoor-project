@@ -1,6 +1,6 @@
 import { notifyOrderPlaced, notifyOrderStatus } from '../services/orderNotify.service';
 import crypto from 'crypto';
-import { FilterQuery, Types } from 'mongoose';
+import mongoose, { ClientSession, FilterQuery, HydratedDocument, Types } from 'mongoose';
 import { Cart, MAX_QTY_PER_ITEM } from '../models/Cart';
 import { CUSTOMER_CANCELLABLE, IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
@@ -16,6 +16,17 @@ import { haversineKm, round2 } from '../utils/helpers';
 import { created, ok, pageMeta } from '../utils/response';
 
 const ACTIVE_STATUSES = ['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery'];
+
+/** True when an error means the MongoDB deployment does not support transactions (standalone). */
+function transactionsUnsupported(err: unknown): boolean {
+  const e = err as { code?: number; codeName?: string; message?: string };
+  const msg = e?.message ?? '';
+  return (
+    e?.code === 20 ||
+    e?.codeName === 'IllegalOperation' ||
+    /Transaction numbers are only allowed on a replica set|Transactions are not supported|requires a replica set|replica set\/mongos|this deployment does not support/i.test(msg)
+  );
+}
 
 function newOrderNumber(): string {
   const d = new Date();
@@ -122,110 +133,137 @@ async function runPlaceOrder(
   const tip = Math.max(0, Math.round(body.tip ?? 0));
   if (opts.quote) return { grandTotal: round2(owed + round2((owed * feePct) / 100) + tip) };
 
-  /* ---- reserve stock atomically (rolled back on any failure) ---- */
-  const reserved: { product: Types.ObjectId; quantity: number }[] = [];
-  const createdOrders: Types.ObjectId[] = [];
+  /* ---- build the order documents (pure computation, no writes yet) ---- */
   const checkoutId = crypto.randomUUID();
+  const reservations = groups.flatMap((g) =>
+    g.lines.map((l) => ({ product: l.product._id, quantity: l.quantity, name: l.product.name })),
+  );
+  const orderDocs = groups.map((g, idx) => {
+    const items = g.lines.map((l) => ({
+      product: l.product._id,
+      name: l.product.name,
+      image: l.product.images[0],
+      icon: l.product.icon,
+      unit: l.product.unit,
+      price: l.product.price,
+      mrp: l.product.mrp,
+      quantity: l.quantity,
+      lineTotal: round2(l.product.price * l.quantity),
+      ...(l.product.hsn ? { hsn: l.product.hsn } : {}),
+      ...(l.product.gstRate !== undefined && l.product.gstRate !== null ? { gstRate: l.product.gstRate } : {}),
+      ...(l.product.seller ? { seller: l.product.seller } : {}),
+    }));
+    const sellerIds = [...new Set(items.filter((i) => i.seller).map((i) => String(i.seller)))];
+    const subtotal = round2(items.reduce((s, i) => s + i.lineTotal, 0));
+    const quote = quoteDelivery(settings, { subtotal, distanceKm: distanceTo(g.shop, address.location), slot });
+    const deliveryFee = quote.deliveryFee + quote.twoHourFee;
+    const payFee = round2(((subtotal + deliveryFee + quote.handlingFee) * feePct) / 100);
+    // The tip rides on the first order of the checkout only.
+    const orderTip = idx === 0 ? tip : 0;
+    const days = Math.max(quote.days, ...g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0));
+    return {
+      orderNumber: newOrderNumber(),
+      checkoutId,
+      user: userId,
+      shop: g.shop._id,
+      ...(days ? { deliveryDays: days } : {}),
+      slot,
+      handlingFee: quote.handlingFee,
+      redOrder: quote.redOrder,
+      longDistance: quote.longDistance,
+      ...(sellerIds.length ? { sellerIds } : {}),
+      ...(quote.distanceKm !== null ? { distanceKm: quote.distanceKm } : {}),
+      items,
+      address: {
+        name: address.name,
+        phone: address.phone,
+        line1: address.line1,
+        line2: address.line2,
+        landmark: address.landmark,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        location: address.location,
+      },
+      paymentMethod,
+      payOption,
+      paymentFee: payFee,
+      tip: orderTip,
+      // Online orders are only created after the gateway confirmed the payment.
+      paymentStatus: opts.paid ? 'paid' : 'pending',
+      ...(opts.paid ? { paymentRef: opts.paid.ref } : {}),
+      status: 'placed',
+      statusHistory: [{ status: 'placed', at: new Date() }],
+      subtotal,
+      deliveryFee,
+      discount: 0,
+      total: round2(subtotal + deliveryFee + quote.handlingFee + payFee + orderTip),
+      note,
+      deliveryOtp: String(crypto.randomInt(1000, 10000)),
+    };
+  });
 
-  try {
-    for (const g of groups) {
-      for (const l of g.lines) {
-        const r = await Product.updateOne(
-          { _id: l.product._id, isActive: true, stock: { $gte: l.quantity } },
-          { $inc: { stock: -l.quantity, soldCount: l.quantity } },
+  /**
+   * ISSUE-06: reserve stock, create the orders and clear the cart as one unit.
+   * On a replica set (e.g. Atlas) this runs inside a real ACID transaction, so a
+   * crash or error mid-way leaves nothing half-done. On a standalone MongoDB
+   * (which does not support transactions) we fall back to the previous approach:
+   * atomic per-product decrements with an explicit compensation that restores
+   * stock and deletes any created orders if a later step fails.
+   */
+  const place = async (session?: ClientSession) => {
+    const reserved: { product: Types.ObjectId; quantity: number }[] = [];
+    let created: HydratedDocument<IOrder>[] = [];
+    try {
+      for (const r of reservations) {
+        const upd = await Product.updateOne(
+          { _id: r.product, isActive: true, stock: { $gte: r.quantity } },
+          { $inc: { stock: -r.quantity, soldCount: r.quantity } },
+          session ? { session } : {},
         );
-        if (r.modifiedCount !== 1) {
-          throw new ApiError(409, `"${l.product.name}" just went out of stock`, [
-            { productId: String(l.product._id), name: l.product.name, reason: 'out_of_stock' },
+        if (upd.modifiedCount !== 1) {
+          throw new ApiError(409, `"${r.name}" just went out of stock`, [
+            { productId: String(r.product), name: r.name, reason: 'out_of_stock' },
           ]);
         }
-        reserved.push({ product: l.product._id, quantity: l.quantity });
+        reserved.push({ product: r.product, quantity: r.quantity });
       }
+      created = await Order.create(orderDocs, session ? { session } : {});
+      await Cart.updateOne({ user: userId }, { $set: { items: [] } }, session ? { session } : {});
+      return created;
+    } catch (err) {
+      // Inside a transaction the abort rolls everything back, so only the
+      // standalone (no-session) path needs manual compensation.
+      if (!session) {
+        if (created.length) await Order.deleteMany({ _id: { $in: created.map((o) => o._id) } });
+        if (reserved.length) await restoreStock(reserved);
+      }
+      throw err;
     }
+  };
 
-    const orders = [];
-    for (const g of groups) {
-      const items = g.lines.map((l) => ({
-        product: l.product._id,
-        name: l.product.name,
-        image: l.product.images[0],
-        icon: l.product.icon,
-        unit: l.product.unit,
-        price: l.product.price,
-        mrp: l.product.mrp,
-        quantity: l.quantity,
-        lineTotal: round2(l.product.price * l.quantity),
-        ...(l.product.hsn ? { hsn: l.product.hsn } : {}),
-        ...(l.product.gstRate !== undefined && l.product.gstRate !== null ? { gstRate: l.product.gstRate } : {}),
-        ...(l.product.seller ? { seller: l.product.seller } : {}),
-      }));
-      const sellerIds = [...new Set(items.filter((i) => i.seller).map((i) => String(i.seller)))];
-      const subtotal = round2(items.reduce((s, i) => s + i.lineTotal, 0));
-      const quote = quoteDelivery(settings, { subtotal, distanceKm: distanceTo(g.shop, address.location), slot });
-      const deliveryFee = quote.deliveryFee + quote.twoHourFee;
-      const payFee = round2(((subtotal + deliveryFee + quote.handlingFee) * feePct) / 100);
-      // The tip rides on the first order of the checkout only.
-      const orderTip: number = createdOrders.length === 0 ? tip : 0;
-      const days = Math.max(quote.days, ...g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0));
-
-      const order = await Order.create({
-        orderNumber: newOrderNumber(),
-        checkoutId,
-        user: userId,
-        shop: g.shop._id,
-        ...(days ? { deliveryDays: days } : {}),
-        slot,
-        handlingFee: quote.handlingFee,
-        redOrder: quote.redOrder,
-        longDistance: quote.longDistance,
-        ...(sellerIds.length ? { sellerIds } : {}),
-        ...(quote.distanceKm !== null ? { distanceKm: quote.distanceKm } : {}),
-        items,
-        address: {
-          name: address.name,
-          phone: address.phone,
-          line1: address.line1,
-          line2: address.line2,
-          landmark: address.landmark,
-          city: address.city,
-          state: address.state,
-          pincode: address.pincode,
-          location: address.location,
-        },
-        paymentMethod,
-        payOption,
-        paymentFee: payFee,
-        tip: orderTip,
-        // Online orders are only created after the gateway confirmed the payment.
-        paymentStatus: opts.paid ? 'paid' : 'pending',
-        ...(opts.paid ? { paymentRef: opts.paid.ref } : {}),
-        status: 'placed',
-        statusHistory: [{ status: 'placed', at: new Date() }],
-        subtotal,
-        deliveryFee,
-        discount: 0,
-        total: round2(subtotal + deliveryFee + quote.handlingFee + payFee + orderTip),
-        note,
-        deliveryOtp: String(crypto.randomInt(1000, 10000)),
-      });
-      createdOrders.push(order._id);
-      orders.push(order);
-    }
-
-    await Cart.updateOne({ user: userId }, { $set: { items: [] } });
-    if (!opts.quote) for (const o of orders) notifyOrderPlaced(o, !!opts.paid);
-
-    return {
-      checkoutId,
-      orders: orders.map((o) => presentOrder(o.toObject())),
-      grandTotal: round2(orders.reduce((s, o) => s + o.total, 0)),
-    };
+  let orders: HydratedDocument<IOrder>[] | undefined;
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      orders = await place(session);
+    });
   } catch (err) {
-    // Undo partial work so the customer's cart and shop stock stay consistent
-    if (createdOrders.length) await Order.deleteMany({ _id: { $in: createdOrders } });
-    if (reserved.length) await restoreStock(reserved);
-    throw err;
+    if (!transactionsUnsupported(err)) throw err;
+    // Standalone MongoDB: run without a transaction (manual compensation).
+    orders = await place();
+  } finally {
+    await session.endSession();
   }
+  const placed = orders!;
+
+  if (!opts.quote) for (const o of placed) notifyOrderPlaced(o, !!opts.paid);
+
+  return {
+    checkoutId,
+    orders: placed.map((o) => presentOrder(o.toObject())),
+    grandTotal: round2(placed.reduce((s, o) => s + o.total, 0)),
+  };
 }
 
 export const placeOrder = asyncHandler(async (req, res) => {

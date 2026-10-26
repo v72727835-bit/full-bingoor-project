@@ -19,6 +19,26 @@ const MAX_BYTES = 32 * 1024 * 1024;
 let bytes = 0;
 let generation = 0;
 
+// ISSUE-11: only these query params affect a catalogue response. Keying the
+// cache on the raw URL let an attacker (or a buggy client) fill the 1,000-entry
+// cache with "?x=1", "?x=2"… and evict real entries. We build the key from the
+// path plus the whitelisted params, sorted, so junk params collapse to one key.
+const CACHE_PARAMS = new Set([
+  'q', 'category', 'shop', 'brand', 'minPrice', 'maxPrice', 'inStock', 'minRating',
+  'minDiscount', 'foodType', 'lat', 'lng', 'radiusKm', 'isOpen', 'page', 'limit',
+  'sort', 'parent', 'level', 'all', 'slug',
+]);
+
+function cacheKey(req: { path: string; query: Record<string, unknown> }): string {
+  const parts: string[] = [];
+  for (const name of [...Object.keys(req.query)].sort()) {
+    if (!CACHE_PARAMS.has(name)) continue;
+    const value = req.query[name];
+    parts.push(`${name}=${Array.isArray(value) ? value.join(',') : String(value)}`);
+  }
+  return parts.length ? `${req.path}?${parts.join('&')}` : req.path;
+}
+
 type Entry = { expires: number; status: number; body: unknown; bytes: number };
 const store = new Map<string, Entry>();
 const pending = new Map<string, Set<Response>>();
@@ -36,7 +56,7 @@ export const catalogCache: RequestHandler = (req, res, next) => {
 
   res.set('Cache-Control', 'no-store');
 
-  const key = req.originalUrl;
+  const key = cacheKey(req);
   const hit = store.get(key);
   if (hit && hit.expires > Date.now()) {
     res.set('Cache-Control', `public, max-age=${TTL_MS / 1000}, stale-while-revalidate=300`);
