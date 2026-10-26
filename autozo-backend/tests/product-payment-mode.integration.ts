@@ -56,13 +56,16 @@ test('product COD / online / both modes control cart, quotes and checkout at nea
         assert.equal(item.onlineAvailable, mode !== 'cod');
         const quote = await request(`/cart/quote?addressId=${address._id}&slot=nextDay`);
         assert.equal(quote.body.data.longDistance, i === 1);
-        assert.equal(quote.body.data.codAllowed, mode !== 'online');
-        if (mode !== 'online') assert.equal(quote.body.data.codMessage, undefined);
+        // COD is off for an online-only product AND beyond the last distance band
+        // (i === 1 here is past every band, so long-distance COD is refused).
+        const codAllowed = mode !== 'online' && i !== 1;
+        assert.equal(quote.body.data.codAllowed, codAllowed);
+        assert.equal(quote.body.data.codMessage === undefined, i === 0 && mode !== 'online');
         const cod = await request('/orders', { addressId: String(address._id), paymentMethod: 'cod', slot: 'nextDay' });
-        assert.equal(cod.status, mode === 'online' ? 409 : 201, JSON.stringify(cod.body));
-        if (mode !== 'online') {
+        assert.equal(cod.status, codAllowed ? 201 : 409, JSON.stringify(cod.body));
+        if (codAllowed) {
           assert.equal(cod.body.data.orders[0].paymentMethod, 'cod');
-          assert.equal(cod.body.data.orders[0].longDistance, i === 1);
+          assert.equal(cod.body.data.orders[0].longDistance, false);
         } else assert.equal(cod.body.details[0].reason, 'cod_unavailable');
         await fillCart();
         const callsBefore = gatewayCalls;
@@ -75,8 +78,10 @@ test('product COD / online / both modes control cart, quotes and checkout at nea
       }
     }
     assert.equal(productRules(category._id).codAvailable, false, 'legacy products still inherit category defaults');
-    assert.equal(await Order.countDocuments(), 4);
-    assert.equal((await Product.findById(product._id))?.stock, 60, 'only successful COD orders reserve stock');
+    // COD orders succeed only for cod/both products at the near address (the far
+    // address is past the last band, so long-distance COD is refused): 2 orders.
+    assert.equal(await Order.countDocuments(), 2);
+    assert.equal((await Product.findById(product._id))?.stock, 80, 'only successful COD orders reserve stock');
   } finally {
     mock.restoreAll();
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

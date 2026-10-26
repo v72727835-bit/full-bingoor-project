@@ -123,6 +123,12 @@ async function runPlaceOrder(
     const km = distanceTo(g.shop, address.location);
     const quote = quoteDelivery(settings, { subtotal, distanceKm: km, slot });
     if (!quote.meetsMinOrder) problems.push({ shop: g.shop.name, reason: `min_order_${quote.minOrder}` });
+    // Beyond the last distance band COD is refused (too far to send a rider out
+    // with cash). The /cart/quote already reports this; enforce it at checkout
+    // too so a client can't place a COD order the quote said was unavailable.
+    if (paymentMethod === 'cod' && !quote.codAllowed) {
+      problems.push({ shop: g.shop.name, reason: 'cod_unavailable' });
+    }
     owed += subtotal + quote.deliveryFee + quote.twoHourFee + quote.handlingFee;
   }
   // #36: the chosen way to pay can carry a charge (a percent of the whole bill).

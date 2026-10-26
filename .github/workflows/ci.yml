@@ -35,9 +35,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
-      # Integration tests (tests/*.integration.ts) spin up mongodb-memory-server
-      # and are run locally; enable here once the pre-existing product-payment-mode
-      # codAllowed expectation is resolved.
+      # Integration tests spin up mongodb-memory-server (downloads a mongod binary).
+      - run: npm run test:integration
 
   customer-app:
     name: Customer app (blinkit-app-) typecheck
