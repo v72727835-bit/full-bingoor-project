@@ -1,0 +1,74 @@
+name: CI
+
+# Runs on every pull request and every push to main. GitHub only executes
+# workflows from the repository root, so this is the single source of CI for the
+# monorepo (the per-folder .github/workflows are leftovers from when each app was
+# its own repo and never run here).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (typecheck, build, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: autozo-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: autozo-backend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      # Integration tests (tests/*.integration.ts) spin up mongodb-memory-server
+      # and are run locally; enable here once the pre-existing product-payment-mode
+      # codAllowed expectation is resolved.
+
+  customer-app:
+    name: Customer app (blinkit-app-) typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: blinkit-app-
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: blinkit-app-/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+
+  rider-app:
+    name: Rider app (autozo-mobile) typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: autozo-backend/autozo-mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: autozo-backend/autozo-mobile/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
