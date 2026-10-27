@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { createSeller, fetchSellers, fetchShops, setSellerActive } from '../api/admin';
+import { createSeller, fetchSellers, fetchAllShops, setSellerActive } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { Badge, Button, CenterSpinner, ErrorBanner, Field, Modal, Pagination, formatDate } from '../components/ui';
 import { SellerRow, Shop } from '../types';
@@ -176,10 +176,11 @@ function NewSellerModal({ onClose, onMade }: { onClose: () => void; onMade: (m: 
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchShops({ page: 1, limit: 200 })
-      .then((r) => {
-        setShops(r.items);
-        if (r.items.length === 1) setWarehouses([r.items[0]._id]);
+    // Load every warehouse (the paginated endpoint caps at 50 per page).
+    fetchAllShops()
+      .then((items) => {
+        setShops(items);
+        if (items.length === 1) setWarehouses([items[0]._id]);
       })
       .catch((e) => setError(getErrorMessage(e)));
   }, []);

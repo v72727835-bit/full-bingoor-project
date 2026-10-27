@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from '../navigation';
-import { createCoupon, deleteCoupon, fetchCoupons, fetchShops, updateCoupon } from '../api/admin';
+import { createCoupon, deleteCoupon, fetchCoupons, fetchAllShops, updateCoupon } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { IconPlus, IconTag } from '../components/icons';
 import { Badge, Button, CenterSpinner, ErrorBanner, Field, Modal, Pagination, Tone, money } from '../components/ui';
@@ -29,8 +29,8 @@ export default function OffersPage() {
   const [shops, setShops] = useState<Shop[]>([]);
 
   useEffect(() => {
-    fetchShops({ page: 1, limit: 100 })
-      .then(({ items }) => setShops(items))
+    fetchAllShops()
+      .then((items) => setShops(items))
       .catch(() => undefined);
   }, []);
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchProducts, fetchShops, updateProduct } from '../api/admin';
+import { fetchProducts, fetchAllShops, updateProduct } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { IconAlert, IconBox, IconCheck } from '../components/icons';
 import {
@@ -35,8 +35,8 @@ export default function InventoryPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchShops({ page: 1, limit: 100 })
-      .then(({ items }) => setShops(items))
+    fetchAllShops()
+      .then((items) => setShops(items))
       .catch(() => undefined);
   }, []);
 
