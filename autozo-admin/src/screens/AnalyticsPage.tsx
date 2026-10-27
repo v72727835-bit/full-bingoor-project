@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { fetchCategories, fetchProducts, fetchShops } from '../api/admin';
+import { fetchCategories, fetchProducts, fetchAllShops } from '../api/admin';
 import { IconBox, IconChart, IconReceipt, IconRupee, IconStore } from '../components/icons';
 import {
   Card,
@@ -37,11 +37,11 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     Promise.allSettled([
-      fetchShops({ page: 1, limit: 100 }),
+      fetchAllShops(),
       fetchCategories(),
-      fetchProducts({ page: 1, limit: 100 }),
+      fetchProducts({ page: 1, limit: 50 }),
     ]).then(([s, c, p]) => {
-      if (s.status === 'fulfilled') setShops(s.value.items);
+      if (s.status === 'fulfilled') setShops(s.value);
       if (c.status === 'fulfilled') setCategories(c.value);
       if (p.status === 'fulfilled') setRecent(p.value.items);
     });

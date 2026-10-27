@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from '../navigation';
 import AssignRider from '../components/AssignRider';
 import RiderCell from '../components/RiderCell';
-import { adminAssignRider, adminAssignShiprocket, adminFreeRiders, adminInvoiceLink, fetchOrder, fetchOrders, fetchShops, refundOrder, updateOrderStatus } from '../api/admin';
+import { adminAssignRider, adminAssignShiprocket, adminFreeRiders, adminInvoiceLink, fetchOrder, fetchOrders, fetchAllShops, refundOrder, updateOrderStatus } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { playChime } from '../lib/alerts';
 import { openBill } from '../lib/invoice';
@@ -90,8 +90,8 @@ export default function OrdersPage() {
   const knownIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
-    fetchShops({ page: 1, limit: 100 })
-      .then(({ items }) => setShops(items))
+    fetchAllShops()
+      .then((items) => setShops(items))
       .catch(() => undefined);
   }, []);
 
