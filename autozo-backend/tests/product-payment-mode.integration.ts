@@ -66,7 +66,10 @@ test('product COD / online / both modes control cart, quotes and checkout at nea
         if (codAllowed) {
           assert.equal(cod.body.data.orders[0].paymentMethod, 'cod');
           assert.equal(cod.body.data.orders[0].longDistance, false);
-        } else assert.equal(cod.body.details[0].reason, 'cod_unavailable');
+        } else {
+          // An online-only product refuses COD itself; otherwise the refusal is the long-distance rule.
+          assert.equal(cod.body.details[0].reason, mode === 'online' ? 'cod_unavailable' : 'cod_long_distance');
+        }
         await fillCart();
         const callsBefore = gatewayCalls;
         const online = await request('/orders', { addressId: String(address._id), paymentMethod: 'online', slot: 'nextDay' });

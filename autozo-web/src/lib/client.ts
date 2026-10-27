@@ -127,6 +127,7 @@ function explainProblem(p: Problem): string {
   if (reason === 'cod_unavailable') return `Cash on delivery is not available for ${item} - choose Pay online or remove it`;
   if (reason === 'online_unavailable') return `Online payment is not available for ${item} - choose Cash on Delivery or remove it`;
   if (reason === 'cod_long_distance') return `${shop} is far from your address, so cash on delivery is not available - choose Pay online`;
+  if (reason.startsWith('pay_option_off_')) return 'That way of paying is switched off right now - please choose another';
   const min = /^min_order_(\d+(?:\.\d+)?)$/.exec(reason);
   if (min) return `${shop} needs a minimum order of ₹${min[1]}`;
   const range = /^out_of_delivery_range_(\d+(?:\.\d+)?)km$/.exec(reason);

@@ -127,7 +127,9 @@ async function runPlaceOrder(
     // with cash). The /cart/quote already reports this; enforce it at checkout
     // too so a client can't place a COD order the quote said was unavailable.
     if (paymentMethod === 'cod' && !quote.codAllowed) {
-      problems.push({ shop: g.shop.name, reason: 'cod_unavailable' });
+      // `cod_long_distance` is the reason the web and the customer app already
+      // translate into "far from your address - choose Pay online".
+      problems.push({ shop: g.shop.name, reason: 'cod_long_distance' });
     }
     owed += subtotal + quote.deliveryFee + quote.twoHourFee + quote.handlingFee;
   }
