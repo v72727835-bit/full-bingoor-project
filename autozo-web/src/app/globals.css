@@ -285,6 +285,42 @@ ol {
   background: transparent;
 }
 
+/* ---------------------- "See all" with product peek ---------------------- */
+
+/* The "See all" link that previews a row with up to three product circles. */
+.see-all-peek {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--brand-text);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.see-all-peek__imgs {
+  display: inline-flex;
+  align-items: center;
+}
+.see-all-peek__img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  border: 1.5px solid var(--surface);
+  margin-left: -9px;
+}
+.see-all-peek__img:first-child {
+  margin-left: 0;
+}
+.see-all-peek__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* ------------------------------- layout --------------------------------- */
 
 .page {

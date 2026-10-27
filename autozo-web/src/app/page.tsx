@@ -104,6 +104,7 @@ function Section({ section }: { section: HomeSection }) {
               subtitle={section.subtitle}
               eyebrow={deals ? 'Limited time' : undefined}
               href={section.seeAllSlug ? `/categories/${section.seeAllSlug}` : undefined}
+              previews={section.items.map((p) => p.photo)}
             />
             <Rail>
               {section.items.map((p) => (
