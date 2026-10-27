@@ -8,6 +8,7 @@ import { useSettings } from '../context/SettingsContext';
 import { DESKTOP_PAGES, FORMS, LEGAL_PAGES } from '../lib/pages';
 import { Icon } from './Icon';
 import { LanguageMenu } from './LanguageMenu';
+import { InstallAppButton } from './InstallAppButton';
 import s from './Footer.module.css';
 
 /**
@@ -107,6 +108,12 @@ export function Footer() {
               </div>
             </div>
           ) : null}
+
+          {/* Always available (iPhone included): add the website to the home screen. */}
+          <div className={s.apps}>
+            <div className={s.colTitle}>Use it like an app</div>
+            <InstallAppButton />
+          </div>
         </div>
 
         <hr className="divider" />
