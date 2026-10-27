@@ -503,6 +503,8 @@ async function integrationsView() {
     razorpaySecretSaved: !!doc?.razorpay?.keySecretEnc,
     razorpayWebhookSaved: !!doc?.razorpay?.webhookSecretEnc,
     razorpayEnabled: doc?.razorpay?.enabled ?? true,
+    // Google Maps key (client-side; shown in full so the admin can see/edit it).
+    googleMapsApiKey: doc?.maps?.googleApiKey ?? '',
     firebaseWeb: { apiKey: '', authDomain: '', projectId: '', appId: '', messagingSenderId: '', storageBucket: '', vapidKey: '', ...(doc?.firebase?.webConfig ?? {}) },
     firebaseServiceAccountSaved: !!doc?.firebase?.serviceAccountEnc,
     firebaseProjectId: live.firebase.serviceAccount?.project_id ?? '',
@@ -528,6 +530,7 @@ async function integrationsView() {
       firebasePush: !!live.firebase.serviceAccount,
       shiprocket: !!(live.shiprocket.enabled && live.shiprocket.email && live.shiprocket.password),
       razorpayx: !!(live.razorpayx.enabled && live.razorpayx.accountNumber && live.razorpayx.keyId && live.razorpayx.keySecret),
+      googleMaps: !!live.googleMapsApiKey,
     },
   };
 }
@@ -548,6 +551,7 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
     razorpayWebhookSecret?: string;
     clearRazorpayWebhook?: boolean;
     razorpayEnabled?: boolean;
+    googleMapsApiKey?: string;
     firebaseWeb?: Record<string, string | undefined>;
     firebaseServiceAccount?: string;
     clearFirebaseServiceAccount?: boolean;
@@ -586,6 +590,7 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
   if (b.razorpayWebhookSecret?.trim()) set['razorpay.webhookSecretEnc'] = seal(b.razorpayWebhookSecret.trim());
   else if (b.clearRazorpayWebhook) unset['razorpay.webhookSecretEnc'] = 1;
   if (b.razorpayEnabled !== undefined) set['razorpay.enabled'] = b.razorpayEnabled;
+  if (b.googleMapsApiKey !== undefined) set['maps.googleApiKey'] = b.googleMapsApiKey.trim();
   for (const [k, v] of Object.entries(b.firebaseWeb ?? {})) if (v !== undefined) set[`firebase.webConfig.${k}`] = v;
   if (b.firebaseServiceAccount) {
     let sa: { client_email?: string; private_key?: string; project_id?: string };

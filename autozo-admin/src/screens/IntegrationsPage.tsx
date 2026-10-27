@@ -35,6 +35,7 @@ export default function IntegrationsPage() {
   const [rxSecret, setRxSecret] = useState('');
   const [rxOn, setRxOn] = useState(false);
   const [rxAuto, setRxAuto] = useState(false);
+  const [mapsKey, setMapsKey] = useState('');
 
   const apply = (d: IntegrationsView) => {
     setData(d);
@@ -54,6 +55,7 @@ export default function IntegrationsPage() {
     setRxKeyId(d.razorpayxKeyId);
     setRxOn(d.razorpayxEnabled);
     setRxAuto(d.razorpayxAutoPayout);
+    setMapsKey(d.googleMapsApiKey);
     setFbSa('');
     setFbSecret('');
     setRzSecret('');
@@ -349,6 +351,26 @@ export default function IntegrationsPage() {
             }
           >
             {busy === 'rx' ? 'Saving…' : 'Save RazorpayX'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="card card-pad">
+        <h2 className="card-title">
+          Google Maps {status(data.live.googleMaps)}
+        </h2>
+        <div className="page-subtitle" style={{ marginBottom: 12 }}>
+          console.cloud.google.com → APIs &amp; Services → enable <b>Maps JavaScript API</b> → Credentials → create an API key, and restrict it to your website domains (HTTP referrers). Paste it here and every map on the website, the customer app and the rider app switches to Google Maps. <b>Leave it blank to use the free OpenStreetMap maps</b> everywhere instead.
+        </div>
+        <Field label="Google Maps API key">
+          <input value={mapsKey} onChange={(e) => setMapsKey(e.target.value)} placeholder="AIza… (blank = use OpenStreetMap)" autoComplete="off" />
+        </Field>
+        <div className="modal-actions">
+          <Button
+            disabled={busy === 'maps'}
+            onClick={() => save('maps', { googleMapsApiKey: mapsKey }, mapsKey.trim() ? 'Google Maps key saved. Maps now use Google.' : 'Cleared — maps now use OpenStreetMap.')}
+          >
+            {busy === 'maps' ? 'Saving…' : 'Save Google Maps'}
           </Button>
         </div>
       </div>

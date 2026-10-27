@@ -463,7 +463,8 @@ export interface IntegrationsView {
   razorpayxSecretSaved: boolean;
   razorpayxEnabled: boolean;
   razorpayxAutoPayout: boolean;
-  live: { google: boolean; facebook: boolean; razorpay: boolean; firebaseOtp: boolean; firebasePush: boolean; shiprocket: boolean; razorpayx: boolean };
+  googleMapsApiKey: string;
+  live: { google: boolean; facebook: boolean; razorpay: boolean; firebaseOtp: boolean; firebasePush: boolean; shiprocket: boolean; razorpayx: boolean; googleMaps: boolean };
 }
 export const fetchIntegrations = async (): Promise<IntegrationsView> => (await api.get('/admin/integrations')).data.data;
 export const saveIntegrations = async (body: Record<string, unknown>): Promise<IntegrationsView> =>

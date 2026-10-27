@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Order } from '../lib/types';
 import { kmBetween, LatLng, roadRoute, roughMinutes } from '../lib/route';
+import { addBaseLayer } from '../lib/mapBase';
+import { useSettings } from '../context/SettingsContext';
 import { Icon } from './Icon';
 import s from './LiveTrackMap.module.css';
 
@@ -34,6 +36,9 @@ export function LiveTrackMap({ order }: { order: Order }) {
   const fitted = useRef(false);
   const touched = useRef(false);
   const lastRoutedFrom = useRef<LatLng | null>(null);
+  const settings = useSettings();
+  const mapsCfgRef = useRef(settings?.maps);
+  mapsCfgRef.current = settings?.maps;
   const [ready, setReady] = useState(false);
   const [eta, setEta] = useState<{ minutes: number; km: number } | null>(null);
 
@@ -47,7 +52,7 @@ export function LiveTrackMap({ order }: { order: Order }) {
       leaflet.current = L;
       const centre = home ?? shop ?? rider ?? { lat: 25.3, lng: 82.99 };
       const map = L.map(box.current, { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView([centre.lat, centre.lng], 15);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+      await addBaseLayer(L, map, mapsCfgRef.current);
       // Once the customer pans or zooms, stop re-framing the map for them.
       map.on('dragstart zoomstart', () => (touched.current = true));
       if (shop) L.marker([shop.lat, shop.lng], { icon: L.divIcon({ className: '', html: pinHtml('🏬', '', '#0e8a3e'), iconSize: [38, 38], iconAnchor: [19, 19] }), title: 'Pickup' }).addTo(map);

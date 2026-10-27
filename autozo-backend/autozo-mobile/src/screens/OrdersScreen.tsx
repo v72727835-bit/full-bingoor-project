@@ -5,6 +5,7 @@ import Geolocation from '@react-native-community/geolocation';
 import { OsmMap } from '../components/OsmMap';
 import { AnimatedNumber, FadeSlide } from '../components/anim';
 import { cancelRiderOrder, deliverRiderOrder, fetchRiderOrders, fetchRiderProfile, acceptRiderOrder, sendRiderLocation } from '../api/rider';
+import { fetchMapsKey } from '../api/settings';
 import { getErrorMessage } from '../api/client';
 import { Button } from '../components/Button';
 import { ErrorBanner } from '../components/AuthLayout';
@@ -140,10 +141,13 @@ export default function OrdersScreen() {
 }
 
 function DeliveryMap({ order, riderLocation }: { order: RiderOrder; riderLocation: { latitude: number; longitude: number } | null }) {
+  const [mapsKey, setMapsKey] = useState<string | null>(null);
+  // Google when the admin set a Maps key, else OpenStreetMap.
+  useEffect(() => { fetchMapsKey().then(setMapsKey).catch(() => undefined); }, []);
   const destination = order.address.location ? { latitude: order.address.location.lat, longitude: order.address.location.lng } : null;
   if (!destination) return <View style={styles.mapUnavailable}><Ionicons name="map-outline" size={20} color={colors.primary} /><Text style={styles.mapUnavailableText}>Customer location is not available for this order.</Text></View>;
   return <View style={styles.mapWrap}>
-    <OsmMap rider={riderLocation} destination={destination} height={210} />
+    <OsmMap rider={riderLocation} destination={destination} height={210} googleApiKey={mapsKey} />
     <View style={styles.mapCaption}><Ionicons name="navigate" size={16} color={colors.primary} /><Text style={styles.mapCaptionText}>Live delivery route</Text><Text style={styles.mapCaptionAddress}>{order.address.city}</Text></View>
   </View>;
 }

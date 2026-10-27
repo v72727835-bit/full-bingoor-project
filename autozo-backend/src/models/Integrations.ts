@@ -9,6 +9,8 @@ export interface IIntegrations {
   google?: { clientId?: string };
   facebook?: { appId?: string; appSecretEnc?: string };
   razorpay?: { keyId?: string; keySecretEnc?: string; webhookSecretEnc?: string; enabled?: boolean };
+  /** Google Maps JS API key. Client-side (restricted by referrer), so it is NOT a hidden secret. */
+  maps?: { googleApiKey?: string };
   /** Firebase: phone OTP (sign-up / login) and push notifications. */
   firebase?: {
     webConfig?: { apiKey?: string; authDomain?: string; projectId?: string; appId?: string; messagingSenderId?: string; storageBucket?: string; vapidKey?: string };
@@ -29,6 +31,7 @@ const schema = new Schema<IIntegrations>(
     google: { clientId: { type: String, trim: true } },
     facebook: { appId: { type: String, trim: true }, appSecretEnc: String },
     razorpay: { keyId: { type: String, trim: true }, keySecretEnc: String, webhookSecretEnc: String, enabled: { type: Boolean, default: true } },
+    maps: { googleApiKey: { type: String, trim: true } },
     firebase: {
       webConfig: {
         apiKey: { type: String, trim: true },

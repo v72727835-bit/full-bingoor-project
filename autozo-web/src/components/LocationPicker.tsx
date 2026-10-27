@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { matchState } from '../lib/india';
+import { addBaseLayer } from '../lib/mapBase';
+import { useSettings } from '../context/SettingsContext';
 import { Icon } from './Icon';
 import { Button } from './ui';
 import s from './LocationPicker.module.css';
@@ -61,6 +63,9 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
   const mapRef = useRef<import('leaflet').Map | null>(null);
   const pinRef = useRef<import('leaflet').Marker | null>(null);
   const leaflet = useRef<typeof import('leaflet') | null>(null);
+  const settings = useSettings();
+  const mapsCfgRef = useRef(settings?.maps);
+  mapsCfgRef.current = settings?.maps;
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -85,7 +90,7 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
       leaflet.current = L;
       const start = value ?? START;
       const map = L.map(box.current, { zoomControl: true, attributionControl: true }).setView([start.lat, start.lng], value ? 16 : 13);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+      await addBaseLayer(L, map, mapsCfgRef.current);
       const icon = L.divIcon({ className: s.pinWrap, html: `<span class="${s.pin}"></span>`, iconSize: [30, 40], iconAnchor: [15, 38] });
       const pin = L.marker([start.lat, start.lng], { draggable: true, icon }).addTo(map);
       pin.on('dragend', () => {
