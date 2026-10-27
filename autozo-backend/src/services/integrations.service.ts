@@ -11,6 +11,8 @@ export interface LiveIntegrations {
   razorpayKeySecret?: string;
   razorpayWebhookSecret?: string;
   razorpayEnabled: boolean;
+  /** Google Maps JS API key (client-side). Empty when maps should fall back to OpenStreetMap. */
+  googleMapsApiKey?: string;
   firebase: {
     webConfig: Record<string, string | undefined>;
     serviceAccount?: { project_id: string; client_email: string; private_key: string };
@@ -74,6 +76,7 @@ export async function getIntegrations(): Promise<LiveIntegrations> {
     razorpayKeySecret: (savedRazorpay ? safeOpen(doc?.razorpay?.keySecretEnc) : env.RAZORPAY_KEY_SECRET)?.trim(),
     razorpayWebhookSecret: safeOpen(doc?.razorpay?.webhookSecretEnc) || env.RAZORPAY_WEBHOOK_SECRET,
     razorpayEnabled: doc?.razorpay?.enabled ?? true,
+    googleMapsApiKey: (doc?.maps?.googleApiKey || env.GOOGLE_MAPS_API_KEY)?.trim() || undefined,
     firebase: {
       webConfig: { ...(doc?.firebase?.webConfig ?? {}) },
       serviceAccount: parseServiceAccount(doc?.firebase?.serviceAccountEnc),

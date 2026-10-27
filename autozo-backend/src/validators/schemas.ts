@@ -691,6 +691,7 @@ export const integrationsBody = z.object({
   razorpayWebhookSecret: z.string().trim().max(200).optional(),
   clearRazorpayWebhook: z.boolean().optional(),
   razorpayEnabled: z.boolean().optional(),
+  googleMapsApiKey: z.string().trim().max(200).optional(),
   firebaseWeb: z
     .object({
       apiKey: z.string().trim().max(200).optional(),

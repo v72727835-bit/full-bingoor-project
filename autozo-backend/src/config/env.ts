@@ -27,6 +27,8 @@ const schema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   /** Optional: Razorpay webhook signing secret (admin panel value takes precedence). */
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  /** Optional: Google Maps JS API key fallback (admin panel value takes precedence). */
+  GOOGLE_MAPS_API_KEY: z.string().optional(),
   FREE_DELIVERY_ABOVE: z.coerce.number().min(0).default(499),
 });
 

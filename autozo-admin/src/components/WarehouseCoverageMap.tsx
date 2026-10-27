@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Circle, CircleMarker, Map as LeafletMap } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { addBaseLayer } from '../lib/mapBase';
 
 /** The saved warehouse point and its current delivery radius, in kilometres. */
 export default function WarehouseCoverageMap({ lat, lng, radiusKm }: { lat: number; lng: number; radiusKm: number }) {
@@ -15,10 +16,7 @@ export default function WarehouseCoverageMap({ lat, lng, radiusKm }: { lat: numb
     void import('leaflet').then((L) => {
       if (cancelled || !container.current) return;
       const map = L.map(container.current).setView([0, 0], 2);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(map);
+      void addBaseLayer(L, map);
       const circle = L.circle([0, 0], { radius: 0, color: '#16924a', fillOpacity: 0.15 }).addTo(map);
       const marker = L.circleMarker([0, 0], { radius: 6, color: '#fff', weight: 2, fillColor: '#16924a', fillOpacity: 1 }).addTo(map);
       layers.current = { map, circle, marker };

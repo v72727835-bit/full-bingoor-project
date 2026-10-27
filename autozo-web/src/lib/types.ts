@@ -459,6 +459,8 @@ export interface PublicSettings {
   filters?: { key: string; label: string; kind: 'brand' | 'price' | 'discount' | 'rating' | 'diet' | 'stock' }[];
   priceSortEnabled?: boolean;
   googleReviewUrl?: string;
+  /** Maps provider: "google" when the admin set a Maps key, else "osm" (OpenStreetMap). */
+  maps?: { provider: 'google' | 'osm'; googleMapsApiKey: string | null };
   /** True once the server has its Razorpay keys. */
   onlinePaymentOn?: boolean;
   /** #36: the ways to pay at checkout and their charge, as a percent of the bill. */
