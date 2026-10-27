@@ -1,13 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { fetchFestival } from '../../api/catalog';
-import { Icon } from '../../components/Icon';
 import { ProductCard, ProductCardSkeleton } from '../../components/ProductCard';
 import { Rail } from '../../components/Rail';
-import { Alert, Button, SectionHead } from '../../components/ui';
+import { Alert, Button, SectionHead, SeeAll } from '../../components/ui';
 import { getErrorMessage } from '../../lib/client';
 import { FestivalPage } from '../../lib/types';
 import s from './festival.module.css';
@@ -86,11 +84,14 @@ export default function FestivalTab() {
               <ProductCard key={p.id} product={p} width={168} tint={section.category.tint} />
             ))}
           </Rail>
-          {/* Straight into the aisle, where every child category is listed. */}
-          <Link href={`/categories/${section.category.slug}`} className={s.seeAll}>
-            See all {section.category.name}
-            <Icon name="arrow-right" size={16} />
-          </Link>
+          {/* Straight into the aisle, where every child category is listed, with a peek at the first products. */}
+          <div className={s.seeAll}>
+            <SeeAll
+              href={`/categories/${section.category.slug}`}
+              previews={section.items.map((p) => p.photo)}
+              label={`See all ${section.category.name}`}
+            />
+          </div>
         </section>
       ))}
     </div>

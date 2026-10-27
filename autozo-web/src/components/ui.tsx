@@ -240,12 +240,15 @@ export function SectionHead({
   subtitle,
   href,
   eyebrow,
+  previews,
   children,
 }: {
   title: string;
   subtitle?: string;
   href?: string;
   eyebrow?: string;
+  /** Up to three product photos shown as little circles inside the "See all" link. */
+  previews?: string[];
   children?: React.ReactNode;
 }) {
   return (
@@ -260,19 +263,33 @@ export function SectionHead({
         ) : null}
       </div>
       <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-        {children ??
-          (href ? (
-            <a
-              href={href}
-              className="btn btn-sm btn-ghost"
-              style={{ color: 'var(--brand-text)', fontWeight: 700 }}
-            >
-              See all
-              <Icon name="chevron-right" size={15} />
-            </a>
-          ) : null)}
+        {children ?? (href ? <SeeAll href={href} previews={previews} /> : null)}
       </div>
     </div>
+  );
+}
+
+/**
+ * The "See all" link. With `previews` it shows up to three product photos as
+ * overlapping circles, like the storefront apps, so the row previews itself.
+ */
+export function SeeAll({ href, previews, label = 'See all' }: { href: string; previews?: string[]; label?: string }) {
+  const peek = (previews ?? []).filter(Boolean).slice(0, 3);
+  return (
+    <a href={href} className={`see-all-peek${peek.length ? '' : ' btn btn-sm btn-ghost'}`}>
+      {peek.length ? (
+        <span className="see-all-peek__imgs" aria-hidden="true">
+          {peek.map((src, i) => (
+            <span key={i} className="see-all-peek__img">
+              {/* Plain img keeps these tiny thumbs config-free, as the gallery/video tiles already do. */}
+              <img src={src} alt="" loading="lazy" />
+            </span>
+          ))}
+        </span>
+      ) : null}
+      {label}
+      <Icon name="chevron-right" size={15} />
+    </a>
   );
 }
 
