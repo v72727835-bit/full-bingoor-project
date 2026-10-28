@@ -1,0 +1,72 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+/* A half-page sheet that slides up from the bottom (Blinkit-style). */
+.sheet {
+  background: var(--surface-2, var(--surface));
+  border-radius: 20px 20px 0 0;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--sh-3);
+  animation: sheetUp 0.22s var(--ease, ease);
+}
+
+@keyframes sheetUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.grip {
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-2);
+  margin: 8px auto 0;
+  flex-shrink: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.x {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+/* The only scrolling area: the product grid. */
+.body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 16px 24px;
+}

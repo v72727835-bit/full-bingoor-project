@@ -18,6 +18,7 @@ import { shortDelivery } from '../../lib/deliveryText';
 import { Icon } from '../../components/Icon';
 import { QuantityStepper } from '../../components/QuantityStepper';
 import { Rail } from '../../components/Rail';
+import { TopUpSheet } from '../../components/TopUpSheet';
 import { Alert, Badge, Button, EmptyState, PageLoader } from '../../components/ui';
 import s from './cart.module.css';
 
@@ -33,6 +34,8 @@ function CartInner() {
   const quote = guest ? (cart?.quote ?? null) : accountQuote;
   const [askLogin, setAskLogin] = useState(false);
   const [busy, setBusy] = useState(false);
+  // #35: the "See all products" half-page sheet over the cart.
+  const [showAll, setShowAll] = useState(false);
 
   // The hidden points rule: when the basket is short, one top-up product is
   // added for the customer - once. If they take it out again they are told
@@ -279,13 +282,27 @@ function CartInner() {
                   ))}
                 </Rail>
               ))}
-              <Link href="/cart/more" className={s.topupAll}>
+              <button type="button" className={s.topupAll} onClick={() => setShowAll(true)}>
+                {cart.points.suggestions.some((x) => x.image || x.art) ? (
+                  <span className={s.topupAllImgs} aria-hidden="true">
+                    {cart.points.suggestions
+                      .filter((x) => x.image || x.art)
+                      .slice(0, 3)
+                      .map((sg) => (
+                        <span key={sg.productId} className={s.topupAllImg}>
+                          <img src={sg.image || sg.art} alt="" />
+                        </span>
+                      ))}
+                  </span>
+                ) : null}
                 See all products
-                <Icon name="arrow-right" size={15} />
-              </Link>
+                <Icon name="chevron-right" size={16} />
+              </button>
             </section>
           ) : null}
         </div>
+
+        <TopUpSheet open={showAll} onClose={() => setShowAll(false)} />
 
         <aside className={`card side-sticky ${s.summary}`}>
           <h2 className="h3" style={{ marginBottom: 14 }}>
