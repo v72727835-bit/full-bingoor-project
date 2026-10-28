@@ -207,9 +207,9 @@ function CheckoutInner() {
   const pickedAddress = list.find((a) => a.id === picked);
   const blockers: string[] = [];
   if (showForm) blockers.push('Save your delivery address first: fill in the address form and press “Save address”.');
-  else if (pickedAddress && !pickedAddress.location) {
-    blockers.push('Your address needs an exact map pin. Tap “Use my current location”, allow location access and save the address again.');
-  }
+  // A missing map pin no longer blocks the order — a typed address with a PIN is
+  // enough; the pin only sharpens the delivery distance when the customer shares it.
+  const pinMissing = !!pickedAddress && !pickedAddress.location;
   if (cart.hasIssues) blockers.push('Some items in your cart need attention. Go back to the cart and fix the items marked in red.');
   if (!cart.points.met) blockers.push('Add 1 product from the list below your cart to continue.');
   if (quote && !quote.meetsMinOrder) {
@@ -456,6 +456,13 @@ function CheckoutInner() {
               <b>The order was not placed:</b>
               <p style={{ margin: '6px 0 0' }}>{placeError}</p>
             </div>
+          ) : null}
+
+          {pinMissing && !showForm ? (
+            <p className={`body-sm ${s.hint}`}>
+              <Icon name="pin" size={13} />
+              Tip: add a map pin to this address (edit it and tap “Use my current location”) for faster, more accurate delivery. It’s optional.
+            </p>
           ) : null}
 
           {showForm ? null : (

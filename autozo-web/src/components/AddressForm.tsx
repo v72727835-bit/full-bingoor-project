@@ -113,11 +113,10 @@ export function AddressForm({
       setError('Please enter a valid 6-digit PIN code.');
       return;
     }
-    // The rider navigates to this pin, so an address without one can't be delivered.
-    if (!f.location) {
-      setError('Please tap "Use my current location" so the rider can find you.');
-      return;
-    }
+    // A map pin helps the rider and gives an exact delivery distance, but it is
+    // not required: a typed address with a valid PIN is enough to order. (Many
+    // customers deny location access or are on a desktop with no GPS, and
+    // blocking them here stopped the order from ever being placed.)
     setSaving(true);
     try {
       const body: AddressInput = { ...f };
