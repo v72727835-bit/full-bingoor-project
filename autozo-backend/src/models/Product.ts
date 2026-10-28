@@ -42,6 +42,8 @@ export interface IProduct {
   nameHi?: string;
   /** Hidden cart-points value for this size (0-50). */
   points: number;
+  /** Admin tick: show this product in the cart / checkout top-up (50-point) list. */
+  cartFeatured: boolean;
   /** Admin-set ordering (lower first); the default is last, so unsorted items fall back to A-Z. */
   sortCode: number;
   /** Set when a seller listed it. */
@@ -80,6 +82,7 @@ const productSchema = new Schema<IProduct>(
     soldCount: { type: Number, default: 0 },
     nameHi: { type: String, trim: true },
     points: { type: Number, default: 0, min: 0, max: 50 },
+    cartFeatured: { type: Boolean, default: false, index: true },
     sortCode: { type: Number, default: 1_000_000 },
     seller: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     standardCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'StandardCategory' }], default: undefined, index: true },

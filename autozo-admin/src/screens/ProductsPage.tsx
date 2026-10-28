@@ -32,6 +32,7 @@ type FormState = {
   variantLabel: string;
   nameHi: string;
   points: string;
+  cartFeatured: boolean;
   sortCode: string;
   standardCategories: string[];
   isActive: boolean;
@@ -60,6 +61,7 @@ const EMPTY_FORM: FormState = {
   variantLabel: '',
   nameHi: '',
   points: '0',
+  cartFeatured: false,
   sortCode: '',
   standardCategories: [],
   isActive: true,
@@ -406,6 +408,7 @@ function ProductForm({
           variantLabel: product.variantLabel ?? '',
           nameHi: product.nameHi ?? '',
           points: String(product.points ?? 0),
+          cartFeatured: !!product.cartFeatured,
           sortCode: product.sortCode && product.sortCode < 1_000_000 ? String(product.sortCode) : '',
           standardCategories: product.standardCategories ?? [],
           isActive: product.isActive,
@@ -485,6 +488,7 @@ function ProductForm({
         variantLabel: form.variantLabel.trim() || undefined,
         nameHi: form.nameHi.trim() || undefined,
         points: Math.min(50, Math.max(0, Number(form.points) || 0)),
+        cartFeatured: form.cartFeatured,
         // Blank = no sort code, so the item falls back to A-Z after the ones that have one.
         sortCode: form.sortCode.trim() === '' ? null : Number(form.sortCode),
         standardCategories: form.standardCategories,
@@ -628,6 +632,11 @@ function ProductForm({
             <input type="number" min={0} value={form.sortCode} onChange={(e) => set('sortCode', e.target.value)} placeholder="1" />
           </Field>
         </div>
+
+        <label className="checkbox-row">
+          <input type="checkbox" checked={form.cartFeatured} onChange={(e) => set('cartFeatured', e.target.checked)} />
+          Show this product in the cart / checkout top-up list (the 50-point row customers see before paying)
+        </label>
 
         <Field label="Standard category (home screen row, optional)">
           {stdRows.length === 0 ? (

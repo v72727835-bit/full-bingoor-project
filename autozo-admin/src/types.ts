@@ -100,6 +100,8 @@ export interface Product {
   nameHi?: string;
   /** Hidden cart-points value (0-50) - customers never see it. */
   points?: number;
+  /** Admin tick: show this product in the cart / checkout top-up (50-point) list. */
+  cartFeatured?: boolean;
   /** Lower comes first; 1000000 (default) = A-Z after the sorted ones. */
   sortCode?: number | null;
   seller?: { _id: string; name: string; sellerId?: string; sellerProfile?: { firm?: string } } | string;

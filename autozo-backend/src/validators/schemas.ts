@@ -253,6 +253,8 @@ export const adminProductBody = z.object({
   nameHi: z.string().trim().max(150).optional(),
   /** Hidden cart-points value (0-50) for this size; never shown to customers. */
   points: z.coerce.number().int().min(0).max(50).optional(),
+  /** Admin tick: include this product in the cart / checkout top-up (50-point) list. */
+  cartFeatured: z.coerce.boolean().optional(),
   /** Admin-only ordering; lower comes first. Empty = alphabetical. */
   sortCode: z.preprocess((v) => (v === null || v === '' ? 1_000_000 : v), z.coerce.number().int().min(0).max(1_000_000)).optional(),
   /** Home-screen rows (Standard categories) this product is shown in. */

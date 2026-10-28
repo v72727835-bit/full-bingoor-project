@@ -164,7 +164,13 @@ async function pointsView(groups: ResolvedGroup[]) {
   const needed = Math.max(0, rule.target - total);
   if (needed === 0) return { enabled: true, met: true, suggestions: [], autoAddId: null };
 
-  const pool = (await Product.find({ _id: { $in: rule.suggestions ?? [] }, isActive: true, stock: { $gt: 0 } })
+  // The top-up pool = products the admin ticked on the product form
+  // (cartFeatured), plus any picked in the global Delivery & Pricing list (#35).
+  const pool = (await Product.find({
+    isActive: true,
+    stock: { $gt: 0 },
+    $or: [{ cartFeatured: true }, { _id: { $in: rule.suggestions ?? [] } }],
+  })
     .select('name slug images icon unit price mrp points stock sortCode category')
     .lean()) as unknown as (Pick<IProduct, 'name' | 'slug' | 'images' | 'icon' | 'unit' | 'price' | 'mrp' | 'points' | 'stock' | 'sortCode' | 'category'> & { _id: Types.ObjectId })[];
   const usable = pool.filter((p) => !inCart.has(String(p._id)) && p.points > 0);
@@ -215,7 +221,12 @@ export async function guestCartView(items: { product: string; quantity: number }
 export async function pointsProductIds(): Promise<Types.ObjectId[]> {
   const { settings } = await loadSettings();
   if (!settings.cartPoints?.enabled) return [];
-  const rows = await Product.find({ _id: { $in: settings.cartPoints.suggestions ?? [] }, isActive: true, stock: { $gt: 0 }, points: { $gt: 0 } })
+  const rows = await Product.find({
+    isActive: true,
+    stock: { $gt: 0 },
+    points: { $gt: 0 },
+    $or: [{ cartFeatured: true }, { _id: { $in: settings.cartPoints.suggestions ?? [] } }],
+  })
     .sort({ sortCode: 1, name: 1 })
     .select('_id')
     .lean();
