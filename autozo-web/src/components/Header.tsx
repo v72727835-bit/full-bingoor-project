@@ -36,12 +36,35 @@ export function Header() {
     return () => window.removeEventListener(POINT_EVENT, sync);
   }, []);
 
+  // Phones: tuck the header away while the finger scrolls down the listings and
+  // bring it back the moment it scrolls up, so the page gets the full screen —
+  // the grocery-app behaviour. The CSS only acts on this on phone widths.
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        if (y < 80) setHidden(false);
+        else if (y > last + 6) setHidden(true);
+        else if (y < last - 6) setHidden(false);
+        last = y;
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const count = cart?.itemCount ?? 0;
   const total = cart?.total ?? 0;
   const tabs = home?.topTabs ?? [];
 
   return (
-    <header className={s.hdr} data-site-header>
+    <header className={s.hdr} data-site-header data-hidden={hidden}>
       <div className={s.brandBar}>
         <div className={`page ${s.row}`}>
           <Link href="/" className={s.logo} aria-label="Bingoor home">
