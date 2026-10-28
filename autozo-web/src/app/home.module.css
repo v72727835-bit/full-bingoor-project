@@ -2,6 +2,18 @@
   margin-bottom: 34px;
 }
 
+/* Home product rows: show 2 full cards + a peek of the 3rd on phones, so it is
+   clear the row slides (like Blinkit). The card itself is the compact design. */
+.peekRail > * {
+  width: calc((100vw - 44px) / 2.5);
+  max-width: 200px;
+}
+@media (min-width: 700px) {
+  .peekRail > * {
+    width: 190px;
+  }
+}
+
 .circleSection {
   margin-bottom: 30px;
 }

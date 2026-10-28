@@ -106,9 +106,9 @@ function Section({ section }: { section: HomeSection }) {
               href={section.seeAllSlug ? `/categories/${section.seeAllSlug}` : undefined}
               previews={section.items.map((p) => p.photo)}
             />
-            <Rail>
+            <Rail className={s.peekRail}>
               {section.items.map((p) => (
-                <ProductCard key={p.id} product={p} width={168} tint={section.tint} />
+                <ProductCard key={p.id} product={p} compact tint={section.tint} />
               ))}
             </Rail>
           </div>
@@ -121,9 +121,9 @@ function Section({ section }: { section: HomeSection }) {
       return (
         <section className={s.section}>
           <SectionHead title={section.title} subtitle={section.subtitle} />
-          <Rail>
+          <Rail className={s.peekRail}>
             {section.items.map((p) => (
-              <ProductCard key={p.id} product={p} width={168} />
+              <ProductCard key={p.id} product={p} compact />
             ))}
           </Rail>
         </section>

@@ -74,7 +74,7 @@ export function ProductCard({
 
   if (compact) {
     return (
-      <article className={s.cCard}>
+      <article className={s.cCard} style={width ? { width } : undefined}>
         <Link href={`/products/${product.slug}`} className={s.cArt} aria-label={product.name} style={{ ['--tile' as string]: tile(tint) }}>
           <Image src={product.photo} alt="" width={240} height={240} className={fitClass(product.photo, s.cImg)} unoptimized />
         </Link>
