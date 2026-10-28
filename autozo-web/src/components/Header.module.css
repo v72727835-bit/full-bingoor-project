@@ -4,6 +4,19 @@
   z-index: 50;
 }
 
+/* Phones: slide the whole bar out of the way while scrolling down and bring it
+   back on the way up, so the listings get the full screen (point 7). Desktop is
+   untouched — the rule lives only inside the phone breakpoint. */
+@media (max-width: 859px) {
+  .hdr {
+    transition: transform 0.26s var(--ease);
+    will-change: transform;
+  }
+  .hdr[data-hidden='true'] {
+    transform: translateY(-100%);
+  }
+}
+
 .brandBar {
   background: var(--bar);
   color: var(--bar-ink);
