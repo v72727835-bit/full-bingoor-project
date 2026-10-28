@@ -239,22 +239,39 @@ export default function ProductPage() {
                   // The saving is the whole reason a bigger pack exists, so the
                   // chip carries it rather than leaving the customer to compare.
                   const off = v.mrp ? Math.round(((v.mrp - v.price) / v.mrp) * 100) : 0;
+                  // #22: each weight / size gets its own ADD, like Blinkit — the
+                  // info still opens that variant's page, the stepper adds it here.
+                  const vqty = quantityOf(v.id);
                   return (
-                    <Link
+                    <div
                       key={v.id}
-                      href={`/products/${v.slug}`}
                       className={s.variant}
                       data-on={v.slug === p.slug}
                       data-out={!v.inStock}
                     >
                       {off > 0 ? <span className={`num ${s.variantOff}`}>{off}% OFF</span> : null}
-                      <span className={s.variantName}>{v.label}</span>
-                      <span className={s.variantPrices}>
-                        <span className={`num ${s.variantPrice}`}>₹{v.price}</span>
-                        {v.mrp ? <span className={`num ${s.variantMrp}`}>₹{v.mrp}</span> : null}
-                      </span>
-                      {!v.inStock ? <span className={s.variantOut}>Out of stock</span> : null}
-                    </Link>
+                      <Link href={`/products/${v.slug}`} className={s.variantInfo}>
+                        <span className={s.variantName}>{v.label}</span>
+                        <span className={s.variantPrices}>
+                          <span className={`num ${s.variantPrice}`}>₹{v.price}</span>
+                          {v.mrp ? <span className={`num ${s.variantMrp}`}>₹{v.mrp}</span> : null}
+                        </span>
+                      </Link>
+                      {v.inStock ? (
+                        <div className={s.variantAdd}>
+                          <QuantityStepper
+                            size="sm"
+                            quantity={vqty}
+                            busy={busy}
+                            onAdd={() => act(() => addItem(v.id, 1))}
+                            onIncrement={() => act(() => updateItem(v.id, vqty + 1))}
+                            onDecrement={() => act(() => updateItem(v.id, vqty - 1))}
+                          />
+                        </div>
+                      ) : (
+                        <span className={s.variantOut}>Out of stock</span>
+                      )}
+                    </div>
                   );
                 })}
               </div>
