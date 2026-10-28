@@ -466,6 +466,17 @@
   opacity: 0.55;
 }
 
+.variantInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* #22: the per-variant ADD / stepper sits under the price on each chip. */
+.variantAdd {
+  margin-top: 8px;
+}
+
 .variantName {
   font-size: 13px;
   font-weight: 700;

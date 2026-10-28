@@ -149,7 +149,14 @@ async function quoteFor(groups: ResolvedGroup[], point: { lat: number; lng: numb
   // Distances/bands differ per shop; report the worst case to the customer.
   const distances = perGroup.map((q) => q.distanceKm).filter((d): d is number => d !== null);
   const distanceKm = distances.length ? Math.max(...distances) : null;
-  const days = perGroup.reduce((d, q) => Math.max(d, q.days), 0);
+  // #31: the cart's ETA must also honour a category's fixed "6 day" delivery,
+  // exactly like the placed order does (order.controller runPlaceOrder), so a
+  // slow-category item does not show "19 min" in the cart and then ship in days.
+  const categoryDays = Math.max(
+    0,
+    ...groups.flatMap((g) => g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0)),
+  );
+  const days = Math.max(perGroup.reduce((d, q) => Math.max(d, q.days), 0), categoryDays);
   const redOrder = perGroup.some((q) => q.redOrder);
   const longDistance = perGroup.some((q) => q.longDistance);
   const addForFree = sum((q) => q.addForFree);
