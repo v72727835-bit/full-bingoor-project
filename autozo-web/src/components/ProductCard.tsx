@@ -8,10 +8,8 @@ import { Product } from '../lib/types';
 import { getErrorMessage } from '../lib/client';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { useCatalog } from '../context/CatalogContext';
 import { useWishlist } from '../context/WishlistContext';
 import { Icon } from './Icon';
-import { shortDelivery } from '../lib/deliveryText';
 import { useLanguage } from '../context/LanguageContext';
 import { fitClass } from '../lib/art';
 import { useToast } from '../context/ToastContext';
@@ -43,7 +41,6 @@ export function ProductCard({
   const { show } = useToast();
   const router = useRouter();
   const wishlist = useWishlist();
-  const { home } = useCatalog();
   const wished = wishlist.has(product.id);
   const toggleWish = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -108,12 +105,6 @@ export function ProductCard({
               {product.ratingLabel ? <span className={s.rateLabel}>{product.ratingLabel}</span> : null}
             </div>
           ) : null}
-          {home ? (
-            <span className={s.timing}>
-              <Icon name="bolt" size={11} strokeWidth={2.4} />
-              {shortDelivery(home)}
-            </span>
-          ) : null}
           {product.variants && product.variants.length > 0 ? (
             <Link href={`/products/${product.slug}`} className={s.cOptions}>
               See options ›
@@ -160,11 +151,6 @@ export function ProductCard({
 
         {product.deliveryDays && product.deliveryDays > 1 ? (
           <span className={s.days}>Delivery in {product.deliveryDays} days</span>
-        ) : home ? (
-          <span className={s.timing}>
-            <Icon name="bolt" size={11} strokeWidth={2.4} />
-            {shortDelivery(home)}
-          </span>
         ) : null}
 
         <div className={s.buy}>
