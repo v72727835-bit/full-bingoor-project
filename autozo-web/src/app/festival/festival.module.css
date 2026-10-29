@@ -62,3 +62,14 @@
     margin-bottom: 28px;
   }
 }
+
+/* Same row as the home page: 3 cards across on phones, fixed width above. */
+.peekRail > * {
+  width: calc((100vw - 56px) / 3);
+  max-width: 170px;
+}
+@media (min-width: 700px) {
+  .peekRail > * {
+    width: 180px;
+  }
+}

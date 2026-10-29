@@ -104,7 +104,7 @@ export const deleteShop = async (id: string): Promise<void> => {
   await api.delete(`/admin/shops/${id}`);
 };
 
-export const createRider = async (body: { name: string; phone: string; email?: string; password: string; warehouses: string[] }): Promise<AppUser> =>
+export const createRider = async (body: { name: string; phone: string; email?: string; password: string; warehouses: string[]; longDistance?: boolean }): Promise<AppUser> =>
   (await api.post('/admin/riders', body)).data.data;
 
 /* ---------- users ---------- */

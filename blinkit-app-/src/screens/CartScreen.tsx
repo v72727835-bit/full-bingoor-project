@@ -1,15 +1,17 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { fetchPointQuote } from '../api/cart';
 import { CartPoints } from '../components/CartPoints';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import { useTabs } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useHomeQuery } from '../store/catalogApi';
-import { useDeliveryPointKey } from '../store/deliveryPoint';
+import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
 import { shortDelivery } from '../utils/delivery';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { CartGroup, CartItem } from '../types';
@@ -33,6 +35,26 @@ export function CartScreen({ active }: TabScreenProps) {
   const { cart, loading, refresh, setQuantity, remove, clear, pending } = useCart();
   const area = useDeliveryPointKey();
   const { data: home } = useHomeQuery(area);
+  const { user } = useAuth();
+
+  // #28: the delivery time at the top follows the distance to the customer
+  // (up to 15 km same day, then next day, beyond 30 km a few working days).
+  const [farDays, setFarDays] = useState(0);
+  useEffect(() => {
+    const point = deliveryPointParams();
+    if (!user || !point || cart.itemCount === 0) {
+      setFarDays(0);
+      return;
+    }
+    let live = true;
+    fetchPointQuote(point)
+      .then((q) => live && setFarDays(q.days))
+      .catch(() => live && setFarDays(0));
+    return () => {
+      live = false;
+    };
+  }, [user, area, cart.itemCount]);
+  const etaText = farDays > 0 ? (farDays === 1 ? 'Next day delivery' : `${farDays} working days`) : shortDelivery(home);
 
   // The slowest promise in the basket - the whole order lands on that day.
   const slowDays = cart.groups
@@ -95,7 +117,7 @@ export function CartScreen({ active }: TabScreenProps) {
         <View style={styles.eta}>
           <Ionicons name="flash" size={ms(20)} color={colors.brand} />
           <Txt variant="h2" numberOfLines={1}>
-            Delivery time: {shortDelivery(home)}
+            Delivery time: {etaText}
           </Txt>
         </View>
 
