@@ -3,6 +3,9 @@ import { fetchIntegrations, IntegrationsView, saveIntegrations, testFirebase, te
 import { getErrorMessage } from '../api/client';
 import { Badge, Button, CenterSpinner, ErrorBanner, Field } from '../components/ui';
 
+const GOOGLE_ID = /^[\w-]+\.apps\.googleusercontent\.com$/;
+const FB_ID = /^\d{5,20}$/;
+
 /**
  * Keys for "Continue with Google / Facebook" and for online payment (Razorpay),
  * typed here instead of on the server. Secrets are stored encrypted and are never
@@ -119,8 +122,15 @@ export default function IntegrationsPage() {
           Google Cloud Console → APIs &amp; Services → Credentials → OAuth client ID (Web). Add https://bingoor.com as an authorised JavaScript origin.
         </div>
         <Field label="Google Client ID">
-          <input value={google} onChange={(e) => setGoogle(e.target.value)} placeholder="1234567890-abc.apps.googleusercontent.com" />
+          <input value={google} onChange={(e) => setGoogle(e.target.value)} placeholder="1234567890-abc.apps.googleusercontent.com" autoComplete="off" />
         </Field>
+        {google.trim() && !GOOGLE_ID.test(google.trim()) && (
+          <div className="error-banner" style={{ marginBottom: 12 }}>
+            {google.trim().startsWith('GOCSPX-')
+              ? 'This is the Client secret, not the Client ID. Copy the Client ID instead (it ends in .apps.googleusercontent.com). Login with Google stays off until it is fixed.'
+              : 'A Google Client ID ends in .apps.googleusercontent.com. Login with Google stays off until it is fixed.'}
+          </div>
+        )}
         <div className="modal-actions">
           <Button disabled={busy === 'google'} onClick={() => save('google', { googleClientId: google }, 'Google login saved.')}>
             {busy === 'google' ? 'Saving…' : 'Save Google'}
@@ -137,12 +147,18 @@ export default function IntegrationsPage() {
         </div>
         <div className="field-row">
           <Field label="Facebook App ID">
-            <input value={fbId} onChange={(e) => setFbId(e.target.value)} placeholder="1234567890123456" />
+            <input value={fbId} onChange={(e) => setFbId(e.target.value)} placeholder="1234567890123456" autoComplete="off" inputMode="numeric" />
           </Field>
           <Field label={data.facebookSecretSaved ? 'App Secret (saved - type a new one to replace)' : 'App Secret'}>
-            <input type="password" value={fbSecret} onChange={(e) => setFbSecret(e.target.value)} placeholder={data.facebookSecretSaved ? '••••••••••••' : ''} autoComplete="off" />
+            <input type="password" value={fbSecret} onChange={(e) => setFbSecret(e.target.value)} placeholder={data.facebookSecretSaved ? '••••••••••••' : ''} autoComplete="new-password" />
           </Field>
         </div>
+        {fbId.trim() && !FB_ID.test(fbId.trim()) && (
+          <div className="error-banner" style={{ marginBottom: 12 }}>
+            The Facebook App ID is a number from developers.facebook.com (Settings → Basic), not an email. If your browser filled in your admin
+            email and password here, clear both fields and paste the App ID and App Secret.
+          </div>
+        )}
         <div className="modal-actions">
           {data.facebookSecretSaved && (
             <Button variant="ghost" disabled={!!busy} onClick={() => save('fbclear', { clearFacebookSecret: true }, 'Facebook secret removed.')}>
@@ -229,7 +245,7 @@ export default function IntegrationsPage() {
             <input value={rzId} onChange={(e) => setRzId(e.target.value)} placeholder="rzp_test_xxxxxxxxxxxxxx" />
           </Field>
           <Field label={data.razorpaySecretSaved ? 'Key Secret (saved - type a new one to replace)' : 'Key Secret'}>
-            <input type="password" value={rzSecret} onChange={(e) => setRzSecret(e.target.value)} placeholder={data.razorpaySecretSaved ? '••••••••••••' : ''} autoComplete="off" />
+            <input type="password" value={rzSecret} onChange={(e) => setRzSecret(e.target.value)} placeholder={data.razorpaySecretSaved ? '••••••••••••' : ''} autoComplete="new-password" />
           </Field>
         </div>
         <label className="checkbox-row" style={{ marginBottom: 8 }}>
@@ -321,7 +337,7 @@ export default function IntegrationsPage() {
           </Field>
         </div>
         <Field label={data.razorpayxSecretSaved ? 'Key Secret (saved - type a new one to replace)' : 'Key Secret'}>
-          <input type="password" value={rxSecret} onChange={(e) => setRxSecret(e.target.value)} placeholder={data.razorpayxSecretSaved ? '••••••••••••' : ''} autoComplete="off" />
+          <input type="password" value={rxSecret} onChange={(e) => setRxSecret(e.target.value)} placeholder={data.razorpayxSecretSaved ? '••••••••••••' : ''} autoComplete="new-password" />
         </Field>
         <label className="checkbox-row" style={{ marginBottom: 6 }}>
           <input type="checkbox" checked={rxOn} onChange={(e) => setRxOn(e.target.checked)} />

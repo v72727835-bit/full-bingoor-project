@@ -35,8 +35,9 @@ async function withDescendants(roots: Types.ObjectId[]): Promise<Set<string>> {
 }
 
 export async function getSettingsDoc(): Promise<SettingsLean> {
-  const found = await Settings.findOne({ key: 'global' }).lean();
-  if (found) return found as SettingsLean;
+  // Not lean, so fields added to the schema after the settings were first saved get their defaults.
+  const found = await Settings.findOne({ key: 'global' });
+  if (found) return found.toObject() as SettingsLean;
   // First run: create the defaults. Fruits & vegetables start with COD off, as requested.
   const fruitVeg = await Category.findOne({ level: 2, name: /vegetables|fruits/i }).select('_id').lean();
   const created = await Settings.create({

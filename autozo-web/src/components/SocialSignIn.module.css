@@ -1,0 +1,53 @@
+.methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.method {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 48px;
+  border: 1.5px solid var(--line-2, var(--line));
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.method:hover:not(:disabled),
+.method[data-on='true'] {
+  border-color: var(--brand);
+  background: var(--brand-tint);
+}
+
+.method:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 18px;
+  color: var(--ink-3, var(--ink-2, var(--ink)));
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.or::before,
+.or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}

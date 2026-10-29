@@ -58,8 +58,8 @@ export default function DeliveryPricingPage() {
 /* ------------------------------ delivery times ----------------------------- */
 
 function SlotsCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
-  const [slots, setSlots] = useState(settings.deliverySlots);
-  const [twoHour, setTwoHour] = useState(settings.twoHourCharge);
+  const [slots, setSlots] = useState(settings.deliverySlots ?? []);
+  const [twoHour, setTwoHour] = useState(settings.twoHourCharge ?? { enabled: false, amount: 0 });
   const [phone, setPhone] = useState(settings.supportPhone ?? '');
   const [google, setGoogle] = useState(settings.googleReviewUrl ?? '');
   const [busy, setBusy] = useState(false);
@@ -145,7 +145,7 @@ function SlotsCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
 /* --------------------------- distance-based pricing ------------------------ */
 
 function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
-  const [p, setP] = useState(settings.pricing);
+  const [p, setP] = useState({ ...settings.pricing, bands: settings.pricing?.bands ?? [] });
   const [busy, setBusy] = useState(false);
   const [cats, setCats] = useState<Category[]>([]);
   useEffect(() => {
@@ -218,7 +218,7 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
           size="sm"
           onClick={() =>
             setP((cur) => {
-              const last = cur.bands[cur.bands.length - 1];
+              const last = cur.bands[cur.bands.length - 1] ?? { upToKm: 0, minOrder: 199, freeAbove: 199, fee: 39, nextDay: false, redOrder: false };
               return { ...cur, bands: [...cur.bands, { ...last, upToKm: last.upToKm + 5 }] };
             })
           }
@@ -289,9 +289,12 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
 /* -------------------------------- cart points ------------------------------ */
 
 function PointsCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
-  const [on, setOn] = useState(settings.cartPoints.enabled);
-  const [target, setTarget] = useState(settings.cartPoints.target);
-  const saved = settings.cartPoints.suggestions.map((x) => (typeof x === 'string' ? { _id: x, name: x.slice(-6), unit: '' } : x));
+  const [on, setOn] = useState(settings.cartPoints?.enabled ?? false);
+  const [target, setTarget] = useState(settings.cartPoints?.target ?? 47);
+  // A suggested product deleted later comes back as null; skip it rather than crash the page.
+  const saved = (settings.cartPoints?.suggestions ?? [])
+    .filter((x) => x != null)
+    .map((x) => (typeof x === 'string' ? { _id: x, name: x.slice(-6), unit: '' } : x));
   const [ids, setIds] = useState<string[]>(saved.map((x) => x._id));
   const [names, setNames] = useState<Record<string, string>>(
     Object.fromEntries(saved.map((x) => [x._id, x.unit ? `${x.name} (${x.unit})` : x.name])),
@@ -391,7 +394,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 function FiltersCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
-  const [filters, setFilters] = useState(settings.filters);
+  const [filters, setFilters] = useState(settings.filters ?? []);
   const [sortOn, setSortOn] = useState(settings.priceSortEnabled);
   const [busy, setBusy] = useState(false);
 
