@@ -115,12 +115,15 @@ export const quote = asyncHandler(async (req, res) => {
   const { addressId, lat, lng, slot } = req.query as unknown as { addressId?: string; lat?: number; lng?: number; slot: Slot };
   const groups = await resolveCart(req.user!.id);
 
-  let point = lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
-  if (!point && addressId) {
+  // The address's own map pin wins; without one, the customer's current
+  // location (sent as lat/lng) decides the distance band and delivery time.
+  let point: { lat: number; lng: number } | undefined;
+  if (addressId) {
     const user = await User.findById(req.user!.id).select('addresses').lean();
     const a = user?.addresses?.find((x) => String(x._id) === addressId);
     if (a?.location?.lat && a.location.lng) point = { lat: a.location.lat, lng: a.location.lng };
   }
+  if (!point && lat !== undefined && lng !== undefined) point = { lat, lng };
   ok(res, await quoteFor(groups, point, slot));
 });
 

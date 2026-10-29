@@ -29,7 +29,6 @@ import {
   Badge,
   Button,
   FoodMark,
-  Rating,
   SectionHead,
   Textarea,
   compact,
@@ -218,7 +217,16 @@ export default function ProductPage() {
           <div className={s.facts}>
             <FoodMark type={p.foodType} size={16} />
             {p.unit ? <span className={s.unit}>{p.unit}</span> : null}
-            <Rating value={p.rating} count={p.ratingCount} />
+            {/* Blinkit-style: "4.2 ★ | 20,187 ratings". */}
+            {p.rating ? (
+              <span className={`num ${s.ratingBox}`} title={`${p.rating} out of 5`}>
+                {p.rating.toFixed(1)}
+                <Icon name="star-fill" size={13} />
+                {p.ratingCount ? (
+                  <span className={s.ratingCount}>| {p.ratingCount.toLocaleString('en-IN')} ratings</span>
+                ) : null}
+              </span>
+            ) : null}
             {p.ratingLabel ? <span className={s.ratingLabel}>{p.ratingLabel}</span> : null}
           </div>
 

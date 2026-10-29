@@ -93,6 +93,45 @@ async function servingShopIds(lat?: number, lng?: number): Promise<Types.ObjectI
 }
 
 /**
+ * Point 37: a customer past the last distance band (e.g. beyond 30 km) sees only
+ * the categories the admin picked for long distance. Returns the allowed
+ * category ids - the picked ones, everything under them and the groups above
+ * them - or null when there is no restriction.
+ */
+async function farCategoryIds(lat?: number, lng?: number): Promise<Types.ObjectId[] | null> {
+  if (lat === undefined || lng === undefined) return null;
+  const settings = cachedSettings() ?? (await loadSettings()).settings;
+  const picked = (settings.pricing?.beyondCategories ?? []).map(String);
+  const bands = settings.pricing?.bands ?? [];
+  if (!picked.length || !bands.length) return null;
+  const nearest = (await shopsServing(lat, lng))[0]?.km;
+  if (nearest === undefined || nearest <= bands[bands.length - 1].upToKm) return null;
+
+  const all = await Category.find({}).select('_id parent').lean();
+  const parentOf = new Map(all.map((c) => [String(c._id), c.parent ? String(c.parent) : null]));
+  const keep = new Set<string>();
+  for (const id of picked) {
+    let cur: string | null = id;
+    while (cur && !keep.has(cur)) {
+      keep.add(cur);
+      cur = parentOf.get(cur) ?? null;
+    }
+  }
+  const below = new Set(picked);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const c of all) {
+      const parent = c.parent ? String(c.parent) : null;
+      if (parent && below.has(parent) && !below.has(String(c._id))) {
+        below.add(String(c._id));
+        grew = true;
+      }
+    }
+  }
+  return [...new Set([...keep, ...below])].map((id) => new Types.ObjectId(id));
+}
+
+/**
  * Does any warehouse deliver to this point? Used by the website's "where should we deliver?"
  * step, so a customer outside every warehouse's range is told so instead of seeing products.
  */
@@ -146,9 +185,16 @@ export const home = asyncHandler(async (req, res) => {
 
   // With a location, only products from shops that deliver there are shown.
   const serving = await servingShopIds(lat, lng);
-  const scope = serving ? { ...visible, shop: { $in: serving } } : visible;
+  const far = await farCategoryIds(lat, lng);
+  const scope: FilterQuery<IProduct> = {
+    ...(serving ? { ...visible, shop: { $in: serving } } : visible),
+    // $and, so a rail's own category filter cannot replace this one.
+    ...(far ? { $and: [{ category: { $in: far } }] } : {}),
+  };
+  const allowedCat = far ? new Set(far.map(String)) : null;
+  const allowCat = <T extends { _id: unknown }>(list: T[]) => (allowedCat ? list.filter((c) => allowedCat.has(String(c._id))) : list);
 
-  const [groups, level2, level3, shops, uploadedBanners] = await Promise.all([
+  const [allGroups, allLevel2, allLevel3, shops, uploadedBanners] = await Promise.all([
     Category.find({ isActive: true, level: 1, parent: null }).sort({ sortOrder: 1 }).select(CAT_FIELDS).lean(),
     Category.find({ isActive: true, level: 2 }).sort({ sortOrder: 1 }).select(CAT_FIELDS).lean(),
     Category.find({ isActive: true, level: 3 }).sort({ sortOrder: 1 }).select(CAT_FIELDS).lean(),
@@ -161,6 +207,10 @@ export const home = asyncHandler(async (req, res) => {
       .populate<{ category: { name: string; slug: string; isActive: boolean } | null }>('category', 'name slug isActive')
       .lean(),
   ]);
+
+  const groups = allowCat(allGroups);
+  const level2 = allowCat(allLevel2);
+  const level3 = allowCat(allLevel3);
 
   const l2ByName = new Map(level2.map((c) => [c.name, c]));
   const groupByName = new Map(groups.map((g) => [g.name, g]));
@@ -249,7 +299,7 @@ export const home = asyncHandler(async (req, res) => {
   for (const g of groups) {
     const tiles = level2.filter((c) => String(c.parent) === String(g._id));
     if (!tiles.length) continue;
-    sections.push({ type: 'categoryGrid', id: `grid-${g.slug}`, groupSlug: g.slug, title: g.name, items: tiles });
+    sections.push({ type: 'categoryGrid', id: `grid-${g.slug}`, groupSlug: g.slug, title: g.name, titleHi: g.nameHi, items: tiles });
   }
 
   const railTitles: Record<string, [string, string]> = {
@@ -269,6 +319,8 @@ export const home = asyncHandler(async (req, res) => {
       id: `rail-${c.slug}`,
       groupSlug: group?.slug,
       title,
+      // The Hindi aisle name only fits when the title is the aisle's own name.
+      titleHi: title === c.name ? c.nameHi : undefined,
       subtitle,
       tint: c.tint,
       seeAllSlug: c.slug,
@@ -476,6 +528,8 @@ export const listProducts = asyncHandler(async (req, res) => {
   if (!shop) {
     const serving = await servingShopIds(lat, lng);
     if (serving) filter.shop = { $in: serving };
+    const far = await farCategoryIds(lat, lng);
+    if (far) filter.$and = [{ category: { $in: far } }];
   }
 
   if (minPrice !== undefined || maxPrice !== undefined) {
@@ -534,7 +588,13 @@ export const suggestProducts = asyncHandler(async (req, res) => {
   const { q, lat, lng } = req.query as unknown as { q: string; lat?: number; lng?: number };
   const rx = { $regex: `^${escapeRegex(q)}|\\b${escapeRegex(q)}`, $options: 'i' };
   const serving = await servingShopIds(lat, lng);
-  const products = await Product.find({ isActive: true, ...(serving ? { shop: { $in: serving } } : {}), $or: [{ name: rx }, { brand: rx }] })
+  const far = await farCategoryIds(lat, lng);
+  const products = await Product.find({
+    isActive: true,
+    ...(serving ? { shop: { $in: serving } } : {}),
+    ...(far ? { category: { $in: far } } : {}),
+    $or: [{ name: rx }, { brand: rx }],
+  })
     .sort({ soldCount: -1 })
     .limit(8)
     .select('name slug images icon price brand')
@@ -587,7 +647,11 @@ export const festival = asyncHandler(async (req, res) => {
   const settings = cachedSettings() ?? (await loadSettings()).settings;
   const fest = settings.festival;
   const serving = await servingShopIds(lat, lng);
-  const scope = serving ? { ...visible, shop: { $in: serving } } : visible;
+  const far = await farCategoryIds(lat, lng);
+  const scope: FilterQuery<IProduct> = {
+    ...(serving ? { ...visible, shop: { $in: serving } } : visible),
+    ...(far ? { $and: [{ category: { $in: far } }] } : {}),
+  };
 
   const categories = await Category.find({ _id: { $in: (fest?.sections ?? []).map((s) => s.category) }, isActive: true })
     .select('name slug level icon image tint')

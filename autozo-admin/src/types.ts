@@ -91,6 +91,7 @@ export interface Product {
   tags: string[];
   isActive: boolean;
   rating: number;
+  ratingCount?: number;
   /** Shown instead of the rating count, e.g. "5L+". */
   ratingLabel?: string;
   /** Products sharing a group are sizes of one another. */
@@ -315,6 +316,8 @@ export interface Settings {
     beyondMinOrder: number;
     beyondCodDisabled: boolean;
     beyondCodMessage: string;
+    /** Point 37: the only categories a customer past the last row sees; empty = all. */
+    beyondCategories?: string[];
   };
   filters: { key: string; label: string; kind: 'brand' | 'price' | 'discount' | 'rating' | 'diet' | 'stock'; enabled: boolean }[];
   priceSortEnabled: boolean;

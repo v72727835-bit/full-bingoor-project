@@ -36,9 +36,9 @@ export function Header() {
     return () => window.removeEventListener(POINT_EVENT, sync);
   }, []);
 
-  // Phones: tuck the header away while the finger scrolls down the listings and
-  // bring it back the moment it scrolls up, so the page gets the full screen —
-  // the grocery-app behaviour. The CSS only acts on this on phone widths.
+  // Tuck the header away while the page scrolls down (finger or mouse wheel)
+  // and bring it back the moment it scrolls up, so the page gets the full
+  // screen — the grocery-app behaviour.
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let last = window.scrollY;
@@ -90,6 +90,8 @@ export function Header() {
               <span className={s.placeLabel}>Delivering to</span>
               <span className={s.placeName}>{place}</span>
             </span>
+            {/* Tells the customer this is where the address is changed. */}
+            <Icon name="chevron-down" size={16} strokeWidth={2.4} />
           </button>
 
           <div className={s.searchWide}>

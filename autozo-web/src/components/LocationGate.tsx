@@ -109,6 +109,16 @@ export function LocationGate() {
     );
   };
 
+  // Point 16: on a first visit ask the browser for the current location straight
+  // away (the visitor only has to tap "Allow"); search stays as the fallback.
+  const [autoTried, setAutoTried] = useState(false);
+  useEffect(() => {
+    if (!open || point !== null || autoTried) return;
+    setAutoTried(true);
+    locate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, point, autoTried]);
+
   const search = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!q.trim()) return;

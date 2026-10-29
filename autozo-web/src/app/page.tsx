@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React from 'react';
 import { useCatalog } from '../context/CatalogContext';
+import { useLanguage } from '../context/LanguageContext';
 import { HomeSection } from '../lib/types';
 import { BannerCarousel } from '../components/BannerCarousel';
 import { CategoryCircle, CategoryTile } from '../components/CategoryTile';
@@ -66,6 +67,9 @@ export default function HomePage() {
 }
 
 function Section({ section }: { section: HomeSection }) {
+  const { name } = useLanguage();
+  // Group and standard-category titles follow the language menu like everything else.
+  const heading = 'title' in section && section.title ? name({ name: section.title, nameHi: 'titleHi' in section ? section.titleHi : undefined }) : '';
   switch (section.kind) {
     // Drawn full width above the page column by HomePage.
     case 'bannerCarousel':
@@ -85,7 +89,7 @@ function Section({ section }: { section: HomeSection }) {
     case 'categoryGrid':
       return (
         <section className={s.section}>
-          <SectionHead title={titleCase(section.title)} />
+          <SectionHead title={titleCase(heading)} />
           <div className="grid-cats">
             {section.items.map((c) => (
               <CategoryTile key={c.id} category={c} />
@@ -100,7 +104,7 @@ function Section({ section }: { section: HomeSection }) {
         <section className={s.section}>
           <div className={deals ? s.deals : undefined}>
             <SectionHead
-              title={section.title}
+              title={heading}
               subtitle={section.subtitle}
               eyebrow={deals ? 'Limited time' : undefined}
               href={section.seeAllSlug ? `/categories/${section.seeAllSlug}` : undefined}
@@ -120,7 +124,7 @@ function Section({ section }: { section: HomeSection }) {
     case 'productGrid':
       return (
         <section className={s.section}>
-          <SectionHead title={section.title} subtitle={section.subtitle} />
+          <SectionHead title={heading} subtitle={section.subtitle} />
           <Rail className={s.peekRail}>
             {section.items.map((p) => (
               <ProductCard key={p.id} product={p} compact />

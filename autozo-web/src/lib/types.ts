@@ -242,18 +242,20 @@ export interface Banner {
 export type HomeSection =
   | { kind: 'circleRail'; id: string; title?: string; items: Category[] }
   | { kind: 'bannerCarousel'; id: string; items: Banner[] }
-  | { kind: 'categoryGrid'; id: string; title: string; groupSlug?: string; items: Category[] }
+  | { kind: 'categoryGrid'; id: string; title: string; titleHi?: string; groupSlug?: string; items: Category[] }
   | {
       kind: 'productRail';
       id: string;
       title: string;
+      /** The admin's Hindi name, shown when the customer picks Hindi. */
+      titleHi?: string;
       subtitle?: string;
       tint?: string;
       style?: string;
       seeAllSlug?: string;
       items: Product[];
     }
-  | { kind: 'productGrid'; id: string; title: string; subtitle?: string; style?: string; items: Product[] }
+  | { kind: 'productGrid'; id: string; title: string; titleHi?: string; subtitle?: string; style?: string; items: Product[] }
   | { kind: 'storeTiles'; id: string; title: string; items: Shop[] };
 
 export interface Home {

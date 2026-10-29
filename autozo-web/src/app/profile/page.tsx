@@ -12,6 +12,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { Crumbs } from '../../components/Crumbs';
 import { Icon, IconName } from '../../components/Icon';
+import { InstallAppButton } from '../../components/InstallAppButton';
 import { RequireAuth } from '../../components/RequireAuth';
 import { Alert, Button, Field, Input } from '../../components/ui';
 import s from './profile.module.css';
@@ -118,6 +119,11 @@ function ProfileInner() {
             </span>
           </Link>
         ))}
+      </div>
+
+      {/* Point 6: iPhone users find "Add to Home Screen" here too, not only in the footer. */}
+      <div style={{ margin: '0 0 18px' }}>
+        <InstallAppButton />
       </div>
 
       <div className={s.forms}>
