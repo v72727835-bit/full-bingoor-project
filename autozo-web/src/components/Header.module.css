@@ -128,6 +128,10 @@
   flex-shrink: 0;
 }
 
+.wish {
+  position: relative;
+}
+
 .tool:hover {
   background: var(--bar-tool-hover);
 }
@@ -204,8 +208,8 @@
   padding-bottom: 14px;
 }
 
-/* Count badge on the phone's icon-only cart button. Wider screens spell it out instead. */
-.cartBadge {
+/* Count badge on the header's icon buttons (wishlist, and the phone's icon-only cart). */
+.badge {
   position: absolute;
   top: -5px;
   right: -5px;
@@ -279,6 +283,7 @@
   .cartText {
     display: flex;
   }
+  /* Wider screens spell the cart out as "N items · total" instead. */
   .cartBadge {
     display: none;
   }
@@ -326,7 +331,7 @@
      theme switch, so repeating them here only cost width - six controls plus
      the brand overflowed every phone narrower than about 420px. */
   .account,
-  .tools .tool:not(.onlyNarrow) {
+  .tools .tool:not(.onlyNarrow):not(.wish) {
     display: none;
   }
 

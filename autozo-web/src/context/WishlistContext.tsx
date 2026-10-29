@@ -7,6 +7,8 @@ import { useAuth } from './AuthContext';
 interface WishlistApi {
   has: (productId: string) => boolean;
   toggle: (productId: string) => Promise<void>;
+  /** How many products are saved, for the header heart's badge. */
+  count: number;
 }
 
 const WishlistContext = createContext<WishlistApi | undefined>(undefined);
@@ -56,7 +58,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     [ids],
   );
 
-  const value = useMemo<WishlistApi>(() => ({ has: (id) => ids.has(id), toggle }), [ids, toggle]);
+  const value = useMemo<WishlistApi>(() => ({ has: (id) => ids.has(id), toggle, count: ids.size }), [ids, toggle]);
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;
 }
 
