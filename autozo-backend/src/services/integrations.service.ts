@@ -1,6 +1,7 @@
 import { env } from '../config/env';
 import { Integrations } from '../models/Integrations';
 import { open } from '../utils/secretBox';
+import { FACEBOOK_APP_ID, GOOGLE_CLIENT_ID } from '../utils/socialIds';
 
 /** What the server uses right now: the admin panel's values, falling back to the .env file. */
 export interface LiveIntegrations {
@@ -50,6 +51,8 @@ function parseServiceAccount(s?: string) {
 const TTL_MS = 15_000;
 let cache: { at: number; value: LiveIntegrations } | null = null;
 
+const wellFormed = (v: string | undefined, shape: RegExp) => (v && shape.test(v.trim()) ? v.trim() : undefined);
+
 const safeOpen = (s?: string) => {
   try {
     return s ? open(s) : undefined;
@@ -69,8 +72,10 @@ export async function getIntegrations(): Promise<LiveIntegrations> {
   // environment secret (including when the saved secret cannot be decrypted).
   const savedRazorpay = !!(doc?.razorpay?.keyId || doc?.razorpay?.keySecretEnc);
   const value: LiveIntegrations = {
-    googleClientId: doc?.google?.clientId || env.GOOGLE_CLIENT_ID,
-    facebookAppId: doc?.facebook?.appId || env.FACEBOOK_APP_ID,
+    // A value of the wrong shape (e.g. the Google client secret pasted as the ID) is treated as not set:
+    // the ID is sent to every visitor's browser, and a wrong one only breaks the login popup.
+    googleClientId: wellFormed(doc?.google?.clientId || env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_ID),
+    facebookAppId: wellFormed(doc?.facebook?.appId || env.FACEBOOK_APP_ID, FACEBOOK_APP_ID),
     facebookAppSecret: safeOpen(doc?.facebook?.appSecretEnc) || env.FACEBOOK_APP_SECRET,
     razorpayKeyId: (savedRazorpay ? doc?.razorpay?.keyId : env.RAZORPAY_KEY_ID)?.trim(),
     razorpayKeySecret: (savedRazorpay ? safeOpen(doc?.razorpay?.keySecretEnc) : env.RAZORPAY_KEY_SECRET)?.trim(),

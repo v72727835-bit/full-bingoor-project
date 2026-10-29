@@ -4,9 +4,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useSettings } from '../../context/SettingsContext';
-import { facebookAccessToken, googleAccessToken } from '../../lib/social';
 import { Icon } from '../../components/Icon';
+import { SocialSignIn } from '../../components/SocialSignIn';
 import ps from './login.module.css';
 import { getErrorMessage } from '../../lib/client';
 import { otpRequiredPhone } from '../../lib/otp';
@@ -15,10 +14,8 @@ import { AuthShell } from '../../components/AuthShell';
 import { Alert, Button, Field, Input, PageLoader } from '../../components/ui';
 
 function LoginInner() {
-  const { login, loginWithSocial } = useAuth();
-  const settings = useSettings();
+  const { login } = useAuth();
   const [usePhone, setUsePhone] = useState(false);
-  const [busy, setBusy] = useState<'google' | 'facebook' | null>(null);
   const router = useRouter();
   const next = useSearchParams().get('next') || '/';
 
@@ -45,25 +42,6 @@ function LoginInner() {
     }
   };
 
-  const social = async (provider: 'google' | 'facebook') => {
-    setError('');
-    const id = provider === 'google' ? settings?.social?.googleClientId : settings?.social?.facebookAppId;
-    if (!id) {
-      setError(`Login with ${provider === 'google' ? 'Gmail' : 'Facebook'} is coming soon. Please continue with your phone number for now.`);
-      return;
-    }
-    setBusy(provider);
-    try {
-      const token = provider === 'google' ? await googleAccessToken(id) : await facebookAccessToken(id);
-      await loginWithSocial(provider, token);
-      router.replace(next);
-    } catch (err) {
-      setError(err instanceof Error && !('isAxiosError' in err) ? err.message : getErrorMessage(err));
-    } finally {
-      setBusy(null);
-    }
-  };
-
   return (
     <AuthShell
       title="Welcome back"
@@ -78,20 +56,12 @@ function LoginInner() {
       }
     >
       {error ? <Alert tone="bad">{error}</Alert> : null}
-      <div className={ps.methods}>
-        <button type="button" className={ps.method} onClick={() => social('google')} disabled={busy !== null}>
-          <span className={ps.g}>G</span>
-          Continue with Gmail
-        </button>
-        <button type="button" className={ps.method} onClick={() => social('facebook')} disabled={busy !== null}>
-          <span className={ps.f}>f</span>
-          Continue with Facebook
-        </button>
+      <SocialSignIn next={next} onError={setError}>
         <button type="button" className={ps.method} data-on={usePhone} onClick={() => setUsePhone((v) => !v)}>
           <Icon name="phone" size={18} />
           Continue with Phone number
         </button>
-      </div>
+      </SocialSignIn>
       {usePhone ? (
       <form onSubmit={submit}>
         <Field label="Your phone number" required>

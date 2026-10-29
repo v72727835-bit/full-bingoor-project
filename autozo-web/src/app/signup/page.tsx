@@ -9,6 +9,7 @@ import { otpRequiredPhone } from '../../lib/otp';
 import { OtpDialog } from '../../components/OtpDialog';
 import { AuthShell } from '../../components/AuthShell';
 import { PasswordField } from '../../components/PasswordField';
+import { OrDivider, SocialSignIn } from '../../components/SocialSignIn';
 import { Alert, Button, Field, Input, PageLoader } from '../../components/ui';
 import ps from './signup.module.css';
 
@@ -69,6 +70,8 @@ function SignupInner() {
       }
     >
       {error ? <Alert tone="bad">{error}</Alert> : null}
+      <SocialSignIn next={next} onError={setError} />
+      <OrDivider label="or sign up with phone" />
       <form onSubmit={submit}>
         <Field label="Full name" required>
           <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />

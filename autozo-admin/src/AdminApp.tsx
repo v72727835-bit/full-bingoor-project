@@ -108,6 +108,38 @@ function CurrentPage({ pathname }: { pathname: string }) {
   }
 }
 
+/**
+ * Keeps a crash on one page inside that page: the sidebar stays and the error
+ * is shown, instead of the whole panel turning into "This page couldn't load".
+ */
+class PageErrorBoundary extends React.Component<{ pathname: string; children: React.ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidUpdate(prev: { pathname: string }) {
+    if (prev.pathname !== this.props.pathname && this.state.error) this.setState({ error: null });
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="card card-pad">
+        <h2 className="card-title">This page hit an error</h2>
+        <div className="page-subtitle" style={{ marginBottom: 12 }}>
+          Reload to try again. If it keeps happening, send this message to support:
+        </div>
+        <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{this.state.error.message}</pre>
+        <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+          Reload
+        </button>
+      </div>
+    );
+  }
+}
+
 export default function AdminApp() {
   const pathname = usePathname() ?? '/';
   if (pathname === '/login') return <LoginPage />;
@@ -115,7 +147,9 @@ export default function AdminApp() {
   return (
     <RequireAuth>
       <Layout>
-        <CurrentPage pathname={pathname} />
+        <PageErrorBoundary pathname={pathname}>
+          <CurrentPage pathname={pathname} />
+        </PageErrorBoundary>
       </Layout>
     </RequireAuth>
   );

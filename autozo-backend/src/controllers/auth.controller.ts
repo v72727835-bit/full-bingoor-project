@@ -185,7 +185,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
   const info = await getJson<{ aud?: string; azp?: string; email?: string; email_verified?: string | boolean; sub?: string; name?: string }>(
     `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`,
   );
-  if ((info.aud ?? info.azp) !== googleClientId || !info.sub) throw new ApiError(401, 'This Google login was not issued for Autozo.');
+  if ((info.aud ?? info.azp) !== googleClientId || !info.sub) throw new ApiError(401, 'This Google login was not issued for Bingoor.');
   const profile = await getJson<{ name?: string; email?: string }>(
     `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${encodeURIComponent(accessToken)}`,
   );
@@ -202,7 +202,7 @@ export const facebookLogin = asyncHandler(async (req, res) => {
     `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appToken)}`,
   );
   if (!debug.data?.is_valid || debug.data.app_id !== facebookAppId || !debug.data.user_id) {
-    throw new ApiError(401, 'This Facebook login was not issued for Autozo.');
+    throw new ApiError(401, 'This Facebook login was not issued for Bingoor.');
   }
   const me = await getJson<{ id: string; name?: string; email?: string }>(
     `https://graph.facebook.com/me?fields=id,name,email&access_token=${encodeURIComponent(accessToken)}`,

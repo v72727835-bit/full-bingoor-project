@@ -32,15 +32,30 @@ import { created, ok, pageMeta } from '../utils/response';
 
 /* ============ Settings (festival tab, 6-day aisles, COD, rider limit, app links) ============ */
 
-export const getSettings = asyncHandler(async (_req, res) => {
-  await getSettingsDoc(); // creates the defaults on first use
-  const settings = await Settings.findOne({ key: 'global' })
+/**
+ * The settings as the admin panel reads them. Not `.lean()`, so fields added to
+ * the schema after the settings were first saved come back with their defaults
+ * instead of missing; and a product or category deleted since it was picked
+ * (populated as null) is dropped, since either one crashed the Delivery & pricing page.
+ */
+async function adminSettingsView() {
+  const doc = await Settings.findOne({ key: 'global' })
     .populate('festival.sections.category', 'name slug level')
     .populate('sixDay.categories', 'name slug level')
     .populate('cod.disabledCategories', 'name slug level')
-    .populate('cartPoints.suggestions', 'name unit')
-    .lean();
-  ok(res, settings);
+    .populate('cartPoints.suggestions', 'name unit');
+  if (!doc) return null;
+  const settings = doc.toObject();
+  const present = <T>(list: T[] | undefined) => (list ?? []).filter((x) => x != null);
+  if (settings.sixDay) settings.sixDay.categories = present(settings.sixDay.categories);
+  if (settings.cod) settings.cod.disabledCategories = present(settings.cod.disabledCategories);
+  if (settings.cartPoints) settings.cartPoints.suggestions = present(settings.cartPoints.suggestions);
+  return settings;
+}
+
+export const getSettings = asyncHandler(async (_req, res) => {
+  await getSettingsDoc(); // creates the defaults on first use
+  ok(res, await adminSettingsView());
 });
 
 export const updateSettings = asyncHandler(async (req, res) => {
@@ -55,13 +70,7 @@ export const updateSettings = asyncHandler(async (req, res) => {
   }
   await Settings.updateOne({ key: 'global' }, { $set });
   clearCatalogCache();
-  const settings = await Settings.findOne({ key: 'global' })
-    .populate('festival.sections.category', 'name slug level')
-    .populate('sixDay.categories', 'name slug level')
-    .populate('cod.disabledCategories', 'name slug level')
-    .populate('cartPoints.suggestions', 'name unit')
-    .lean();
-  ok(res, settings);
+  ok(res, await adminSettingsView());
 });
 
 /* ============ Notification bell broadcasts ============ */

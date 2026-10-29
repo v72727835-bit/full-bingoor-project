@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FACEBOOK_APP_ID, GOOGLE_CLIENT_ID } from '../utils/socialIds';
 
 export const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
 
@@ -689,8 +690,20 @@ export const standardCategoryUpdateBody = standardCategoryBody.partial();
 
 /** Secrets are only changed when a new value is sent; `clear...` removes a saved one. */
 export const integrationsBody = z.object({
-  googleClientId: z.string().trim().max(300).optional(),
-  facebookAppId: z.string().trim().max(100).optional(),
+  googleClientId: z
+    .string()
+    .trim()
+    .max(300)
+    .refine((v) => v === '' || GOOGLE_CLIENT_ID.test(v), {
+      message: 'Google Client ID should end in .apps.googleusercontent.com. A value starting with GOCSPX- is the Client secret, not the ID.',
+    })
+    .optional(),
+  facebookAppId: z
+    .string()
+    .trim()
+    .max(100)
+    .refine((v) => v === '' || FACEBOOK_APP_ID.test(v), { message: 'Facebook App ID is a number (e.g. 1234567890123456), not an email.' })
+    .optional(),
   facebookAppSecret: z.string().trim().max(200).optional(),
   clearFacebookSecret: z.boolean().optional(),
   razorpayKeyId: z.string().trim().max(100).optional(),
