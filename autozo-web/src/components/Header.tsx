@@ -118,8 +118,15 @@ export function Header() {
               <Icon name="user" size={18} />
               <span className={s.accountText}>{user ? user.name.split(' ')[0] : t('signIn')}</span>
             </Link>
-            <Link href="/cart" className={s.cart} data-filled={count > 0}>
+            <Link href="/cart" className={s.cart} data-filled={count > 0} aria-label={count > 0 ? `Cart, ${count} item${count > 1 ? 's' : ''}` : 'Cart'}>
               <Icon name="cart" size={18} />
+              {/* Phones only show the icon, so the count rides on it as a badge.
+                  Keyed by count so it pops each time something is added. */}
+              {count > 0 ? (
+                <span key={count} className={`num ${s.cartBadge}`} aria-hidden>
+                  {count > 99 ? '99+' : count}
+                </span>
+              ) : null}
               {count > 0 ? (
                 <span className={s.cartText}>
                   <span className={`num ${s.cartCount}`}>

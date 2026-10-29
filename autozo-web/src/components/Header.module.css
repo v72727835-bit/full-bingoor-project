@@ -204,6 +204,32 @@
   padding-bottom: 14px;
 }
 
+/* Count badge on the phone's icon-only cart button. Wider screens spell it out instead. */
+.cartBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background: #e23744;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  border: 2px solid #fff;
+  animation: badgePop 0.32s var(--ease);
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0.4); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
 /* ----------------------------- category strip ----------------------------- */
 
 .strip {
@@ -252,6 +278,9 @@
   .accountText,
   .cartText {
     display: flex;
+  }
+  .cartBadge {
+    display: none;
   }
 }
 
@@ -307,6 +336,7 @@
   }
   .tool,
   .cart {
+    position: relative;
     width: 40px;
     height: 40px;
     padding: 0;
