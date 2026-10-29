@@ -18,6 +18,7 @@ import { SmartImage } from '../ui/SmartImage';
 import { Txt } from '../ui/Text';
 import { CategoryCircle, CategoryTile } from './CategoryTile';
 import { ProductCard } from './ProductCard';
+import { useLang } from '../store/language';
 
 export interface SectionHandlers {
   onProduct: (p: ProductSummary) => void;
@@ -32,6 +33,7 @@ export interface SectionHandlers {
 
 function Heading({
   title,
+  titleHi,
   subtitle,
   art,
   onDark,
@@ -40,6 +42,7 @@ function Heading({
   right,
 }: {
   title?: string;
+  titleHi?: string;
   subtitle?: string;
   art?: string;
   onDark?: boolean;
@@ -47,13 +50,14 @@ function Heading({
   onAction?: () => void;
   right?: React.ReactNode;
 }) {
+  const lang = useLang();
   if (!title) return null;
   return (
     <View style={styles.heading}>
       <View style={styles.headingText}>
         <View style={styles.headingTitleRow}>
           <Txt variant="h2" tone={onDark ? 'onHeader' : 'ink'} numberOfLines={2} style={styles.headingTitle}>
-            {title}
+            {lang === 'hi' && titleHi ? titleHi : title}
           </Txt>
           {art ? <Illustration name={art} size={26} /> : null}
         </View>
@@ -302,7 +306,7 @@ export function HomeSectionView({
       const w = Math.floor((gridWidth - tileGap * (cols - 1)) / cols);
       return (
         <View style={styles.strip}>
-          <Heading title={section.title} subtitle={section.subtitle} />
+          <Heading title={section.title} titleHi={section.titleHi} subtitle={section.subtitle} />
           <View style={[styles.grid, { gap: tileGap }]}>
             {section.items.map((c) => (
               <CategoryTile key={c._id} category={c} width={w} onPress={() => handlers.onCategory(c)} />
@@ -324,6 +328,7 @@ export function HomeSectionView({
         >
           <Heading
             title={section.title}
+            titleHi={section.titleHi}
             subtitle={section.subtitle}
             art={deals ? 'fire' : undefined}
             onDark={deals}
@@ -359,7 +364,7 @@ export function HomeSectionView({
       const warm = section.style === 'trending';
       return (
         <View style={[styles.strip, warm && { backgroundImage: gradient.down(colors.surfaceTint, colors.surface) }]}>
-          <Heading title={section.title} subtitle={section.subtitle} art={warm ? 'sparkles' : undefined} />
+          <Heading title={section.title} titleHi={section.titleHi} subtitle={section.subtitle} art={warm ? 'sparkles' : undefined} />
           <View style={[styles.grid, { gap, rowGap: space.lg }]}>
             {section.items.map((p) => (
               <ProductCard

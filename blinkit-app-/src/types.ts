@@ -60,6 +60,8 @@ export interface AuthResult {
 export interface Category {
   _id: string;
   name: string;
+  /** Hindi name typed in the admin; shown when the app is set to Hindi. */
+  nameHi?: string;
   slug: string;
   /** Key into the app's bundled artwork, e.g. 'carrot'. */
   icon?: string;
@@ -85,6 +87,7 @@ export interface CategoryPage extends Category {
 export interface ProductSummary {
   _id: string;
   name: string;
+  nameHi?: string;
   slug: string;
   brand?: string;
   images: string[];
@@ -170,6 +173,8 @@ export interface ShopDetail extends ShopSummary {
 export interface SectionBase {
   id: string;
   title?: string;
+  /** Hindi heading for group and standard-category strips. */
+  titleHi?: string;
   subtitle?: string;
   tint?: string;
   /** Which top tab this strip belongs to; missing means "whole shop". */

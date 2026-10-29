@@ -19,6 +19,7 @@ import { Divider } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { useToast } from '../ui/Toast';
 import { NeedsAccount } from '../components/SignInPrompt';
+import { Lang, setLang, useLang } from '../store/language';
 
 interface MenuItem {
   icon: IconName;
@@ -174,6 +175,7 @@ function ProfileScreenInner(_props: TabScreenProps) {
         {/* -------------------------------------------------- menus -- */}
         <Section title="Your account" items={account} />
         <AppearancePicker />
+        <LanguagePicker />
         <Section title="Settings" items={settings} />
         <Section title="About" items={about} />
 
@@ -280,6 +282,41 @@ function AppearancePicker() {
               style={[styles.segmentItem, on && styles.segmentItemOn]}
             >
               <Ionicons name={o.icon as never} size={ms(16)} color={on ? colors.onBrand : colors.inkMuted} />
+              <Txt variant="label" style={{ color: on ? colors.onBrand : colors.inkBody }}>
+                {o.label}
+              </Txt>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+/** English or Hindi names for groups, categories and products. */
+function LanguagePicker() {
+  const lang = useLang();
+  const options: { key: Lang; label: string }[] = [
+    { key: 'en', label: 'English' },
+    { key: 'hi', label: 'हिंदी' },
+  ];
+  return (
+    <View style={styles.appearance}>
+      <Txt variant="overline" tone="muted" style={styles.appearanceTitle}>
+        Language / भाषा
+      </Txt>
+      <View style={styles.segment} accessibilityRole="radiogroup">
+        {options.map((o) => {
+          const on = lang === o.key;
+          return (
+            <Pressable
+              key={o.key}
+              onPress={() => setLang(o.key)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={o.label}
+              style={[styles.segmentItem, on && styles.segmentItemOn]}
+            >
               <Txt variant="label" style={{ color: on ? colors.onBrand : colors.inkBody }}>
                 {o.label}
               </Txt>

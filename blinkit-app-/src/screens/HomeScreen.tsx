@@ -20,6 +20,7 @@ import { Txt } from '../ui/Text';
 import { shortDelivery } from '../utils/delivery';
 import { tapConfirm } from '../utils/haptics';
 import { useGrid, useRailCardWidth } from '../utils/layout';
+import { setLang, useLang } from '../store/language';
 
 const TRUST = [
   { icon: 'leaf-outline', label: 'Fresh every day' },
@@ -27,7 +28,7 @@ const TRUST = [
   { icon: 'shield-checkmark-outline', label: 'Easy returns' },
 ] as const;
 
-const ALL: Category = { _id: 'all', name: 'All', slug: 'all', icon: 'shopping-bags', short: 'All' };
+const ALL: Category = { _id: 'all', name: 'All', nameHi: 'सभी', slug: 'all', icon: 'shopping-bags', short: 'All' };
 
 /** What the search box suggests, one at a time - the things people type most. */
 const HINTS = ['milk', 'atta', 'paneer', 'chips', 'maggi', 'shampoo', 'eggs', 'chocolate'];
@@ -44,6 +45,7 @@ export function HomeScreen({ active }: TabScreenProps) {
   const { user } = useAuth();
   const { goToTab } = useTabs();
   const { c } = useTheme();
+  const lang = useLang();
   const insets = useSafeAreaInsets();
   const grid = useGrid();
   const railWidth = useRailCardWidth();
@@ -144,6 +146,22 @@ export function HomeScreen({ active }: TabScreenProps) {
           </View>
         </Pressable>
 
+        {/* English / Hindi names, like the website's language menu. */}
+        <Pressable
+          onPress={() => {
+            tapConfirm();
+            setLang(lang === 'hi' ? 'en' : 'hi');
+          }}
+          hitSlop={hitSlop}
+          accessibilityRole="button"
+          accessibilityLabel={lang === 'hi' ? 'Switch to English' : 'हिंदी में देखें'}
+          style={({ pressed }) => [styles.langChip, pressed && { opacity: 0.8 }]}
+        >
+          <Txt variant="labelSm" tone="onHeader">
+            {lang === 'hi' ? 'EN' : 'हिं'}
+          </Txt>
+        </Pressable>
+
         <NoticeBell onDark />
 
         <Pressable
@@ -228,7 +246,7 @@ export function HomeScreen({ active }: TabScreenProps) {
                 weight={on ? '800' : '600'}
                 style={{ color: on ? c.onHeader : c.onHeaderMuted }}
               >
-                {t.short ?? t.name}
+                {lang === 'hi' && t.nameHi ? t.nameHi : t.short ?? t.name}
               </Txt>
               <View style={[styles.tabLine, on && styles.tabLineOn]} />
             </Pressable>
@@ -372,6 +390,16 @@ const styles = themed(({ c }) => ({
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.45)',
     boxShadow: '0px 4px 14px 0px rgba(0,0,0,0.22)',
+  },
+  langChip: {
+    minWidth: ms(36),
+    height: ms(30),
+    paddingHorizontal: space.sm,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
   },
   avatarText: { color: c.mode === 'dark' ? c.headerTo : c.brand },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: ms(5), marginTop: space.sm },
