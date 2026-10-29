@@ -9,6 +9,7 @@ import { useCatalog } from '../context/CatalogContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
+import { useWishlist } from '../context/WishlistContext';
 import { getDeliveryPoint, POINT_EVENT } from '../lib/deliveryPoint';
 import { OPEN_LOCATION_EVENT } from './LocationGate';
 import { Icon } from './Icon';
@@ -22,6 +23,7 @@ export function Header() {
   const { user } = useAuth();
   const { cart } = useCart();
   const { home } = useCatalog();
+  const { count: saved } = useWishlist();
   const { theme, toggle } = useTheme();
   const settings = useSettings();
   const { t, name } = useLanguage();
@@ -111,8 +113,18 @@ export function Header() {
             >
               <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={19} />
             </button>
-            <Link href="/wishlist" className={`${s.tool} ${s.onlyWide}`} aria-label="Wishlist">
+            <Link
+              href="/wishlist"
+              className={`${s.tool} ${s.wish}`}
+              aria-label={saved > 0 ? `Wishlist, ${saved} item${saved > 1 ? 's' : ''}` : 'Wishlist'}
+            >
               <Icon name="heart" size={19} />
+              {/* Keyed by count so it pops each time a product is saved. */}
+              {saved > 0 ? (
+                <span key={saved} className={`num ${s.badge}`} aria-hidden>
+                  {saved > 99 ? '99+' : saved}
+                </span>
+              ) : null}
             </Link>
             <Link href={user ? '/profile' : '/login'} className={s.account}>
               <Icon name="user" size={18} />
@@ -123,7 +135,7 @@ export function Header() {
               {/* Phones only show the icon, so the count rides on it as a badge.
                   Keyed by count so it pops each time something is added. */}
               {count > 0 ? (
-                <span key={count} className={`num ${s.cartBadge}`} aria-hidden>
+                <span key={count} className={`num ${s.badge} ${s.cartBadge}`} aria-hidden>
                   {count > 99 ? '99+' : count}
                 </span>
               ) : null}
