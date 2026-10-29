@@ -9,6 +9,7 @@ import WarehouseChecks from './WarehouseChecks';
 export default function CreateRiderModal({ rider, onClose, onDone }: { rider?: RiderRow; onClose: () => void; onDone: () => void }) {
   const [shops, setShops] = useState<Shop[]>([]);
   const [f, setF] = useState({ name: rider?.name ?? '', phone: rider?.phone ?? '', email: rider?.email ?? '', password: '', isActive: rider?.isActive ?? true, warehouses: rider?.warehouses?.length ? rider.warehouses.map((w) => w._id) : rider?.warehouse ? [typeof rider.warehouse === 'string' ? rider.warehouse : rider.warehouse._id] : [] as string[] });
+  const [longDistance, setLongDistance] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function CreateRiderModal({ rider, onClose, onDone }: { rider?: R
     try {
       if (rider) await updateUser(rider._id, { ...f, password: f.password || undefined });
       else {
-        await createRider(f);
+        await createRider({ ...f, longDistance });
         window.alert(`Rider created.\n\nRider app login (phone): ${f.phone}\nPassword: ${f.password}\n\nShare this with the rider now - the password cannot be shown again.`);
       }
       onDone();
@@ -63,6 +64,12 @@ export default function CreateRiderModal({ rider, onClose, onDone }: { rider?: R
         <Field label="Warehouses (tick one or more)">
           <WarehouseChecks options={shops} value={f.warehouses} onChange={(warehouses) => setF({ ...f, warehouses })} />
         </Field>
+        {!rider && (
+          <label className="checkbox-row">
+            <input type="checkbox" checked={longDistance} onChange={(e) => setLongDistance(e.target.checked)} />
+            Special long-distance rider (gets orders beyond 15 km)
+          </label>
+        )}
         <div className="modal-actions">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel

@@ -361,6 +361,8 @@ export const adminRiderBody = z
     /** One or more warehouses the rider delivers for (`warehouse` still works for old clients). */
     warehouses: z.array(objectId).min(1, 'Choose at least one warehouse').max(30).optional(),
     warehouse: objectId.optional(),
+    /** Special rider who gets the orders beyond the normal radius (point 41). */
+    longDistance: z.boolean().optional(),
   })
   .refine((v) => (v.warehouses?.length ?? 0) > 0 || !!v.warehouse, { message: 'Choose at least one warehouse', path: ['warehouses'] });
 

@@ -499,7 +499,8 @@ export const listUsersAdmin = asyncHandler(async (req, res) => {
 });
 
 export const createRider = asyncHandler(async (req, res) => {
-  const { name, phone, email, password, warehouse, warehouses } = req.body as {
+  const { name, phone, email, password, warehouse, warehouses, longDistance } = req.body as {
+    longDistance?: boolean;
     name: string;
     phone: string;
     email?: string;
@@ -511,7 +512,7 @@ export const createRider = asyncHandler(async (req, res) => {
   if (!ids.length) throw new ApiError(400, 'Choose at least one warehouse');
   const found = await Shop.countDocuments({ _id: { $in: ids } });
   if (found !== ids.length) throw new ApiError(400, 'Warehouse not found');
-  const rider = await User.create({ name, phone, email, password, role: 'rider', warehouse: ids[0], warehouses: ids, isActive: true });
+  const rider = await User.create({ name, phone, email, password, role: 'rider', warehouse: ids[0], warehouses: ids, isActive: true, riderLongDistance: !!longDistance });
   const safeRider = await User.findById(rider._id).select('name phone email role warehouse warehouses isActive createdAt').populate('warehouse', 'name').populate('warehouses', 'name');
   created(res, safeRider);
 });

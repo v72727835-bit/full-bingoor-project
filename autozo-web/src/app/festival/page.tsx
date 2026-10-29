@@ -79,9 +79,10 @@ export default function FestivalTab() {
       {page.sections.map((section) => (
         <section key={section.category.id} className={s.section}>
           <SectionHead title={section.title || section.category.name} />
-          <Rail>
+          {/* Points 14 / 27: the short card, 3 across on a phone, the row slides for the rest. */}
+          <Rail className={s.peekRail}>
             {section.items.map((p) => (
-              <ProductCard key={p.id} product={p} width={168} tint={section.category.tint} />
+              <ProductCard key={p.id} product={p} compact tint={section.category.tint} />
             ))}
           </Rail>
           {/* Straight into the aisle, where every child category is listed, with a peek at the first products. */}

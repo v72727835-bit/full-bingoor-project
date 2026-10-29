@@ -38,3 +38,9 @@ export async function fetchQuote(addressId: string): Promise<CartQuote> {
   const { data } = await api.get<ApiEnvelope<CartQuote>>('/cart/quote', { params: { addressId, slot: 'instant' } });
   return data.data;
 }
+
+/** The quote for the customer's current delivery point, so the cart can show the distance-based delivery time. */
+export async function fetchPointQuote(point: { lat: number; lng: number }): Promise<CartQuote> {
+  const { data } = await api.get<ApiEnvelope<CartQuote>>('/cart/quote', { params: { ...point, slot: 'instant' } });
+  return data.data;
+}
