@@ -16,6 +16,7 @@ import { ProductCardSkeleton } from '../ui/Skeleton';
 import { Txt } from '../ui/Text';
 import { productGridPerf, useGrid } from '../utils/layout';
 import { shareLink } from '../utils/share';
+import { useLocalName } from '../store/language';
 
 /**
  * A category tile's page: child aisles down the left, products on the right.
@@ -31,6 +32,7 @@ export function CategoryBrowseScreen() {
   const insets = useSafeAreaInsets();
   const { c, tint } = useTheme();
   const { cart } = useCart();
+  const ln = useLocalName();
   const grid = useGrid();
   const { width } = useWindowDimensions();
 
@@ -69,7 +71,7 @@ export function CategoryBrowseScreen() {
 
   const children: Category[] = useMemo(() => page?.children ?? [], [page]);
   const activeChild = children.find((ch) => ch.slug === activeSlug);
-  const title = page?.name ?? params.name ?? 'Category';
+  const title = (page ? ln(page) : params.name) ?? 'Category';
 
   return (
     <View style={styles.root}>
@@ -90,7 +92,7 @@ export function CategoryBrowseScreen() {
           </Txt>
           {activeChild ? (
             <Txt variant="caption" tone="muted" numberOfLines={1}>
-              {activeChild.name}
+              {ln(activeChild)}
             </Txt>
           ) : null}
         </View>
@@ -154,7 +156,7 @@ export function CategoryBrowseScreen() {
                     <CategoryArt category={ch} size={30} />
                   </View>
                   <Txt variant="caption" center numberOfLines={2} tone={on ? 'brand' : 'muted'} weight={on ? '800' : '600'}>
-                    {ch.name}
+                    {ln(ch)}
                   </Txt>
                 </Pressable>
               );

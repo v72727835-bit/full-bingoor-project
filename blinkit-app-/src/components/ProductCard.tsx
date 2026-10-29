@@ -10,6 +10,7 @@ import { StarLine } from '../ui/Rating';
 import { SmartImage } from '../ui/SmartImage';
 import { Stepper } from '../ui/Stepper';
 import { Txt } from '../ui/Text';
+import { useLocalName } from '../store/language';
 
 interface Props {
   product: ProductSummary;
@@ -30,6 +31,7 @@ interface Props {
  */
 export function ProductCard({ product, width, onPress, deliveryText = '19 min', style }: Props) {
   const { quantityOf, add, setQuantity, remove, pending } = useCart();
+  const ln = useLocalName();
   const { isSaved, toggle } = useWishlist();
   const [notifyOpen, setNotifyOpen] = useState(false);
 
@@ -159,7 +161,7 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
         ) : null}
 
         <Txt variant="bodySm" tone="body" numberOfLines={3} style={styles.name}>
-          {product.name}
+          {ln(product)}
         </Txt>
 
         {product.attributes?.length ? (
