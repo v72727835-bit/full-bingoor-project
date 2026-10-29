@@ -229,3 +229,84 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* Point 9: tablets and desktop keep the child aisles too, in a side bar like
+   Blinkit's website — photo and name side by side. */
+@media (min-width: 700px) {
+  .catBody {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .sideRail {
+    display: flex;
+    flex-direction: column;
+    align-self: start;
+    position: sticky;
+    top: 136px;
+    max-height: calc(100vh - 156px);
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+  }
+
+  .railItem {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .railItem:last-child {
+    border-bottom: 0;
+  }
+
+  .railItem:hover {
+    background: var(--surface-3);
+  }
+
+  .railItem[data-active='true'] {
+    background: var(--brand-tint);
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .railItem[data-active='true']::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 18%;
+    bottom: 18%;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background: var(--brand);
+  }
+
+  .railFrame {
+    display: block;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    background: var(--surface-3);
+  }
+
+  .railArt {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+  }
+
+  .railName {
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+}

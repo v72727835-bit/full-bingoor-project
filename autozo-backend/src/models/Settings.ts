@@ -80,6 +80,8 @@ export interface ISettings {
     beyondCodDisabled: boolean;
     /** Shown when a long-distance customer taps COD. */
     beyondCodMessage: string;
+    /** Point 37: the only categories (any level) a long-distance customer sees; empty = all. */
+    beyondCategories?: Types.ObjectId[];
   };
   /** Filters shown on listing pages; the admin can rename, reorder and hide them. */
   filters: { key: string; label: string; kind: 'brand' | 'price' | 'discount' | 'rating' | 'diet' | 'stock'; enabled: boolean }[];
@@ -207,6 +209,7 @@ const settingsSchema = new Schema<ISettings>(
       beyondMinOrder: { type: Number, default: 199, min: 0 },
       beyondCodDisabled: { type: Boolean, default: true },
       beyondCodMessage: { type: String, default: 'For long distance "COD" option is not available', trim: true },
+      beyondCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'Category' }], default: [] },
     },
     filters: {
       type: [{ key: String, label: { type: String, trim: true }, kind: String, enabled: { type: Boolean, default: true }, _id: false }],

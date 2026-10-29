@@ -17,11 +17,14 @@ const DISMISS_KEY = 'autozo_install_dismissed';
  * instead of a button. iPadOS 13+ reports itself as a Mac, hence the touch
  * check.
  */
-function isIosSafari(): boolean {
+function isIos(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent;
-  const iOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  if (!iOS) return false;
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+function isIosSafari(): boolean {
+  if (!isIos()) return false;
+  const ua = navigator.userAgent;
   // Chrome and Firefox on iOS cannot add to the home screen at all.
   return /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
 }
@@ -38,6 +41,8 @@ function isStandalone(): boolean {
 export function PwaRegister() {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
   const [ios, setIos] = useState(false);
+  // iPhone users in Chrome / Firefox: those browsers cannot add to the home screen.
+  const [iosOther, setIosOther] = useState(false);
   const [gone, setGone] = useState(true);
 
   useEffect(() => {
@@ -72,6 +77,7 @@ export function PwaRegister() {
       setGone(false);
     }
     if (isIosSafari() && !isStandalone()) setIos(true);
+    else if (isIos() && !isStandalone()) setIosOther(true);
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setPrompt(e as InstallPrompt);
@@ -92,6 +98,24 @@ export function PwaRegister() {
   if (gone) return null;
 
   // iOS: no install button exists, so say where the option lives.
+  if (!prompt && iosOther)
+    return (
+      <div className={s.bar}>
+        <span className={s.icon}>
+          <Icon name="download" size={19} />
+        </span>
+        <span className={s.text}>
+          <b>Add Bingoor to your home screen</b>
+          <span className={s.sub}>
+            Open bingoor.com in Safari, tap Share, then choose &ldquo;Add to Home Screen&rdquo;. It then opens like an app.
+          </span>
+        </span>
+        <button className={s.x} onClick={dismiss} aria-label="Dismiss">
+          <Icon name="x" size={16} />
+        </button>
+      </div>
+    );
+
   if (!prompt && ios)
     return (
       <div className={s.bar}>

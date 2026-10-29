@@ -78,10 +78,8 @@ async function runPlaceOrder(
   const user = await User.findById(userId).select('addresses');
   const address = user?.addresses.id(addressId);
   if (!address) throw new ApiError(404, 'Delivery address not found');
-  // The rider navigates to this pin and the delivery range is checked against it.
-  if (!address.location?.lat || !address.location?.lng) {
-    throw new ApiError(400, 'Please pin your exact location on this address (tap "Use my current location") before ordering.');
-  }
+  // A map pin is optional: a typed address with a PIN is enough to order. When
+  // the pin is missing the distance is unknown and the base delivery band applies.
   if (paymentMethod === 'online' && !(await razorpayEnabled())) {
     throw new ApiError(400, 'Online payment is not switched on yet. Please choose Cash on Delivery for now.');
   }

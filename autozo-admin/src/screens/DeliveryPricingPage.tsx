@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { fetchProducts, fetchSettings, saveSettings } from '../api/admin';
+import { fetchCategories, fetchProducts, fetchSettings, saveSettings } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { Button, CenterSpinner, ErrorBanner, Field } from '../components/ui';
-import { Product, Settings } from '../types';
+import { Category, Product, Settings } from '../types';
 
 type Save = (patch: Record<string, unknown>) => Promise<void>;
 const num = (v: string) => (v === '' ? 0 : Number(v));
@@ -77,6 +77,11 @@ function SlotsCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
       <div className="page-subtitle" style={{ marginBottom: 14 }}>
         Rename any of the three times, or switch one off. A switched-off time disappears everywhere and the others spread out to fill the row.
       </div>
+      <div className="page-subtitle" style={{ marginBottom: 14 }}>
+        <b>Point 18:</b> the <b>1st</b> time is also the delivery time shown in the website header and on the home page and listings. Type anything,
+        e.g. &ldquo;19 minutes&rdquo;, &ldquo;2 hour&rdquo; or &ldquo;Next day&rdquo;. The cart still shows each customer their real time by distance
+        (the rows in &ldquo;Distance-based delivery pricing&rdquo; below).
+      </div>
       {slots.map((s, i) => (
         <div key={s.key} className="row-flex" style={{ marginBottom: 8 }}>
           <span className="stat-label" style={{ width: 40 }}>
@@ -142,6 +147,21 @@ function SlotsCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
 function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
   const [p, setP] = useState(settings.pricing);
   const [busy, setBusy] = useState(false);
+  const [cats, setCats] = useState<Category[]>([]);
+  useEffect(() => {
+    fetchCategories().then(setCats).catch(() => setCats([]));
+  }, []);
+  const farCats = (p.beyondCategories ?? []).map(String);
+  const toggleFar = (id: string, on: boolean) =>
+    setP((cur) => ({ ...cur, beyondCategories: on ? [...(cur.beyondCategories ?? []), id] : (cur.beyondCategories ?? []).filter((x) => String(x) !== id) }));
+  // Groups, then their sub- and child categories, indented under them.
+  const ordered = cats
+    .filter((c) => c.level === 1)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .flatMap((g) => {
+      const subs = cats.filter((c) => c.parent === g._id).sort((a, b) => a.sortOrder - b.sortOrder);
+      return [g, ...subs.flatMap((sc) => [sc, ...cats.filter((c) => c.parent === sc._id).sort((a, b) => a.sortOrder - b.sortOrder)])];
+    });
   const setBand = (i: number, patch: Partial<Settings['pricing']['bands'][number]>) =>
     setP((cur) => ({ ...cur, bands: cur.bands.map((b, j) => (i === j ? { ...b, ...patch } : b)) }));
 
@@ -242,6 +262,20 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
           />
         </Field>
       </div>
+      <Field label="Long distance: categories shown (point 37)">
+        <div className="page-subtitle" style={{ marginBottom: 8 }}>
+          Customers further than the last row see only the ticked categories (a ticked group or sub category includes everything under it).
+          Leave all unticked to show everything.
+        </div>
+        <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid var(--line, #e5e7eb)', borderRadius: 8, padding: 8 }}>
+          {ordered.map((c) => (
+            <label key={c._id} className="checkbox-row" style={{ paddingLeft: (c.level - 1) * 20, marginBottom: 4 }}>
+              <input type="checkbox" checked={farCats.includes(c._id)} onChange={(e) => toggleFar(c._id, e.target.checked)} />
+              <span style={{ fontWeight: c.level === 1 ? 700 : 400 }}>{c.name}</span>
+            </label>
+          ))}
+        </div>
+      </Field>
       <div className="page-subtitle">Beyond the last row, long-distance delivery time and minimum shopping apply. Payment options follow each product&apos;s COD / online setting.</div>
       <div className="modal-actions">
         <Button onClick={submit} disabled={busy}>

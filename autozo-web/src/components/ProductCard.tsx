@@ -79,7 +79,8 @@ export function ProductCard({
           <Icon name={wished ? 'heart-fill' : 'heart'} size={16} />
         </button>
         <div className={s.cRow}>
-          {product.unit ? <span className={s.cUnit}>{product.unit}</span> : <span />}
+          {/* The size sits in the text below, where it has room to show in full. */}
+          <span />
           {product.inStock ? (
             <QuantityStepper
               size="sm"
@@ -99,6 +100,7 @@ export function ProductCard({
           <Link href={`/products/${product.slug}`} className={`${s.cName} clamp-2`}>
             {name(product)}
           </Link>
+          {product.unit ? <span className={s.cUnit}>{product.unit}</span> : null}
           {product.rating || product.ratingLabel ? (
             <div className={s.cRate}>
               {product.rating ? <Rating value={product.rating} count={product.ratingCount} size={11} /> : null}

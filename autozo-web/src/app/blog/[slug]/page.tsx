@@ -37,7 +37,12 @@ export default function Page() {
           <p className="body-sm" style={{ margin: '6px 0 18px' }}>
             {[post.author, post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : ''].filter(Boolean).join(' · ')}
           </p>
-          {post.cover ? <img src={post.cover} alt="" style={{ width: '100%', borderRadius: 12, marginBottom: 18 }} /> : null}
+          {post.cover ? <img
+              src={post.cover}
+              alt=""
+              // Point 38: a tall photo used to fill the whole screen; keep it a banner.
+              style={{ width: '100%', maxHeight: 360, aspectRatio: '16 / 9', objectFit: 'cover', display: 'block', borderRadius: 12, marginBottom: 18 }}
+            /> : null}
           <RichText text={post.body ?? ''} />
         </article>
       )}

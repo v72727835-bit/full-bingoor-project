@@ -28,6 +28,8 @@ type FormState = {
   video: string;
   galleryImages: string;
   ratingLabel: string;
+  rating: string;
+  ratingCount: string;
   variantGroup: string;
   variantLabel: string;
   nameHi: string;
@@ -57,6 +59,8 @@ const EMPTY_FORM: FormState = {
   video: '',
   galleryImages: '',
   ratingLabel: '',
+  rating: '',
+  ratingCount: '',
   variantGroup: '',
   variantLabel: '',
   nameHi: '',
@@ -404,6 +408,8 @@ function ProductForm({
           video: product.video ?? '',
           galleryImages: product.images.slice(1).join(', '),
           ratingLabel: product.ratingLabel ?? '',
+          rating: product.rating ? String(product.rating) : '',
+          ratingCount: product.ratingCount ? String(product.ratingCount) : '',
           variantGroup: product.variantGroup ?? '',
           variantLabel: product.variantLabel ?? '',
           nameHi: product.nameHi ?? '',
@@ -484,6 +490,9 @@ function ProductForm({
         images,
         video: form.video.trim(),
         ratingLabel: form.ratingLabel.trim() || undefined,
+        // Empty boxes leave the stored rating alone.
+        ...(form.rating.trim() !== '' ? { rating: Math.min(5, Math.max(0, Number(form.rating) || 0)) } : {}),
+        ...(form.ratingCount.trim() !== '' ? { ratingCount: Math.max(0, Math.round(Number(form.ratingCount) || 0)) } : {}),
         variantGroup: form.variantGroup.trim() || undefined,
         variantLabel: form.variantLabel.trim() || undefined,
         nameHi: form.nameHi.trim() || undefined,
@@ -606,6 +615,15 @@ function ProductForm({
           </Field>
           <Field label="Attributes (comma separated)">
             <input value={form.attributes} onChange={(e) => set('attributes', e.target.value)} placeholder="Spicy, 500g pack" />
+          </Field>
+        </div>
+
+        <div className="field-row">
+          <Field label="Star rating (0 to 5)">
+            <input type="number" min={0} max={5} step={0.1} value={form.rating} onChange={(e) => set('rating', e.target.value)} placeholder="4.2" />
+          </Field>
+          <Field label="Number of ratings">
+            <input type="number" min={0} step={1} value={form.ratingCount} onChange={(e) => set('ratingCount', e.target.value)} placeholder="20187" />
           </Field>
         </div>
 

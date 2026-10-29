@@ -28,7 +28,7 @@ export const clearCart = async (): Promise<CartView> => {
 };
 
 /** What this basket costs to deliver to an address - handling, delivery, 2 hour charge, COD rules. */
-export const fetchQuote = async (params: { addressId?: string; slot: SlotKey; paymentMethod?: 'cod' | 'online' }): Promise<Quote> => {
+export const fetchQuote = async (params: { addressId?: string; slot: SlotKey; paymentMethod?: 'cod' | 'online'; lat?: number; lng?: number }): Promise<Quote> => {
   const { data } = await api.get('/cart/quote', { params });
   return data.data as Quote;
 };

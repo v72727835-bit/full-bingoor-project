@@ -7,9 +7,11 @@ import { Category } from '../../lib/types';
 import { CategoryTile } from '../../components/CategoryTile';
 import { Crumbs } from '../../components/Crumbs';
 import { Alert, SectionHead } from '../../components/ui';
+import { useLanguage } from '../../context/LanguageContext';
 import s from './categories.module.css';
 
 export default function CategoriesPage() {
+  const { name } = useLanguage();
   const [tree, setTree] = useState<Category[] | null>(null);
   const [error, setError] = useState('');
 
@@ -49,7 +51,7 @@ export default function CategoriesPage() {
             const kids = group.children?.length ? group.children : [group];
             return (
               <section key={group.id} className={s.group}>
-                <SectionHead title={titleCase(group.name)} />
+                <SectionHead title={titleCase(name(group))} />
                 <div className="grid-cats">
                   {kids.map((c) => (
                     <CategoryTile key={c.id} category={c} />

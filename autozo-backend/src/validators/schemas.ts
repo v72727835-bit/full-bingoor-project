@@ -248,6 +248,9 @@ export const adminProductBody = z.object({
   paymentMode: paymentModeField.default('both'),
   isActive: z.boolean().default(true),
   ratingLabel: z.string().trim().max(20).optional(),
+  /** Star rating (0-5) and number of ratings shown on the card and product page. */
+  rating: z.coerce.number().min(0).max(5).optional(),
+  ratingCount: z.coerce.number().int().min(0).optional(),
   variantGroup: z.string().trim().max(60).optional(),
   variantLabel: z.string().trim().max(30).optional(),
   nameHi: z.string().trim().max(150).optional(),
@@ -501,6 +504,7 @@ export const adminSettingsBody = z
         beyondMinOrder: z.coerce.number().min(0).max(100000),
         beyondCodDisabled: z.coerce.boolean(),
         beyondCodMessage: z.string().trim().min(1).max(200),
+        beyondCategories: z.array(objectId).max(300),
       })
       .partial(),
     filters: z

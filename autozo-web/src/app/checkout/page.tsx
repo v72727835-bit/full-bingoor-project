@@ -15,8 +15,8 @@ import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSlot } from '../../context/SlotContext';
 import { getTip, setTip } from '../../lib/tip';
+import { getDeliveryPoint } from '../../lib/deliveryPoint';
 import { useQuote } from '../../lib/useQuote';
-import { DeliverySlots } from '../../components/DeliverySlots';
 import { useCatalog } from '../../context/CatalogContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
@@ -162,9 +162,14 @@ function CheckoutInner() {
     setPlacing(true);
     try {
       const current = list.find((a) => a.id === picked);
-      if (current && landmark.trim() !== (current.landmark ?? '')) {
-        await updateAddress(picked, { landmark: landmark.trim() || undefined }).catch(() => undefined);
-      }
+      // An address saved without a map pin borrows the customer's current location,
+      // so the order is priced and timed for the same distance the cart showed.
+      const here = current && !current.location ? getDeliveryPoint() : null;
+      const patch = {
+        ...(current && landmark.trim() !== (current.landmark ?? '') ? { landmark: landmark.trim() || undefined } : {}),
+        ...(here ? { location: { lat: here.lat, lng: here.lng } } : {}),
+      };
+      if (Object.keys(patch).length) await updateAddress(picked, patch).catch(() => undefined);
       const known = (user as { email?: string } | null)?.email ?? '';
       if (email.trim() && email.trim() !== known) await updateMe({ email: email.trim() }).catch(() => undefined);
       let result: PlaceResult = await placeOrder(picked, pay, note.trim() || undefined, slot, opt, tip);
@@ -199,6 +204,11 @@ function CheckoutInner() {
   };
 
   const showForm = adding || list.length === 0;
+  // The same promise the cart showed: far addresses are next day or a few working days.
+  const etaText =
+    quote && quote.days > 0
+      ? quote.days === 1 ? 'Next day delivery' : `${quote.days} working days`
+      : slot === 'instant' && home ? shortDelivery(home) : label;
   const chosen = options.find((o) => o.key === opt);
   const payFee = quote?.paymentFees?.[opt] ?? 0;
   const toPay = Math.round(((quote ? quote.total : cart.total) + payFee + tip) * 100) / 100;
@@ -302,9 +312,13 @@ function CheckoutInner() {
           <section className="card card-pad">
             <div className={s.secHead}>
               <span className={s.step}>3</span>
-              <h2 className="h3">Delivery time &amp; payment</h2>
+              <h2 className="h3">Payment</h2>
             </div>
-            <DeliverySlots compact />
+            {/* The delivery time is picked on the cart page; checkout only repeats it. */}
+            <p className={`body-sm ${s.hint}`} style={{ marginBottom: 14 }}>
+              <Icon name="clock" size={13} />
+              Delivery time: {etaText}
+            </p>
             {codTooFar && pay === 'cod' ? (
               <div style={{ marginBottom: 14 }}>
                 <Alert tone="bad" icon="wallet">
@@ -468,7 +482,7 @@ function CheckoutInner() {
           {showForm ? null : (
             <p className={`body-sm ${s.hint}`}>
               <Icon name="bolt" size={13} />
-              {slot === 'instant' && home ? `Delivery time: ${shortDelivery(home)}` : `Delivery time: ${label}`}
+              Delivery time: {etaText}
             </p>
           )}
         </aside>

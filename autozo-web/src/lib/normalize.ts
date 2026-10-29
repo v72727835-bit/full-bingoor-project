@@ -111,9 +111,10 @@ export function product(raw: RawProduct): Product {
     discountPercent: discount,
     inStock: raw.inStock ?? stock > 0,
     stock,
-    rating: raw.rating,
+    // A bare number typed into the admin's card label ("4.5") is a star rating.
+    rating: raw.rating || labelStars(raw.ratingLabel),
     ratingCount: raw.ratingCount,
-    ratingLabel: raw.ratingLabel || undefined,
+    ratingLabel: labelStars(raw.ratingLabel) ? undefined : raw.ratingLabel || undefined,
     deliveryDays: raw.deliveryDays ?? null,
     codAvailable: raw.codAvailable !== false,
     onlineAvailable: raw.onlineAvailable !== false,
@@ -206,6 +207,13 @@ export function banner(raw: RawBanner): Banner {
   };
 }
 
+/** "4.5" or "4.5★" in the admin's rating label, read as a star rating; anything else is just a label. */
+function labelStars(label?: string): number | undefined {
+  const m = /^\s*([0-5](?:\.\d)?)\s*★?\s*$/.exec(label ?? '');
+  const n = m ? Number(m[1]) : 0;
+  return n > 0 && n <= 5 ? n : undefined;
+}
+
 /** Unknown section types are dropped rather than rendered as an empty block. */
 function section(raw: Record<string, unknown>): HomeSection | null {
   const type = raw.type as string;
@@ -227,6 +235,7 @@ function section(raw: Record<string, unknown>): HomeSection | null {
         kind: 'categoryGrid',
         id,
         title: (raw.title as string) ?? '',
+        titleHi: (raw.titleHi as string) || undefined,
         groupSlug: raw.groupSlug as string | undefined,
         items: unique(items.map((i) => category(i as RawCategory))),
       };
@@ -235,6 +244,7 @@ function section(raw: Record<string, unknown>): HomeSection | null {
         kind: 'productRail',
         id,
         title: (raw.title as string) ?? '',
+        titleHi: (raw.titleHi as string) || undefined,
         subtitle: raw.subtitle as string | undefined,
         tint: raw.tint as string | undefined,
         style: raw.style as string | undefined,
@@ -246,6 +256,7 @@ function section(raw: Record<string, unknown>): HomeSection | null {
         kind: 'productGrid',
         id,
         title: (raw.title as string) ?? '',
+        titleHi: (raw.titleHi as string) || undefined,
         subtitle: raw.subtitle as string | undefined,
         style: raw.style as string | undefined,
         items: unique(items.map((i) => product(i as RawProduct))),
