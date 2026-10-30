@@ -61,3 +61,39 @@
     font-size: 12.5px;
   }
 }
+
+/* Point 18: the cart's optional "another time" chips. */
+.later {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.laterLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.laterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.laterChip[data-on='true'] {
+  border-color: var(--brand);
+  background: var(--brand-tint);
+  color: var(--brand-text);
+}
