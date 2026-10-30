@@ -56,3 +56,47 @@ export async function facebookAccessToken(appId: string): Promise<string> {
     });
   });
 }
+
+const IG_STATE = 'bingoor_ig_state';
+const IG_NEXT = 'bingoor_ig_next';
+
+/** Where Instagram sends the customer back to; must be listed as a redirect URI in the Meta app. */
+export const instagramRedirectUri = () => `${window.location.origin}/auth/instagram`;
+
+/**
+ * Continue with Instagram: Instagram has no popup SDK, so the page goes to
+ * Instagram's own login and comes back to /auth/instagram with a code.
+ */
+export function startInstagramLogin(appId: string, next: string) {
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try {
+    sessionStorage.setItem(IG_STATE, state);
+    sessionStorage.setItem(IG_NEXT, next);
+  } catch {
+    /* private mode: the state check below then fails safely */
+  }
+  const url = new URL('https://www.instagram.com/oauth/authorize');
+  url.searchParams.set('client_id', appId);
+  url.searchParams.set('redirect_uri', instagramRedirectUri());
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('scope', 'instagram_business_basic');
+  url.searchParams.set('state', state);
+  window.location.assign(url.toString());
+}
+
+/** Reads (once) what startInstagramLogin saved: whether the state matches, and where to go next. */
+export function finishInstagramLogin(state: string | null): { ok: boolean; next: string } {
+  let saved: string | null = null;
+  let next = '/';
+  try {
+    saved = sessionStorage.getItem(IG_STATE);
+    next = sessionStorage.getItem(IG_NEXT) || '/';
+    sessionStorage.removeItem(IG_STATE);
+    sessionStorage.removeItem(IG_NEXT);
+  } catch {
+    /* ignore */
+  }
+  // Only same-site paths, never a full URL from the query string.
+  if (!next.startsWith('/') || next.startsWith('//')) next = '/';
+  return { ok: !!state && state === saved, next };
+}

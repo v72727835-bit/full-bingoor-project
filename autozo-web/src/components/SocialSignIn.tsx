@@ -5,10 +5,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { getErrorMessage } from '../lib/client';
-import { facebookAccessToken, googleAccessToken } from '../lib/social';
+import { facebookAccessToken, googleAccessToken, startInstagramLogin } from '../lib/social';
 import s from './SocialSignIn.module.css';
 
-type Provider = 'google' | 'facebook';
+type Provider = 'google' | 'facebook' | 'instagram';
 
 /** Google's four-colour "G". */
 function GoogleMark() {
@@ -31,6 +31,26 @@ function FacebookMark() {
   );
 }
 
+function InstagramMark() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <defs>
+        <radialGradient id="ig-grad" cx="30%" cy="107%" r="150%">
+          <stop offset="0" stopColor="#fdf497" />
+          <stop offset="0.05" stopColor="#fdf497" />
+          <stop offset="0.45" stopColor="#fd5949" />
+          <stop offset="0.6" stopColor="#d6249f" />
+          <stop offset="0.9" stopColor="#285AEB" />
+        </radialGradient>
+      </defs>
+      <rect x="1" y="1" width="22" height="22" rx="6" fill="url(#ig-grad)" />
+      <rect x="6" y="6" width="12" height="12" rx="3.6" fill="none" stroke="#fff" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="2.9" fill="none" stroke="#fff" strokeWidth="1.8" />
+      <circle cx="16.3" cy="7.7" r="1" fill="#fff" />
+    </svg>
+  );
+}
+
 /**
  * "Continue with Google / Facebook", used on both login and sign-up: the same
  * call signs an existing customer in or creates the account. The client ids
@@ -44,6 +64,17 @@ export function SocialSignIn({ next, onError, children }: { next: string; onErro
 
   const go = async (provider: Provider) => {
     onError('');
+    if (provider === 'instagram') {
+      const igId = settings?.social?.instagramAppId;
+      if (!igId) {
+        onError('Instagram login is coming soon. Please continue with your phone number for now.');
+        return;
+      }
+      setBusy('instagram');
+      // Leaves the page for Instagram's own login; /auth/instagram finishes it.
+      startInstagramLogin(igId, next);
+      return;
+    }
     const id = provider === 'google' ? settings?.social?.googleClientId : settings?.social?.facebookAppId;
     if (!id) {
       onError(`${provider === 'google' ? 'Google' : 'Facebook'} login is coming soon. Please continue with your phone number for now.`);
@@ -70,6 +101,10 @@ export function SocialSignIn({ next, onError, children }: { next: string; onErro
       <button type="button" className={s.method} onClick={() => go('facebook')} disabled={busy !== null}>
         <FacebookMark />
         {busy === 'facebook' ? 'Opening Facebook…' : 'Continue with Facebook'}
+      </button>
+      <button type="button" className={s.method} onClick={() => go('instagram')} disabled={busy !== null}>
+        <InstagramMark />
+        {busy === 'instagram' ? 'Opening Instagram…' : 'Continue with Instagram'}
       </button>
       {children}
     </div>

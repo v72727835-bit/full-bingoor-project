@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { fetchPublicSettings } from '../api/catalog';
+import { setGeoMaps } from '../lib/geo';
 import { PublicSettings } from '../lib/types';
 
 /**
@@ -17,7 +18,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchPublicSettings()
-      .then(setSettings)
+      .then((next) => {
+        // Address lookups use Google when the admin saved a Maps key (point 16).
+        setGeoMaps(next?.maps);
+        setSettings(next);
+      })
       .catch(() => undefined); // The storefront works fine without them.
   }, []);
 

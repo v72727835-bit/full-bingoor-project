@@ -908,6 +908,16 @@ select option {
   gap: 9px;
   font-size: 13.5px;
 }
+/* A tick row inside a form field: keep the box and its text side by side and
+   readable (".field label" would otherwise turn it into a small grey block). */
+.field label.checkbox-row {
+  display: flex;
+  margin-bottom: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
 .checkbox-row label {
   margin-bottom: 0;
   color: var(--ink);

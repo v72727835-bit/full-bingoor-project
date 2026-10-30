@@ -7,6 +7,7 @@ import { ProductCard, ProductCardSkeleton } from '../../components/ProductCard';
 import { Rail } from '../../components/Rail';
 import { Alert, Button, SectionHead, SeeAll } from '../../components/ui';
 import { getErrorMessage } from '../../lib/client';
+import { POINT_EVENT } from '../../lib/deliveryPoint';
 import { FestivalPage } from '../../lib/types';
 import s from './festival.module.css';
 
@@ -29,7 +30,13 @@ export default function FestivalTab() {
       })
       .catch((e) => setError(getErrorMessage(e)));
   };
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    // The rows depend on where the customer is (far customers see only the admin's picks, point 37).
+    window.addEventListener(POINT_EVENT, load);
+    return () => window.removeEventListener(POINT_EVENT, load);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (error && !page) {
     return (

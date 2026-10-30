@@ -40,6 +40,7 @@ router.post('/auth/login', authLimiter, validate({ body: v.loginBody }), auth.lo
 router.post('/auth/reset-password', authLimiter, validate({ body: v.resetPasswordBody }), auth.resetPassword);
 router.post('/auth/google', authLimiter, validate({ body: v.socialLoginBody }), auth.googleLogin);
 router.post('/auth/facebook', authLimiter, validate({ body: v.socialLoginBody }), auth.facebookLogin);
+router.post('/auth/instagram', authLimiter, validate({ body: v.instagramLoginBody }), auth.instagramLogin);
 router.post('/rider/auth/login', authLimiter, validate({ body: v.loginBody }), auth.riderLogin);
 router.post('/auth/refresh', authLimiter, validate({ body: v.refreshBody }), auth.refresh);
 router.post('/auth/logout', protect, auth.logout);

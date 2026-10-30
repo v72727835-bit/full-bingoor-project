@@ -22,7 +22,7 @@ api.interceptors.request.use((config) => {
   // The catalogue is limited to shops that deliver to the customer's pin.
   const url = config.url ?? '';
   const point = deliveryPointParams();
-  if (point && (config.method ?? 'get') === 'get' && (url === '/home' || url === '/products' || url === '/products/suggest')) {
+  if (point && (config.method ?? 'get') === 'get' && (url === '/home' || url === '/products' || url === '/products/suggest' || url === '/festival')) {
     config.params = { ...point, ...config.params };
   }
   return config;

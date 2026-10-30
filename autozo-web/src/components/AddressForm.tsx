@@ -5,6 +5,7 @@ import { AddressInput } from '../api/account';
 import { Address } from '../lib/types';
 import { INDIA_STATES, matchState } from '../lib/india';
 import { Icon, IconName } from './Icon';
+import { accuratePosition } from '../lib/geo';
 import { LocationPicker, PickedPlace, reverse } from './LocationPicker';
 import { Alert, Button, Field, Input } from './ui';
 import s from './AddressForm.module.css';
@@ -75,10 +76,9 @@ export function AddressForm({
     }
     setLocating(true);
     setGeoMsg({ tone: 'ok', text: 'Finding your location… if your browser asks, tap Allow.' });
-    navigator.geolocation.getCurrentPosition(
+    accuratePosition().then(
       async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+        const { lat, lng } = pos;
         set('location', { lat, lng });
         setGeoMsg({ tone: 'ok', text: 'Location saved. Filling in your address…' });
         const place = await reverse(lat, lng);
@@ -87,12 +87,12 @@ export function AddressForm({
         setGeoMsg({
           tone: 'ok',
           text: filled
-            ? `Address filled from your location (accurate to about ${Math.round(pos.coords.accuracy)} m). Please check it, add your flat / house number and save.`
+            ? `Address filled from your location (accurate to about ${Math.round(pos.accuracy)} m). Please check it, add your flat / house number and save.`
             : 'Your pin is saved, but we could not read the address. Please type the city, state and PIN code.',
         });
         setLocating(false);
       },
-      (err) => {
+      (err: GeolocationPositionError) => {
         const text =
           err.code === 1
             ? 'Location is blocked for this site. Tap the lock icon next to the web address → Site settings → Location → Allow, then press the button again.'
@@ -102,7 +102,6 @@ export function AddressForm({
         setGeoMsg({ tone: 'bad', text });
         setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
     );
   };
 

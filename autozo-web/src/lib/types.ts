@@ -57,6 +57,8 @@ export interface RawVariant {
   mrp?: number;
   stock?: number;
   inStock?: boolean;
+  images?: string[];
+  icon?: string;
 }
 
 export interface RawCategory {
@@ -182,6 +184,8 @@ export interface ProductVariant {
   price: number;
   mrp?: number;
   inStock: boolean;
+  /** The size's own photo, for the options sheet. */
+  image?: string;
 }
 
 export interface Category {
@@ -468,7 +472,7 @@ export interface PublicSettings {
   /** #36: the ways to pay at checkout and their charge, as a percent of the bill. */
   paymentOptions?: PaymentOption[];
   /** Public sign-in client ids; null while that provider is not set up. */
-  social?: { googleClientId: string | null; facebookAppId: string | null };
+  social?: { googleClientId: string | null; facebookAppId: string | null; instagramAppId?: string | null };
   firebase?: {
     configured: boolean;
     config: { apiKey?: string; authDomain?: string; projectId?: string; appId?: string; messagingSenderId?: string; storageBucket?: string; vapidKey?: string } | null;

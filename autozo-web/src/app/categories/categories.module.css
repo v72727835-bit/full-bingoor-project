@@ -161,19 +161,14 @@
   }
 
   .catBody {
-    display: grid;
-    grid-template-columns: 84px minmax(0, 1fr);
-    gap: 10px;
     margin: 0 -8px 0 -16px;
     padding-right: 8px;
   }
 
+  /* The column it sits in (ProductListView) is the sticky part. */
   .sideRail {
     display: flex;
     flex-direction: column;
-    align-self: start;
-    position: sticky;
-    top: 62px;
     max-height: calc(100vh - 140px);
     overflow-y: auto;
     border-right: 1px solid var(--line);
@@ -233,19 +228,13 @@
 /* Point 9: tablets and desktop keep the child aisles too, in a side bar like
    Blinkit's website — photo and name side by side. */
 @media (min-width: 700px) {
-  .catBody {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: 20px;
-  }
-
+  /* Point 9: the aisle names on top, the filters right under them (both in
+     ProductListView's left column), so the products get the full width. */
   .sideRail {
     display: flex;
     flex-direction: column;
-    align-self: start;
-    position: sticky;
-    top: 136px;
-    max-height: calc(100vh - 156px);
+    flex-shrink: 0;
+    max-height: 46vh;
     overflow-y: auto;
     border: 1px solid var(--line);
     border-radius: var(--r-md);

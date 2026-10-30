@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FACEBOOK_APP_ID, GOOGLE_CLIENT_ID } from '../utils/socialIds';
+import { FACEBOOK_APP_ID, GOOGLE_CLIENT_ID, INSTAGRAM_APP_ID } from '../utils/socialIds';
 
 export const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
 
@@ -177,6 +177,8 @@ export const placeOrderBody = z.object({
 });
 
 export const socialLoginBody = z.object({ accessToken: z.string().min(10).max(4000) });
+/** Instagram hands the website a one-time code; the server swaps it (with the app secret) for the customer's id. */
+export const instagramLoginBody = z.object({ code: z.string().min(10).max(2000), redirectUri: z.string().url().max(500) });
 
 export const confirmPaymentBody = z.object({
   razorpay_order_id: z.string().min(5).max(80),
@@ -508,6 +510,8 @@ export const adminSettingsBody = z
         beyondCodDisabled: z.coerce.boolean(),
         beyondCodMessage: z.string().trim().min(1).max(200),
         beyondCategories: z.array(objectId).max(300),
+        beyondStandardCategories: z.array(objectId).max(100),
+        beyondProducts: z.array(objectId).max(500),
       })
       .partial(),
     filters: z
@@ -706,6 +710,14 @@ export const integrationsBody = z.object({
     .optional(),
   facebookAppSecret: z.string().trim().max(200).optional(),
   clearFacebookSecret: z.boolean().optional(),
+  instagramAppId: z
+    .string()
+    .trim()
+    .max(100)
+    .refine((v) => v === '' || INSTAGRAM_APP_ID.test(v), { message: 'Instagram App ID is a number from the Meta developer app (Instagram > API setup with Instagram login).' })
+    .optional(),
+  instagramAppSecret: z.string().trim().max(200).optional(),
+  clearInstagramSecret: z.boolean().optional(),
   razorpayKeyId: z.string().trim().max(100).optional(),
   razorpayKeySecret: z.string().trim().max(200).optional(),
   clearRazorpaySecret: z.boolean().optional(),

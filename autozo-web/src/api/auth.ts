@@ -35,6 +35,13 @@ export const socialLogin = async (provider: 'google' | 'facebook', accessToken: 
   return data.data.user as UserProfile;
 };
 
+/** Continue with Instagram: the server swaps Instagram's one-time code for the customer's Instagram id. */
+export const instagramLogin = async (code: string, redirectUri: string) => {
+  const { data } = await api.post('/auth/instagram', { code, redirectUri });
+  tokens.save(data.data.accessToken, data.data.refreshToken, data.data.user);
+  return data.data.user as UserProfile;
+};
+
 /** Forgot password: the verified phone OTP token lets the customer set a new password. */
 export const resetPassword = async (phone: string, newPassword: string, firebaseIdToken: string) => {
   await api.post('/auth/reset-password', { phone, newPassword, firebaseIdToken });

@@ -82,6 +82,10 @@ export interface ISettings {
     beyondCodMessage: string;
     /** Point 37: the only categories (any level) a long-distance customer sees; empty = all. */
     beyondCategories?: Types.ObjectId[];
+    /** Point 37: standard-category rows (home rows) a long-distance customer also sees. */
+    beyondStandardCategories?: Types.ObjectId[];
+    /** Point 37: single products (e.g. from the festival / Diwali menu) a long-distance customer also sees. */
+    beyondProducts?: Types.ObjectId[];
   };
   /** Filters shown on listing pages; the admin can rename, reorder and hide them. */
   filters: { key: string; label: string; kind: 'brand' | 'price' | 'discount' | 'rating' | 'diet' | 'stock'; enabled: boolean }[];
@@ -210,6 +214,8 @@ const settingsSchema = new Schema<ISettings>(
       beyondCodDisabled: { type: Boolean, default: true },
       beyondCodMessage: { type: String, default: 'For long distance "COD" option is not available', trim: true },
       beyondCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'Category' }], default: [] },
+      beyondStandardCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'StandardCategory' }], default: [] },
+      beyondProducts: { type: [{ type: Schema.Types.ObjectId, ref: 'Product' }], default: [] },
     },
     filters: {
       type: [{ key: String, label: { type: String, trim: true }, kind: String, enabled: { type: Boolean, default: true }, _id: false }],

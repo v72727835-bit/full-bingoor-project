@@ -359,6 +359,9 @@ export interface PayOptionInfo {
 /** The delivery bill for the cart to one address (GET /cart/quote). */
 export interface CartQuote {
   subtotal: number;
+  /** The shopping minimum for this distance (e.g. 199, 1199) and whether the basket reaches it. */
+  minOrder?: number;
+  meetsMinOrder?: boolean;
   handlingFee: number;
   deliveryFee: number;
   baseDeliveryFee: number;

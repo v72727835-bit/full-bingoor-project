@@ -1,13 +1,15 @@
 import { env } from '../config/env';
 import { Integrations } from '../models/Integrations';
 import { open } from '../utils/secretBox';
-import { FACEBOOK_APP_ID, GOOGLE_CLIENT_ID } from '../utils/socialIds';
+import { FACEBOOK_APP_ID, GOOGLE_CLIENT_ID, INSTAGRAM_APP_ID } from '../utils/socialIds';
 
 /** What the server uses right now: the admin panel's values, falling back to the .env file. */
 export interface LiveIntegrations {
   googleClientId?: string;
   facebookAppId?: string;
   facebookAppSecret?: string;
+  instagramAppId?: string;
+  instagramAppSecret?: string;
   razorpayKeyId?: string;
   razorpayKeySecret?: string;
   razorpayWebhookSecret?: string;
@@ -77,6 +79,8 @@ export async function getIntegrations(): Promise<LiveIntegrations> {
     googleClientId: wellFormed(doc?.google?.clientId || env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_ID),
     facebookAppId: wellFormed(doc?.facebook?.appId || env.FACEBOOK_APP_ID, FACEBOOK_APP_ID),
     facebookAppSecret: safeOpen(doc?.facebook?.appSecretEnc) || env.FACEBOOK_APP_SECRET,
+    instagramAppId: wellFormed(doc?.instagram?.appId, INSTAGRAM_APP_ID),
+    instagramAppSecret: safeOpen(doc?.instagram?.appSecretEnc),
     razorpayKeyId: (savedRazorpay ? doc?.razorpay?.keyId : env.RAZORPAY_KEY_ID)?.trim(),
     razorpayKeySecret: (savedRazorpay ? safeOpen(doc?.razorpay?.keySecretEnc) : env.RAZORPAY_KEY_SECRET)?.trim(),
     razorpayWebhookSecret: safeOpen(doc?.razorpay?.webhookSecretEnc) || env.RAZORPAY_WEBHOOK_SECRET,

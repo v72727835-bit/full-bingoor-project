@@ -68,7 +68,7 @@ api.interceptors.request.use((config) => {
   if (t) config.headers.Authorization = `Bearer ${t}`;
   // The catalogue is limited to shops that deliver to the customer's pin.
   const url = config.url ?? '';
-  if ((config.method ?? 'get') === 'get' && (url === '/home' || url === '/products' || url === '/products/suggest')) {
+  if ((config.method ?? 'get') === 'get' && (url === '/home' || url === '/products' || url === '/products/suggest' || url === '/festival')) {
     const point = pointParams();
     if (point) config.params = { ...point, ...config.params };
   }

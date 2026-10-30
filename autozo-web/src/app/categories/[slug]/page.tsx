@@ -93,21 +93,28 @@ export default function CategoryPage() {
       </header>
 
       <div className={s.catBody}>
-        {rail.length > 0 ? (
-          <nav className={s.sideRail} aria-label="Aisles">
-            {rail.map((c) => (
-              <Link key={c.id} href={`/categories/${c.slug}`} className={s.railItem} data-active={c.slug === slug}>
-                <span className={s.railFrame}>
-                  <Image src={c.image || c.art} alt="" width={56} height={56} className={fitClass(c.image, s.railArt)} unoptimized />
-                </span>
-                <span className={s.railName}>{kids.length > 0 && c.slug === slug ? 'All' : name(c)}</span>
-              </Link>
-            ))}
-          </nav>
-        ) : null}
-        <div className={s.catMain}>
-          <ProductListView base={{ category: slug }} tint={category?.tint} compact />
-        </div>
+        <ProductListView
+          base={{ category: slug }}
+          tint={category?.tint}
+          compact
+          aside={
+            rail.length > 0 ? (
+              <nav className={s.sideRail} aria-label="Aisles">
+                {rail.map((c) => (
+                  <Link key={c.id} href={`/categories/${c.slug}`} className={s.railItem} data-active={c.slug === slug}>
+                    <span className={s.railFrame}>
+                      <Image src={c.image || c.art} alt="" width={56} height={56} className={fitClass(c.image, s.railArt)} unoptimized />
+                    </span>
+                    <span className={s.railName}>{kids.length > 0 && c.slug === slug ? 'All' : name(c)}</span>
+                  </Link>
+                ))}
+              </nav>
+            ) : (
+              // No aisles to list: the column still holds the filters on desktop.
+              <span />
+            )
+          }
+        />
       </div>
     </div>
   );

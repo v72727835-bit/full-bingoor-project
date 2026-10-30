@@ -508,6 +508,8 @@ async function integrationsView() {
     googleClientId: doc?.google?.clientId ?? '',
     facebookAppId: doc?.facebook?.appId ?? '',
     facebookSecretSaved: !!doc?.facebook?.appSecretEnc,
+    instagramAppId: doc?.instagram?.appId ?? '',
+    instagramSecretSaved: !!doc?.instagram?.appSecretEnc,
     razorpayKeyId: doc?.razorpay?.keyId ?? '',
     razorpaySecretSaved: !!doc?.razorpay?.keySecretEnc,
     razorpayWebhookSaved: !!doc?.razorpay?.webhookSecretEnc,
@@ -534,6 +536,7 @@ async function integrationsView() {
     live: {
       google: !!live.googleClientId,
       facebook: !!(live.facebookAppId && live.facebookAppSecret),
+      instagram: !!(live.instagramAppId && live.instagramAppSecret),
       razorpay: !!(await razorpayKeys()),
       firebaseOtp: !!(live.firebase.webConfig.apiKey && live.firebase.webConfig.projectId),
       firebasePush: !!live.firebase.serviceAccount,
@@ -554,6 +557,9 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
     facebookAppId?: string;
     facebookAppSecret?: string;
     clearFacebookSecret?: boolean;
+    instagramAppId?: string;
+    instagramAppSecret?: string;
+    clearInstagramSecret?: boolean;
     razorpayKeyId?: string;
     razorpayKeySecret?: string;
     clearRazorpaySecret?: boolean;
@@ -586,6 +592,9 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
   if (b.facebookAppId !== undefined) set['facebook.appId'] = b.facebookAppId;
   if (b.facebookAppSecret) set['facebook.appSecretEnc'] = seal(b.facebookAppSecret);
   else if (b.clearFacebookSecret) unset['facebook.appSecretEnc'] = 1;
+  if (b.instagramAppId !== undefined) set['instagram.appId'] = b.instagramAppId;
+  if (b.instagramAppSecret) set['instagram.appSecretEnc'] = seal(b.instagramAppSecret);
+  else if (b.clearInstagramSecret) unset['instagram.appSecretEnc'] = 1;
   if (b.razorpayKeyId !== undefined) {
     b.razorpayKeyId = b.razorpayKeyId.trim();
     const current = await Integrations.findOne({ key: 'global' }).select('razorpay').lean();

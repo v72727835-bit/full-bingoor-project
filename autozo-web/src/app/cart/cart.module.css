@@ -387,6 +387,25 @@
   background: var(--brand-tint, transparent);
   font-size: 12.5px;
 }
+.topupWarn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--bad, #d32f2f) 40%, transparent);
+  background: color-mix(in srgb, var(--bad, #d32f2f) 9%, var(--surface));
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.topupWarn > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--bad, #d32f2f);
+}
 .topupTimer {
   color: var(--bad, #d32f2f);
   white-space: nowrap;
