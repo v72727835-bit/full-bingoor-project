@@ -155,10 +155,9 @@ function CartInner() {
           {t('needHelp')} <b>{settings.supportPhone}</b>
         </a>
       ) : null}
-      {/* Point 18: the header's delivery time is not repeated here. The picker
-          only appears when there is a real choice to make (two or more times on)
-          for a same-day address. */}
-      {slots.length > 1 && !(quote && quote.days > 0) ? <DeliverySlots compact /> : null}
+      {/* Point 18: the header's delivery time is not repeated here. A same-day
+          address only gets the other times on offer, as an optional change. */}
+      {slots.length > 1 && !(quote && quote.days > 0) ? <DeliverySlots compact laterOnly /> : null}
 
       <div className="page-head">
         <div>

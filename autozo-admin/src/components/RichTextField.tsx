@@ -48,8 +48,11 @@ export default function RichTextField({ value, onChange, minHeight = 160 }: { va
   );
 
   return (
-    <div style={{ border: '1px solid var(--line, #E2E8F0)', borderRadius: 10, background: 'var(--surface, #fff)' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: 4, borderBottom: '1px solid var(--line, #E2E8F0)' }}>
+    // The panel's own colours: a white box here (the old --surface/--line names do not
+    // exist in this theme) left the light text invisible, so a saved description
+    // looked empty when a product was opened for editing.
+    <div style={{ border: '1px solid var(--border-strong, #E2E8F0)', borderRadius: 10, background: 'var(--card, #fff)', color: 'var(--ink, #0f172a)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: 4, borderBottom: '1px solid var(--border-strong, #E2E8F0)' }}>
         {btn(<b>B</b>, 'Bold', () => cmd('bold'))}
         {btn(<i>I</i>, 'Italic', () => cmd('italic'))}
         {btn(<u>U</u>, 'Underline', () => cmd('underline'))}

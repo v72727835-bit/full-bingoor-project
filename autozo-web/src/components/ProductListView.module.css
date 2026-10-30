@@ -119,6 +119,31 @@
   .compact .sort {
     width: 96px;
   }
+  /* "19 Items" stays on one line beside the buttons, even on 360px phones. */
+  .compact .count {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 12.5px;
+  }
+}
+
+@media (max-width: 399px) {
+  .compact .bar {
+    gap: 6px;
+    padding: 8px;
+  }
+  .compact .controls {
+    gap: 6px;
+  }
+  .compact .filterBtn {
+    padding: 0 10px;
+  }
+  .compact .sort {
+    width: 82px;
+    padding-left: 12px;
+    padding-right: 22px;
+    background-position: calc(100% - 14px) 15px, calc(100% - 9px) 15px;
+  }
 }
 
 /* ------------- point 9: aisle column + filters on the left -------------- */
