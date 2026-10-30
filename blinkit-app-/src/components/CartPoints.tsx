@@ -5,13 +5,17 @@ import { currency, gutter, ms, radius, space, themed } from '../theme';
 import { SmartImage } from '../ui/SmartImage';
 import { Txt } from '../ui/Text';
 
+/** Point 15: how long a customer has to pick a top-up product after removing the one added for them. */
+const AUTO_ADD_SECONDS = 30;
+
 /**
- * #35: the hidden cart-points rule in the app. When the basket is short, one
- * product is added for the customer. If they take it out they have 60 seconds
- * to pick one from the rows; after that one is added again. The rows (up to
- * three) slide sideways and follow the admin's sort code.
+ * #35 / point 15: the hidden cart-points rule in the app. Once the basket meets
+ * the shopping minimum (`ready`), one top-up product is added for the customer
+ * straight away. If they take it out they are told it is mandatory and have
+ * 30 seconds to pick one from the rows; after that one is added again. The
+ * rows (up to three) slide sideways and follow the admin's sort code.
  */
-export function CartPoints() {
+export function CartPoints({ ready = true }: { ready?: boolean }) {
   const { cart, add, pending } = useCart();
   const pts = cart.points;
   const tried = useRef(false);
@@ -21,6 +25,13 @@ export function CartPoints() {
   useEffect(() => {
     if (!pts?.enabled) return;
     if (pts.met) {
+      // Keep `tried`: if the added product is taken out, the customer is
+      // warned instead of it silently coming straight back.
+      setRemoved(false);
+      return;
+    }
+    if (!ready) {
+      // Back under the minimum: start over once it is reached again.
       tried.current = false;
       setRemoved(false);
       return;
@@ -31,14 +42,14 @@ export function CartPoints() {
     } else if (tried.current) {
       setRemoved(true);
     }
-  }, [pts, add]);
+  }, [pts, ready, add]);
 
   useEffect(() => {
     if (!removed) {
       setLeft(null);
       return;
     }
-    setLeft(60);
+    setLeft(AUTO_ADD_SECONDS);
     const t = setInterval(() => setLeft((c) => (c === null ? null : Math.max(0, c - 1))), 1000);
     return () => clearInterval(t);
   }, [removed]);
@@ -50,7 +61,7 @@ export function CartPoints() {
     if (id) void add(id);
   }, [left, pts, add]);
 
-  if (!pts?.enabled || pts.met || pts.suggestions.length === 0) return null;
+  if (!ready || !pts?.enabled || pts.met || pts.suggestions.length === 0) return null;
 
   const list = pts.suggestions;
   const count = list.length > 16 ? 3 : list.length > 8 ? 2 : 1;
@@ -59,12 +70,18 @@ export function CartPoints() {
 
   return (
     <View style={styles.box}>
-      <Txt variant="label" style={styles.note}>
-        {removed
-          ? 'This product is mandatory to buy for proceed to payment, or add any one product from the list below. Otherwise one product will be added again automatically.'
-          : 'Add any one product from below to proceed to payment'}
-        {removed && left !== null ? <Txt variant="label" tone="danger">{`  Adding one in ${left}s`}</Txt> : null}
-      </Txt>
+      {removed ? (
+        <View style={styles.warn} accessibilityRole="alert">
+          <Txt variant="label">
+            {`Don't delete this product, this is mandatory. If you delete this, then add at least any 1 product from the product list below, else within ${AUTO_ADD_SECONDS} seconds 1 product will be added automatically from the list below. Then you can place your order and make payment easily.`}
+            {left !== null ? <Txt variant="label" tone="danger">{`  Adding 1 product in ${left}s`}</Txt> : null}
+          </Txt>
+        </View>
+      ) : (
+        <Txt variant="label" style={styles.note}>
+          Add any one product from below to proceed to payment
+        </Txt>
+      )}
       {rows.map((row, r) => (
         <ScrollView key={r} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {row.map((sg) => (
@@ -101,6 +118,7 @@ export function CartPoints() {
 const styles = themed(({ c }) => ({
   box: { marginHorizontal: gutter, marginTop: space.md, padding: space.md, borderRadius: radius.md, backgroundColor: c.surface },
   note: { marginBottom: space.sm },
+  warn: { marginBottom: space.sm, padding: space.sm, borderRadius: radius.sm, borderWidth: 1, borderColor: c.danger, backgroundColor: c.dangerSurface },
   row: { gap: space.sm, paddingBottom: space.sm },
   card: { width: ms(120), padding: space.sm, borderRadius: radius.sm, borderWidth: 1, borderColor: c.border, gap: 2 },
   art: { width: '100%', height: ms(84) },

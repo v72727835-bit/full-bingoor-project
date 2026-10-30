@@ -33,6 +33,42 @@ function toCard<T extends { price: number; mrp: number; stock: number; category?
   };
 }
 
+/**
+ * Point 22: every size of the item behind each card (e.g. 500 g / 1 kg / 2 kg),
+ * so the card can offer "ADD - 3 options" and open them in a sheet. Sizes share
+ * the admin's "Size group"; only sizes from the card's own warehouse are listed,
+ * and a card whose item has a single size is left as it was.
+ */
+async function attachVariants(cards: Record<string, unknown>[]): Promise<void> {
+  const groups = [...new Set(cards.map((c) => c.variantGroup).filter((g): g is string => typeof g === 'string' && g.length > 0))];
+  if (!groups.length) return;
+  const sizes = await Product.find({ variantGroup: { $in: groups }, isActive: true })
+    .sort({ price: 1 })
+    .select('slug unit price mrp stock images icon variantLabel variantGroup shop')
+    .lean();
+  const byGroup = new Map<string, typeof sizes>();
+  for (const v of sizes) byGroup.set(v.variantGroup!, [...(byGroup.get(v.variantGroup!) ?? []), v]);
+  for (const c of cards) {
+    const list = typeof c.variantGroup === 'string' ? byGroup.get(c.variantGroup) : undefined;
+    if (!list) continue;
+    const shop = c.shop && typeof c.shop === 'object' && '_id' in c.shop ? String((c.shop as { _id: unknown })._id) : c.shop ? String(c.shop) : '';
+    const same = list.filter((v) => !shop || String(v.shop) === shop);
+    if (same.length < 2) continue;
+    c.variants = same.map((v) => ({
+      _id: v._id,
+      slug: v.slug,
+      label: v.variantLabel || v.unit,
+      unit: v.unit,
+      price: v.price,
+      mrp: v.mrp,
+      stock: v.stock,
+      inStock: v.stock > 0,
+      images: (v.images ?? []).slice(0, 1),
+      icon: v.icon,
+    }));
+  }
+}
+
 /** Finds up to `limit` shops near a point, closest first. */
 async function nearbyShops(
   lat: number,
@@ -94,18 +130,24 @@ async function servingShopIds(lat?: number, lng?: number): Promise<Types.ObjectI
 
 /**
  * Point 37: a customer past the last distance band (e.g. beyond 30 km) sees only
- * the categories the admin picked for long distance. Returns the allowed
- * category ids - the picked ones, everything under them and the groups above
- * them - or null when there is no restriction.
+ * what the admin ticked for long distance: categories (with everything under
+ * them), standard-category rows and single products (e.g. from the Diwali
+ * menu). Returns the product filter plus the category ids whose tiles may still
+ * show - the picked ones, everything under them and the groups above them - or
+ * null when there is no restriction (nothing ticked, or the customer is near).
  */
-async function farCategoryIds(lat?: number, lng?: number): Promise<Types.ObjectId[] | null> {
+async function farRule(lat?: number, lng?: number): Promise<{ match: FilterQuery<IProduct>; categoryIds: Types.ObjectId[] } | null> {
   if (lat === undefined || lng === undefined) return null;
   const settings = cachedSettings() ?? (await loadSettings()).settings;
-  const picked = (settings.pricing?.beyondCategories ?? []).map(String);
-  const bands = settings.pricing?.bands ?? [];
-  if (!picked.length || !bands.length) return null;
+  const pricing = settings.pricing;
+  const picked = (pricing?.beyondCategories ?? []).map(String);
+  const rows = (pricing?.beyondStandardCategories ?? []).map(String);
+  const products = (pricing?.beyondProducts ?? []).map(String);
+  const bands = pricing?.bands ?? [];
+  if ((!picked.length && !rows.length && !products.length) || !bands.length) return null;
+  const lastKm = Math.max(...bands.map((b) => b.upToKm));
   const nearest = (await shopsServing(lat, lng))[0]?.km;
-  if (nearest === undefined || nearest <= bands[bands.length - 1].upToKm) return null;
+  if (nearest === undefined || nearest <= lastKm) return null;
 
   const all = await Category.find({}).select('_id parent').lean();
   const parentOf = new Map(all.map((c) => [String(c._id), c.parent ? String(c.parent) : null]));
@@ -128,7 +170,12 @@ async function farCategoryIds(lat?: number, lng?: number): Promise<Types.ObjectI
       }
     }
   }
-  return [...new Set([...keep, ...below])].map((id) => new Types.ObjectId(id));
+  const oid = (id: string) => new Types.ObjectId(id);
+  const either: FilterQuery<IProduct>[] = [];
+  if (below.size) either.push({ category: { $in: [...below].map(oid) } });
+  if (rows.length) either.push({ standardCategories: { $in: rows.map(oid) } });
+  if (products.length) either.push({ _id: { $in: products.map(oid) } });
+  return { match: { $or: either }, categoryIds: [...new Set([...keep, ...below])].map(oid) };
 }
 
 /**
@@ -185,13 +232,13 @@ export const home = asyncHandler(async (req, res) => {
 
   // With a location, only products from shops that deliver there are shown.
   const serving = await servingShopIds(lat, lng);
-  const far = await farCategoryIds(lat, lng);
+  const far = await farRule(lat, lng);
   const scope: FilterQuery<IProduct> = {
     ...(serving ? { ...visible, shop: { $in: serving } } : visible),
     // $and, so a rail's own category filter cannot replace this one.
-    ...(far ? { $and: [{ category: { $in: far } }] } : {}),
+    ...(far ? { $and: [far.match] } : {}),
   };
-  const allowedCat = far ? new Set(far.map(String)) : null;
+  const allowedCat = far ? new Set(far.categoryIds.map(String)) : null;
   const allowCat = <T extends { _id: unknown }>(list: T[]) => (allowedCat ? list.filter((c) => allowedCat.has(String(c._id))) : list);
 
   const [allGroups, allLevel2, allLevel3, shops, uploadedBanners] = await Promise.all([
@@ -355,6 +402,10 @@ export const home = asyncHandler(async (req, res) => {
     .map((g) => ({ ...g, _id: String(g._id), short: shortName(g.name) }))
     .filter((t) => (seen.has(t.short) ? false : (seen.add(t.short), true)));
 
+  // Point 22: product rows carry each item's other sizes.
+  await attachVariants(
+    sections.flatMap((x) => (x.type === 'productRail' || x.type === 'productGrid') && Array.isArray(x.items) ? (x.items as Record<string, unknown>[]) : []),
+  );
   ok(res, {
     deliveryMins,
     /** The home-page delivery promise as the admin wrote it ("19 minutes", "2 hours", "Next day delivery"). */
@@ -528,8 +579,8 @@ export const listProducts = asyncHandler(async (req, res) => {
   if (!shop) {
     const serving = await servingShopIds(lat, lng);
     if (serving) filter.shop = { $in: serving };
-    const far = await farCategoryIds(lat, lng);
-    if (far) filter.$and = [{ category: { $in: far } }];
+    const far = await farRule(lat, lng);
+    if (far) filter.$and = [...((filter.$and as FilterQuery<IProduct>[] | undefined) ?? []), far.match];
   }
 
   if (minPrice !== undefined || maxPrice !== undefined) {
@@ -567,7 +618,9 @@ export const listProducts = asyncHandler(async (req, res) => {
     Product.countDocuments(filter),
   ]);
 
-  ok(res, products.map(toCard), pageMeta(page, limit, total));
+  const cards = products.map(toCard);
+  await attachVariants(cards as unknown as Record<string, unknown>[]);
+  ok(res, cards, pageMeta(page, limit, total));
 });
 
 /** Brands in an aisle, for the Brand filter. */
@@ -588,11 +641,11 @@ export const suggestProducts = asyncHandler(async (req, res) => {
   const { q, lat, lng } = req.query as unknown as { q: string; lat?: number; lng?: number };
   const rx = { $regex: `^${escapeRegex(q)}|\\b${escapeRegex(q)}`, $options: 'i' };
   const serving = await servingShopIds(lat, lng);
-  const far = await farCategoryIds(lat, lng);
+  const far = await farRule(lat, lng);
   const products = await Product.find({
     isActive: true,
     ...(serving ? { shop: { $in: serving } } : {}),
-    ...(far ? { category: { $in: far } } : {}),
+    ...(far ? { $and: [far.match] } : {}),
     $or: [{ name: rx }, { brand: rx }],
   })
     .sort({ soldCount: -1 })
@@ -647,10 +700,10 @@ export const festival = asyncHandler(async (req, res) => {
   const settings = cachedSettings() ?? (await loadSettings()).settings;
   const fest = settings.festival;
   const serving = await servingShopIds(lat, lng);
-  const far = await farCategoryIds(lat, lng);
+  const far = await farRule(lat, lng);
   const scope: FilterQuery<IProduct> = {
     ...(serving ? { ...visible, shop: { $in: serving } } : visible),
-    ...(far ? { $and: [{ category: { $in: far } }] } : {}),
+    ...(far ? { $and: [far.match] } : {}),
   };
 
   const categories = await Category.find({ _id: { $in: (fest?.sections ?? []).map((s) => s.category) }, isActive: true })
@@ -668,6 +721,7 @@ export const festival = asyncHandler(async (req, res) => {
     }),
   );
 
+  await attachVariants(sections.flatMap((x) => (x ? (x.items as unknown as Record<string, unknown>[]) : [])));
   ok(res, {
     enabled: fest?.enabled ?? false,
     name: fest?.name || 'Festival',
@@ -708,7 +762,12 @@ export const publicSettings = asyncHandler(async (_req, res) => {
     paymentOptions: paymentOptions(settings).filter((o) => o.enabled),
     onlinePaymentOn: await razorpayEnabled(),
     // Public client ids only; the secrets never leave the server.
-    social: { googleClientId: live.googleClientId ?? null, facebookAppId: live.facebookAppId ?? null },
+    social: {
+      googleClientId: live.googleClientId ?? null,
+      facebookAppId: live.facebookAppId ?? null,
+      // Only when the secret is saved too, so the button never leads to a login that cannot finish.
+      instagramAppId: live.instagramAppId && live.instagramAppSecret ? live.instagramAppId : null,
+    },
     // Public Firebase web config (it is meant to be public); the service account never leaves the server.
     firebase: {
       configured: !!(live.firebase.webConfig.apiKey && live.firebase.webConfig.projectId),

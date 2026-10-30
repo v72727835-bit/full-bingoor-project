@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { fetchCategories, fetchProducts, fetchSettings, saveSettings } from '../api/admin';
+import { fetchCategories, fetchFestivalMenu, fetchProducts, fetchSettings, fetchStandardCategories, saveSettings } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { Button, CenterSpinner, ErrorBanner, Field } from '../components/ui';
-import { Category, Product, Settings } from '../types';
+import { Category, Product, Settings, StandardCategory } from '../types';
 
 type Save = (patch: Record<string, unknown>) => Promise<void>;
 const num = (v: string) => (v === '' ? 0 : Number(v));
@@ -151,9 +151,22 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
   useEffect(() => {
     fetchCategories().then(setCats).catch(() => setCats([]));
   }, []);
+  const [stdRows, setStdRows] = useState<StandardCategory[]>([]);
+  const [fest, setFest] = useState<{ name: string; sections: { title: string; items: { _id: string; name: string; unit?: string }[] }[] } | null>(null);
+  useEffect(() => {
+    fetchStandardCategories().then(setStdRows).catch(() => setStdRows([]));
+    fetchFestivalMenu().then(setFest).catch(() => setFest(null));
+  }, []);
+  type FarKey = 'beyondCategories' | 'beyondStandardCategories' | 'beyondProducts';
   const farCats = (p.beyondCategories ?? []).map(String);
-  const toggleFar = (id: string, on: boolean) =>
-    setP((cur) => ({ ...cur, beyondCategories: on ? [...(cur.beyondCategories ?? []), id] : (cur.beyondCategories ?? []).filter((x) => String(x) !== id) }));
+  const farRows = (p.beyondStandardCategories ?? []).map(String);
+  const farProducts = (p.beyondProducts ?? []).map(String);
+  const toggle = (key: FarKey, id: string, on: boolean) =>
+    setP((cur) => {
+      const list = (cur[key] ?? []).map(String).filter((x) => x !== id);
+      return { ...cur, [key]: on ? [...list, id] : list };
+    });
+  const toggleFar = (id: string, on: boolean) => toggle('beyondCategories', id, on);
   // Groups, then their sub- and child categories, indented under them.
   const ordered = cats
     .filter((c) => c.level === 1)
@@ -262,10 +275,13 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
           />
         </Field>
       </div>
-      <Field label="Long distance: categories shown (point 37)">
+      <div className="page-subtitle" style={{ margin: '6px 0 10px' }}>
+        <b>Long distance (point 37):</b> customers further than the last row see <b>only what you tick</b> in the three lists below - the ticked
+        categories, the ticked standard-category rows and the ticked festival products. Leave all three lists unticked to show everything.
+      </div>
+      <Field label="Long distance: categories shown">
         <div className="page-subtitle" style={{ marginBottom: 8 }}>
-          Customers further than the last row see only the ticked categories (a ticked group or sub category includes everything under it).
-          Leave all unticked to show everything.
+          A ticked group or sub category includes everything under it.
         </div>
         <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid var(--line, #e5e7eb)', borderRadius: 8, padding: 8 }}>
           {ordered.map((c) => (
@@ -273,6 +289,37 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
               <input type="checkbox" checked={farCats.includes(c._id)} onChange={(e) => toggleFar(c._id, e.target.checked)} />
               <span style={{ fontWeight: c.level === 1 ? 700 : 400 }}>{c.name}</span>
             </label>
+          ))}
+        </div>
+      </Field>
+      <Field label="Long distance: standard category rows shown">
+        <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--line, #e5e7eb)', borderRadius: 8, padding: 8 }}>
+          {stdRows.length === 0 ? <span className="cell-muted">No standard categories yet.</span> : null}
+          {stdRows.map((r) => (
+            <label key={r._id} className="checkbox-row" style={{ marginBottom: 4 }}>
+              <input type="checkbox" checked={farRows.includes(r._id)} onChange={(e) => toggle('beyondStandardCategories', r._id, e.target.checked)} />
+              <span>
+                {r.name} <span className="cell-muted">({r.position === 'top' ? 'top' : 'bottom'} of home)</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </Field>
+      <Field label={`Long distance: ${fest?.name || 'festival'} menu products shown`}>
+        <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid var(--line, #e5e7eb)', borderRadius: 8, padding: 8 }}>
+          {!fest || fest.sections.length === 0 ? <span className="cell-muted">The festival menu has no products yet.</span> : null}
+          {fest?.sections.map((sec) => (
+            <div key={sec.title} style={{ marginBottom: 8 }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>{sec.title}</div>
+              {sec.items.map((it) => (
+                <label key={it._id} className="checkbox-row" style={{ paddingLeft: 20, marginBottom: 4 }}>
+                  <input type="checkbox" checked={farProducts.includes(it._id)} onChange={(e) => toggle('beyondProducts', it._id, e.target.checked)} />
+                  <span>
+                    {it.name} {it.unit ? <span className="cell-muted">({it.unit})</span> : null}
+                  </span>
+                </label>
+              ))}
+            </div>
           ))}
         </div>
       </Field>

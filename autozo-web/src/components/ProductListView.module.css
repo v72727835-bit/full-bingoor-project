@@ -120,3 +120,46 @@
     width: 96px;
   }
 }
+
+/* ------------- point 9: aisle column + filters on the left -------------- */
+
+.withAside {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.asideCol {
+  position: sticky;
+  top: 62px;
+  min-width: 0;
+}
+
+.drawer {
+  margin-bottom: 14px;
+}
+
+@media (min-width: 700px) {
+  .withAside {
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 22px;
+  }
+  .asideCol {
+    top: 136px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(100vh - 156px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .withAside .filterBtn {
+    display: none;
+  }
+  /* The same card size as the home page's standard-category rows (about 180px). */
+  .withAside :global(.grid-products) {
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 12px;
+  }
+}

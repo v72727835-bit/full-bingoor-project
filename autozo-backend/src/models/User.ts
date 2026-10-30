@@ -48,6 +48,7 @@ export interface IUser {
   payout?: { upi?: string; bankHolder?: string; bankNumber?: string; bankIfsc?: string; rzpContactId?: string; rzpFundAccountId?: string; rzpFundFingerprint?: string };
   googleId?: string;
   facebookId?: string;
+  instagramId?: string;
   /** Sellers: unique id shown on their dashboard and in the admin panel. */
   sellerId?: string;
   /** Sellers: the warehouses whose orders they see and where their listings are stocked. */
@@ -158,6 +159,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     googleId: { type: String, unique: true, sparse: true },
     facebookId: { type: String, unique: true, sparse: true },
+    instagramId: { type: String, unique: true, sparse: true },
     sellerId: { type: String, unique: true, sparse: true },
     sellerWarehouses: { type: [{ type: Schema.Types.ObjectId, ref: 'Shop' }], default: undefined },
     sellerKind: { type: String, enum: ['warehouse', 'product'] },

@@ -40,20 +40,34 @@ export function CartScreen({ active }: TabScreenProps) {
   // #28: the delivery time at the top follows the distance to the customer
   // (up to 15 km same day, then next day, beyond 30 km a few working days).
   const [farDays, setFarDays] = useState(0);
+  // Point 15: whether the basket meets the shopping minimum for this distance
+  // (null = not priced; the shops' own minimums decide then).
+  const [quoteMinMet, setQuoteMinMet] = useState<boolean | null>(null);
   useEffect(() => {
     const point = deliveryPointParams();
     if (!user || !point || cart.itemCount === 0) {
       setFarDays(0);
+      setQuoteMinMet(null);
       return;
     }
     let live = true;
     fetchPointQuote(point)
-      .then((q) => live && setFarDays(q.days))
-      .catch(() => live && setFarDays(0));
+      .then((q) => {
+        if (!live) return;
+        setFarDays(q.days);
+        // The basket as a whole is what counts (a top-up from another warehouse must not flip it).
+        setQuoteMinMet(typeof q.minOrder === 'number' ? q.subtotal >= q.minOrder : typeof q.meetsMinOrder === 'boolean' ? q.meetsMinOrder : null);
+      })
+      .catch(() => {
+        if (!live) return;
+        setFarDays(0);
+        setQuoteMinMet(null);
+      });
     return () => {
       live = false;
     };
-  }, [user, area, cart.itemCount]);
+  }, [user, area, cart.itemCount, cart.subtotal]);
+  const minMet = quoteMinMet ?? cart.groups.every((g) => g.meetsMinOrder);
   const etaText = farDays > 0 ? (farDays === 1 ? 'Next day delivery' : `${farDays} working days`) : shortDelivery(home);
 
   // The slowest promise in the basket - the whole order lands on that day.
@@ -183,7 +197,7 @@ export function CartScreen({ active }: TabScreenProps) {
           ) : null}
         </View>
 
-        <CartPoints />
+        <CartPoints ready={minMet} />
 
         <Pressable onPress={() => goToTab('home')} accessibilityRole="button" style={styles.keepShopping} hitSlop={8}>
           <Ionicons name="add-circle-outline" size={ms(17)} color={colors.brand} />

@@ -15,6 +15,7 @@ import { fitClass } from '../lib/art';
 import { useToast } from '../context/ToastContext';
 import { NotifyMeButton } from './NotifyMe';
 import { QuantityStepper } from './QuantityStepper';
+import { VariantSheet } from './VariantSheet';
 import { FoodMark, Price, Rating } from './ui';
 import s from './ProductCard.module.css';
 
@@ -56,6 +57,16 @@ export function ProductCard({
   const [busy, setBusy] = useState(false);
 
   const qty = quantityOf(product.id);
+  // Point 22: other sizes of this item. With more than one, ADD opens them all.
+  const options = product.variants && product.variants.length > 1 ? product.variants.length : 0;
+  const [sheet, setSheet] = useState(false);
+  const optionsAdd = (
+    <button type="button" className={s.optAdd} onClick={() => setSheet(true)} aria-label={`Add - choose from ${options} sizes`}>
+      <span>ADD</span>
+      <small>{options} options</small>
+    </button>
+  );
+  const sizesSheet = sheet ? <VariantSheet product={product} onClose={() => setSheet(false)} /> : null;
 
   // Visitors can fill a cart too (#23); they sign in only at payment.
   const act = async (fn: () => Promise<void>) => {
@@ -81,7 +92,9 @@ export function ProductCard({
         <div className={s.cRow}>
           {/* The size sits in the text below, where it has room to show in full. */}
           <span />
-          {product.inStock ? (
+          {product.inStock && options && qty === 0 ? (
+            optionsAdd
+          ) : product.inStock ? (
             <QuantityStepper
               size="sm"
               quantity={qty}
@@ -107,12 +120,13 @@ export function ProductCard({
               {product.ratingLabel ? <span className={s.rateLabel}>{product.ratingLabel}</span> : null}
             </div>
           ) : null}
-          {product.variants && product.variants.length > 0 ? (
-            <Link href={`/products/${product.slug}`} className={s.cOptions}>
-              See options ›
-            </Link>
+          {options && qty > 0 ? (
+            <button type="button" className={s.cOptions} onClick={() => setSheet(true)}>
+              {options} options ›
+            </button>
           ) : null}
         </div>
+        {sizesSheet}
       </article>
     );
   }
@@ -160,7 +174,9 @@ export function ProductCard({
             <Price price={product.price} mrp={product.mrp} size={15} />
             {save > 0 ? <span className={s.save}>Save ₹{save}</span> : null}
           </div>
-          {product.inStock ? (
+          {product.inStock && options && qty === 0 ? (
+            optionsAdd
+          ) : product.inStock ? (
           <QuantityStepper
             size="sm"
             quantity={qty}
@@ -175,6 +191,7 @@ export function ProductCard({
           )}
         </div>
       </div>
+      {sizesSheet}
     </article>
   );
 }

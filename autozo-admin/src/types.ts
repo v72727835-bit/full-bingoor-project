@@ -318,6 +318,10 @@ export interface Settings {
     beyondCodMessage: string;
     /** Point 37: the only categories a customer past the last row sees; empty = all. */
     beyondCategories?: string[];
+    /** Point 37: standard-category (home) rows a far customer also sees. */
+    beyondStandardCategories?: string[];
+    /** Point 37: single products (e.g. Diwali menu) a far customer also sees. */
+    beyondProducts?: string[];
   };
   filters: { key: string; label: string; kind: 'brand' | 'price' | 'discount' | 'rating' | 'diet' | 'stock'; enabled: boolean }[];
   priceSortEnabled: boolean;

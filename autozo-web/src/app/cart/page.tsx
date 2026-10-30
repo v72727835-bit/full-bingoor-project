@@ -22,13 +22,16 @@ import { TopUpSheet } from '../../components/TopUpSheet';
 import { Alert, Badge, Button, EmptyState, PageLoader } from '../../components/ui';
 import s from './cart.module.css';
 
+/** Point 15: how long a customer has to pick a top-up product after removing the one added for them. */
+const AUTO_ADD_SECONDS = 30;
+
 function CartInner() {
   const { cart, loading, guest, updateItem, removeItem, clear, addItem } = useCart();
   const { home } = useCatalog();
   const { show } = useToast();
   const { t, name } = useLanguage();
   const settings = useSettings();
-  const { slot, label } = useSlot();
+  const { slot, slots, label } = useSlot();
   const accountQuote = useQuote(slot, cart?.total);
   // A visitor's basket carries its own quote (priced for their chosen location).
   const quote = guest ? (cart?.quote ?? null) : accountQuote;
@@ -37,9 +40,15 @@ function CartInner() {
   // #35: the "See all products" half-page sheet over the cart.
   const [showAll, setShowAll] = useState(false);
 
-  // The hidden points rule: when the basket is short, one top-up product is
-  // added for the customer - once. If they take it out again they are told
-  // to pick one from the row instead of having it added back.
+  // Point 15: the shopping minimum for this customer's distance (₹199, ₹1199…)
+  // comes first. Without a priced quote the shops' own minimums stand in.
+  // The basket as a whole is what counts here (a top-up from another warehouse must not flip it).
+  const minMet = quote ? quote.subtotal >= quote.minOrder : (cart?.groups ?? []).every((g) => g.meetsMinOrder);
+
+  // The hidden points rule: the moment the minimum is met and the basket is
+  // still short of points, one top-up (50-point) product is added for the
+  // customer. If they take it out they are told it is mandatory, and unless
+  // they pick one from the row within 30 seconds one is added again.
   const autoTried = useRef(false);
   const [removedAuto, setRemovedAuto] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -47,6 +56,13 @@ function CartInner() {
     const pts = cart?.points;
     if (!pts?.enabled) return;
     if (pts.met) {
+      // Keep `autoTried`: if the added product is taken out, the customer is
+      // warned instead of it silently coming straight back.
+      setRemovedAuto(false);
+      return;
+    }
+    if (!minMet) {
+      // Back under the minimum: start over once it is reached again.
       autoTried.current = false;
       setRemovedAuto(false);
       return;
@@ -57,16 +73,16 @@ function CartInner() {
     } else if (autoTried.current) {
       setRemovedAuto(true);
     }
-  }, [cart?.points, addItem]);
+  }, [cart?.points, minMet, addItem]);
 
-  // #35: the customer took the added product out. They get 60 seconds to pick one
-  // from the rows themselves; after that one is added for them again.
   useEffect(() => {
     if (!removedAuto) {
       setCountdown(null);
       return;
     }
-    setCountdown(60);
+    setCountdown(AUTO_ADD_SECONDS);
+    // Bring the warning into view - the customer is usually looking at the item they just removed.
+    requestAnimationFrame(() => document.getElementById('topup-warn')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
     const t = setInterval(() => setCountdown((c) => (c === null ? null : Math.max(0, c - 1))), 1000);
     return () => clearInterval(t);
   }, [removedAuto]);
@@ -139,7 +155,10 @@ function CartInner() {
           {t('needHelp')} <b>{settings.supportPhone}</b>
         </a>
       ) : null}
-      <DeliverySlots compact />
+      {/* Point 18: the header's delivery time is not repeated here. The picker
+          only appears when there is a real choice to make (two or more times on)
+          for a same-day address. */}
+      {slots.length > 1 && !(quote && quote.days > 0) ? <DeliverySlots compact /> : null}
 
       <div className="page-head">
         <div>
@@ -254,14 +273,21 @@ function CartInner() {
               </footer>
             </section>
           ))}
-          {cart.points.enabled && !cart.points.met && cart.points.suggestions.length > 0 ? (
+          {cart.points.enabled && !cart.points.met && minMet && cart.points.suggestions.length > 0 ? (
             <section className={`card ${s.topup}`}>
-              <p className={s.topupNote}>
-                {removedAuto
-                  ? 'This product is mandatory to buy for proceed to payment, or add any one product from the list below. Otherwise one product will be added again automatically, then you can proceed to payment.'
-                  : 'Add any one product from below to proceed to payment'}
-                {removedAuto && countdown !== null ? <span className={s.topupTimer}> Adding one in {countdown}s</span> : null}
-              </p>
+              {removedAuto ? (
+                <p id="topup-warn" className={s.topupWarn} role="alert">
+                  <Icon name="info" size={16} />
+                  <span>
+                    Don&apos;t delete this product, this is mandatory. If you delete this, then add at least any 1 product from the
+                    product list below, else within {AUTO_ADD_SECONDS} seconds 1 product will be added automatically from the list
+                    below. Then you can place your order and make payment easily.
+                    {countdown !== null ? <b className={s.topupTimer}> Adding 1 product in {countdown}s</b> : null}
+                  </span>
+                </p>
+              ) : (
+                <p className={s.topupNote}>Add any one product from below to proceed to payment</p>
+              )}
               {rowsOf(cart.points.suggestions).map((row, r) => (
                 <Rail key={r} className={s.topupRail}>
                   {row.map((sg) => (

@@ -18,6 +18,7 @@ import { LocationGate } from '../components/LocationGate';
 import { OrderProgressToast } from '../components/OrderProgressToast';
 import { PushRegister } from '../components/PushRegister';
 import { PwaRegister } from '../components/PwaRegister';
+import { INSTALL_BOOT } from '../lib/install';
 import { RateOrderPrompt } from '../components/RateOrderPrompt';
 
 /**
@@ -70,6 +71,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={sans.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        {/* Point 6: catch the browser's install offer before the app starts, so every "Add to Home Screen" button can use it. */}
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_BOOT }} />
       </head>
       <body>
         <a href="#main" className="sr-only">

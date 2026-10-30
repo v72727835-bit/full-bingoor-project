@@ -20,6 +20,8 @@ export default function IntegrationsPage() {
   const [google, setGoogle] = useState('');
   const [fbId, setFbId] = useState('');
   const [fbSecret, setFbSecret] = useState('');
+  const [igId, setIgId] = useState('');
+  const [igSecret, setIgSecret] = useState('');
   const [rzId, setRzId] = useState('');
   const [rzSecret, setRzSecret] = useState('');
   const [rzOn, setRzOn] = useState(true);
@@ -44,6 +46,8 @@ export default function IntegrationsPage() {
     setData(d);
     setGoogle(d.googleClientId);
     setFbId(d.facebookAppId);
+    setIgId(d.instagramAppId ?? '');
+    setIgSecret('');
     setRzId(d.razorpayKeyId);
     setRzOn(d.razorpayEnabled);
     setFbWeb(d.firebaseWeb);
@@ -167,6 +171,40 @@ export default function IntegrationsPage() {
           )}
           <Button disabled={busy === 'fb'} onClick={() => save('fb', { facebookAppId: fbId, ...(fbSecret ? { facebookAppSecret: fbSecret } : {}) }, 'Facebook login saved.')}>
             {busy === 'fb' ? 'Saving…' : 'Save Facebook'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <h2 className="card-title">
+          Continue with Instagram {status(!!data.live.instagram)}
+        </h2>
+        <div className="page-subtitle" style={{ marginBottom: 12 }}>
+          developers.facebook.com → your app → add the <b>Instagram</b> product → <b>API setup with Instagram login</b> → copy the <b>Instagram app ID</b> and{' '}
+          <b>Instagram app secret</b>. Under &ldquo;Set up Instagram business login&rdquo; add the redirect URL <b>https://bingoor.com/auth/instagram</b>. Note:
+          Instagram allows this login only for Instagram <b>professional</b> (business / creator) accounts, and the app must be switched to Live.
+        </div>
+        <div className="field-row">
+          <Field label="Instagram App ID">
+            <input value={igId} onChange={(e) => setIgId(e.target.value)} placeholder="1234567890123456" autoComplete="off" inputMode="numeric" />
+          </Field>
+          <Field label={data.instagramSecretSaved ? 'Instagram App Secret (saved - type a new one to replace)' : 'Instagram App Secret'}>
+            <input type="password" value={igSecret} onChange={(e) => setIgSecret(e.target.value)} placeholder={data.instagramSecretSaved ? '••••••••••••' : ''} autoComplete="new-password" />
+          </Field>
+        </div>
+        {igId.trim() && !FB_ID.test(igId.trim()) && (
+          <div className="error-banner" style={{ marginBottom: 12 }}>
+            The Instagram App ID is a number from the Meta developer app (Instagram → API setup with Instagram login), not an email.
+          </div>
+        )}
+        <div className="modal-actions">
+          {data.instagramSecretSaved && (
+            <Button variant="ghost" disabled={!!busy} onClick={() => save('igclear', { clearInstagramSecret: true }, 'Instagram secret removed.')}>
+              Remove saved secret
+            </Button>
+          )}
+          <Button disabled={busy === 'ig'} onClick={() => save('ig', { instagramAppId: igId, ...(igSecret ? { instagramAppSecret: igSecret } : {}) }, 'Instagram login saved.')}>
+            {busy === 'ig' ? 'Saving…' : 'Save Instagram'}
           </Button>
         </div>
       </div>
@@ -376,7 +414,7 @@ export default function IntegrationsPage() {
           Google Maps {status(data.live.googleMaps)}
         </h2>
         <div className="page-subtitle" style={{ marginBottom: 12 }}>
-          console.cloud.google.com → APIs &amp; Services → enable <b>Maps JavaScript API</b> → Credentials → create an API key, and restrict it to your website domains (HTTP referrers). Paste it here and every map on the website, the customer app and the rider app switches to Google Maps. <b>Leave it blank to use the free OpenStreetMap maps</b> everywhere instead.
+          console.cloud.google.com → APIs &amp; Services → enable <b>Maps JavaScript API</b> and <b>Geocoding API</b> (Geocoding turns the customer&apos;s exact pin into the right street, area and PIN code; without it the free OpenStreetMap address lookup is used) → Credentials → create an API key, and restrict it to your website domains (HTTP referrers). Paste it here and every map on the website, the customer app and the rider app switches to Google Maps. <b>Leave it blank to use the free OpenStreetMap maps</b> everywhere instead.
         </div>
         <Field label="Google Maps API key">
           <input value={mapsKey} onChange={(e) => setMapsKey(e.target.value)} placeholder="AIza… (blank = use OpenStreetMap)" autoComplete="off" />

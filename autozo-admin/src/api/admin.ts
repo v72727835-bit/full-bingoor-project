@@ -25,6 +25,9 @@ export const fetchProducts = (params: {
   isActive?: boolean;
 }) => paged<Product>('/admin/products', params);
 
+/** One product with every field, for the edit form. */
+export const fetchProduct = async (id: string): Promise<Product> => (await api.get(`/admin/products/${id}`)).data.data;
+
 export const bulkCreateProducts = async (rows: Record<string, string>[], dryRun: boolean): Promise<import('../components/BulkUpload').BulkResponse> =>
   (await api.post('/admin/products/bulk', { rows, dryRun })).data.data;
 export const createProduct = async (body: Partial<Product> & { shop: string; category: string }): Promise<Product> =>
@@ -430,6 +433,9 @@ export const sellerCreateRider = async (body: { name: string; phone: string; pas
 };
 
 /* ---------- standard categories (home-screen rows on the top / bottom) ---------- */
+/** The festival (e.g. Diwali) menu as customers see it: each row and its products. */
+export const fetchFestivalMenu = async (): Promise<{ name: string; sections: { title: string; items: { _id: string; name: string; unit?: string }[] }[] }> =>
+  (await api.get('/festival')).data.data;
 export const fetchStandardCategories = async (): Promise<StandardCategory[]> => (await api.get('/admin/standard-categories')).data.data;
 export const createStandardCategory = async (body: Partial<StandardCategory>): Promise<StandardCategory> =>
   (await api.post('/admin/standard-categories', body)).data.data;
@@ -444,6 +450,8 @@ export interface IntegrationsView {
   googleClientId: string;
   facebookAppId: string;
   facebookSecretSaved: boolean;
+  instagramAppId?: string;
+  instagramSecretSaved?: boolean;
   razorpayKeyId: string;
   razorpaySecretSaved: boolean;
   razorpayEnabled: boolean;
@@ -464,7 +472,7 @@ export interface IntegrationsView {
   razorpayxEnabled: boolean;
   razorpayxAutoPayout: boolean;
   googleMapsApiKey: string;
-  live: { google: boolean; facebook: boolean; razorpay: boolean; firebaseOtp: boolean; firebasePush: boolean; shiprocket: boolean; razorpayx: boolean; googleMaps: boolean };
+  live: { google: boolean; facebook: boolean; instagram?: boolean; razorpay: boolean; firebaseOtp: boolean; firebasePush: boolean; shiprocket: boolean; razorpayx: boolean; googleMaps: boolean };
 }
 export const fetchIntegrations = async (): Promise<IntegrationsView> => (await api.get('/admin/integrations')).data.data;
 export const saveIntegrations = async (body: Record<string, unknown>): Promise<IntegrationsView> =>

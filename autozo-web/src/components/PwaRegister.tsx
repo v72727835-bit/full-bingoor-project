@@ -1,42 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { INSTALL_READY, InstallPrompt, installPrompt, isIos, isIosSafari, isStandalone, promptInstall } from '../lib/install';
 import { Icon } from './Icon';
 import s from './PwaRegister.module.css';
 
-interface InstallPrompt extends Event {
-  prompt: () => Promise<void>;
-}
-
 const DISMISS_KEY = 'autozo_install_dismissed';
 
-/**
+/*
  * iOS Safari never fires `beforeinstallprompt`, so an iPhone visitor would
- * otherwise never be told the site can live on the home screen. There it has
- * to be done by hand through the Share sheet, so we show the instruction
- * instead of a button. iPadOS 13+ reports itself as a Mac, hence the touch
- * check.
+ * otherwise never be told the site can live on the home screen; there it has
+ * to be done through the Share sheet. The helpers live in lib/install.ts.
  */
-function isIos(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent;
-  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-}
-function isIosSafari(): boolean {
-  if (!isIos()) return false;
-  const ua = navigator.userAgent;
-  // Chrome and Firefox on iOS cannot add to the home screen at all.
-  return /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
-}
-
-/** Already launched from the home screen — nothing to offer. */
-function isStandalone(): boolean {
-  if (typeof window === 'undefined') return false;
-  return (
-    window.matchMedia?.('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
-}
 
 export function PwaRegister() {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
@@ -78,12 +53,11 @@ export function PwaRegister() {
     }
     if (isIosSafari() && !isStandalone()) setIos(true);
     else if (isIos() && !isStandalone()) setIosOther(true);
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      setPrompt(e as InstallPrompt);
-    };
-    window.addEventListener('beforeinstallprompt', onPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', onPrompt);
+    // The event is caught in the page head (lib/install.ts) so no button misses it.
+    const sync = () => setPrompt(installPrompt());
+    sync();
+    window.addEventListener(INSTALL_READY, sync);
+    return () => window.removeEventListener(INSTALL_READY, sync);
   }, []);
 
   const dismiss = () => {
@@ -148,7 +122,7 @@ export function PwaRegister() {
       <button
         className={s.go}
         onClick={async () => {
-          await prompt.prompt();
+          await promptInstall();
           setPrompt(null);
         }}
       >

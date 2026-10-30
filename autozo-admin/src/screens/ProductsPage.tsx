@@ -3,7 +3,7 @@ import RichTextField from '../components/RichTextField';
 import { useSearchParams } from '../navigation';
 import BulkUpload from '../components/BulkUpload';
 import ProductVideoField from '../components/ProductVideoField';
-import { bulkCreateProducts, uploadProductVideo, createProduct, deleteProduct, fetchCategories, fetchProducts, fetchAllShops, fetchSettings, fetchStandardCategories, updateProduct, uploadImages } from '../api/admin';
+import { bulkCreateProducts, uploadProductVideo, createProduct, deleteProduct, fetchCategories, fetchProduct, fetchProducts, fetchAllShops, fetchSettings, fetchStandardCategories, updateProduct, uploadImages } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { IconPlus } from '../components/icons';
 import { Badge, Button, CenterSpinner, ErrorBanner, Field, Modal, Pagination, Tabs, Thumb, money } from '../components/ui';
@@ -89,6 +89,20 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Product | null>(null);
+  const [opening, setOpening] = useState('');
+  // The form needs the whole product (description, video, top-up tick, standard
+  // categories); a list row may be older or slimmer than that, so read it fresh.
+  const openEdit = async (p: Product) => {
+    setOpening(p._id);
+    try {
+      setEditing(await fetchProduct(p._id));
+    } catch {
+      setEditing(p);
+    } finally {
+      setOpening('');
+    }
+    setShowForm(true);
+  };
   const [showForm, setShowForm] = useState(!!params.get('new'));
   const [showBulk, setShowBulk] = useState(false);
 
@@ -327,12 +341,10 @@ export default function ProductsPage() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => {
-                            setEditing(p);
-                            setShowForm(true);
-                          }}
+                          disabled={opening === p._id}
+                          onClick={() => void openEdit(p)}
                         >
-                          Edit
+                          {opening === p._id ? 'Opening…' : 'Edit'}
                         </Button>
                         <Button size="sm" variant="danger" onClick={() => remove(p)}>
                           Delete
@@ -399,14 +411,14 @@ function ProductForm({
           mrp: String(product.mrp),
           unit: product.unit,
           stock: String(product.stock),
-          foodType: product.foodType,
+          foodType: product.foodType ?? '',
           hsn: product.hsn ?? '',
           paymentMode: product.paymentMode ?? 'both',
           gstRate: product.gstRate === undefined || product.gstRate === null ? '' : String(product.gstRate),
-          attributes: product.attributes.join(', '),
-          mainImage: product.images[0] ?? '',
+          attributes: (product.attributes ?? []).join(', '),
+          mainImage: product.images?.[0] ?? '',
           video: product.video ?? '',
-          galleryImages: product.images.slice(1).join(', '),
+          galleryImages: (product.images ?? []).slice(1).join(', '),
           ratingLabel: product.ratingLabel ?? '',
           rating: product.rating ? String(product.rating) : '',
           ratingCount: product.ratingCount ? String(product.ratingCount) : '',
@@ -416,7 +428,7 @@ function ProductForm({
           points: String(product.points ?? 0),
           cartFeatured: !!product.cartFeatured,
           sortCode: product.sortCode && product.sortCode < 1_000_000 ? String(product.sortCode) : '',
-          standardCategories: product.standardCategories ?? [],
+          standardCategories: (product.standardCategories ?? []).map(String),
           isActive: product.isActive,
         }
       : EMPTY_FORM,

@@ -7,6 +7,7 @@ import { fetchCoverage } from '../api/catalog';
 import { useAuth } from '../context/AuthContext';
 import { DeliveryPoint, POINT_EVENT, getDeliveryPoint, setDeliveryPoint } from '../lib/deliveryPoint';
 import { Address } from '../lib/types';
+import { accuratePosition, searchPlaces } from '../lib/geo';
 import { reverse } from './LocationPicker';
 import { Alert, Button, Input } from './ui';
 import s from './LocationGate.module.css';
@@ -88,14 +89,13 @@ export function LocationGate() {
       return;
     }
     setBusy('geo');
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
+    accuratePosition().then(
+      async ({ lat, lng }) => {
         const place = await reverse(lat, lng);
         setBusy('');
         await choose(lat, lng, [place.area, place.city].filter(Boolean).join(', ') || place.city);
       },
-      (err) => {
+      (err: GeolocationPositionError) => {
         setBusy('');
         setMsg({
           tone: 'bad',
@@ -105,7 +105,6 @@ export function LocationGate() {
               : 'We could not find your location. Turn on GPS, or search your PIN code / area below.',
         });
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
     );
   };
 
@@ -125,8 +124,7 @@ export function LocationGate() {
     setBusy('search');
     setMsg(null);
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&limit=5&q=${encodeURIComponent(q.trim())}`);
-      const list = (await r.json()) as Hit[];
+      const list: Hit[] = await searchPlaces(q.trim());
       setHits(list);
       if (!list.length) setMsg({ tone: 'bad', text: 'No place found. Try your PIN code or a nearby landmark.' });
     } catch {

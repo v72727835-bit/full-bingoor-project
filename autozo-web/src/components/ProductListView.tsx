@@ -35,9 +35,24 @@ function useIsPhone() {
   return phone;
 }
 
-export function ProductListView({ base, tint, compact: wantsCompact }: { base: ListProductsParams; tint?: string; compact?: boolean }) {
+export function ProductListView({
+  base,
+  tint,
+  compact: wantsCompact,
+  aside,
+}: {
+  base: ListProductsParams;
+  tint?: string;
+  /** The category layout: compact cards (the home rows' size) and the phone bar. */
+  compact?: boolean;
+  /**
+   * Point 9: a column down the left (the child aisles). The filters go under
+   * it on tablets and desktop, so the products get the full width beside it.
+   */
+  aside?: React.ReactNode;
+}) {
   const phone = useIsPhone();
-  const compact = !!wantsCompact && phone;
+  const compact = !!wantsCompact;
   const [items, setItems] = useState<Product[]>([]);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
@@ -84,8 +99,11 @@ export function ProductListView({ base, tint, compact: wantsCompact }: { base: L
     load(1, true);
   }, [load]);
 
-  return (
-    <div className={compact ? s.compact : undefined}>
+  const filterPanel = (
+    <ListFilters category={base.category} value={filters} onChange={setFilters} priceSort={priceSort} onPriceSort={setPriceSort} />
+  );
+  const top = (
+    <>
       <div className={s.bar}>
         <span className={`body-sm ${s.count}`}>
           {total === null ? 'Loading…' : `${fmt(total)} ${total === 1 ? 'Item' : 'Items'}`}
@@ -105,7 +123,7 @@ export function ProductListView({ base, tint, compact: wantsCompact }: { base: L
             <select className={`input ${s.sort}`} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
               {SORTS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {compact && o.value === 'relevance' ? 'Sort' : o.label}
+                  {compact && phone && o.value === 'relevance' ? 'Sort' : o.label}
                 </option>
               ))}
             </select>
@@ -137,11 +155,10 @@ export function ProductListView({ base, tint, compact: wantsCompact }: { base: L
         </div>
       ) : null}
 
-      <div className={s.layout}>
-        <aside className={`${s.side} ${drawer ? s.sideOpen : ''}`}>
-          <ListFilters category={base.category} value={filters} onChange={setFilters} priceSort={priceSort} onPriceSort={setPriceSort} />
-        </aside>
-        <div className={s.results}>
+    </>
+  );
+  const list = (
+    <>
       {loading ? (
         <div className="grid-products">
           {Array.from({ length: 12 }).map((_, i) => (
@@ -179,7 +196,32 @@ export function ProductListView({ base, tint, compact: wantsCompact }: { base: L
           )}
         </>
       )}
+    </>
+  );
+
+  if (aside) {
+    return (
+      <div className={`${s.withAside} ${compact ? s.compact : ''}`}>
+        <div className={s.asideCol}>
+          {aside}
+          {/* Desktop / tablet: the filters sit right under the aisle names. */}
+          {phone ? null : <div className={s.asideFilters}>{filterPanel}</div>}
         </div>
+        <div className={s.results}>
+          {top}
+          {phone && drawer ? <div className={s.drawer}>{filterPanel}</div> : null}
+          {list}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={compact ? s.compact : undefined}>
+      {top}
+      <div className={s.layout}>
+        <aside className={`${s.side} ${drawer ? s.sideOpen : ''}`}>{filterPanel}</aside>
+        <div className={s.results}>{list}</div>
       </div>
     </div>
   );

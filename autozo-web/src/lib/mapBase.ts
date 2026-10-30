@@ -17,7 +17,7 @@ export interface MapsConfig {
 
 let googleLoader: Promise<boolean> | null = null;
 
-function loadGoogleMaps(key: string): Promise<boolean> {
+export function loadGoogleMaps(key: string): Promise<boolean> {
   if (typeof window === 'undefined') return Promise.resolve(false);
   const w = window as unknown as { google?: { maps?: unknown } };
   if (w.google?.maps) return Promise.resolve(true);

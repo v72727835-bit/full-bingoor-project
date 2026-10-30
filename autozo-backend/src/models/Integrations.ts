@@ -8,6 +8,8 @@ export interface IIntegrations {
   key: 'global';
   google?: { clientId?: string };
   facebook?: { appId?: string; appSecretEnc?: string };
+  /** "Continue with Instagram": the Instagram app id / secret from the Meta developer app (Instagram > API setup with Instagram login). */
+  instagram?: { appId?: string; appSecretEnc?: string };
   razorpay?: { keyId?: string; keySecretEnc?: string; webhookSecretEnc?: string; enabled?: boolean };
   /** Google Maps JS API key. Client-side (restricted by referrer), so it is NOT a hidden secret. */
   maps?: { googleApiKey?: string };
@@ -30,6 +32,7 @@ const schema = new Schema<IIntegrations>(
     key: { type: String, default: 'global', unique: true },
     google: { clientId: { type: String, trim: true } },
     facebook: { appId: { type: String, trim: true }, appSecretEnc: String },
+    instagram: { appId: { type: String, trim: true }, appSecretEnc: String },
     razorpay: { keyId: { type: String, trim: true }, keySecretEnc: String, webhookSecretEnc: String, enabled: { type: Boolean, default: true } },
     maps: { googleApiKey: { type: String, trim: true } },
     firebase: {

@@ -141,7 +141,7 @@ export const changePassword = asyncHandler(async (req, res) => {
 /* ---------------- Continue with Google / Facebook ---------------- */
 
 interface SocialProfile {
-  provider: 'google' | 'facebook';
+  provider: 'google' | 'facebook' | 'instagram';
   id: string;
   email?: string;
   name: string;
@@ -156,7 +156,7 @@ async function getJson<T>(url: string): Promise<T> {
 
 /** Signs in (or signs up) the customer behind a verified social profile. */
 async function signInWithSocial(p: SocialProfile) {
-  const key = p.provider === 'google' ? 'googleId' : 'facebookId';
+  const key = p.provider === 'google' ? 'googleId' : p.provider === 'facebook' ? 'facebookId' : 'instagramId';
   let user = (await User.findOne({ [key]: p.id, role: 'customer' })) ?? (p.email ? await User.findOne({ email: p.email.toLowerCase(), role: 'customer' }) : null);
   if (user && user.role !== 'customer') throw new ApiError(403, 'This login is for customers only.');
   if (user && !user.isActive) throw new ApiError(403, 'Your account has been disabled. Please contact support.');
@@ -208,4 +208,38 @@ export const facebookLogin = asyncHandler(async (req, res) => {
     `https://graph.facebook.com/me?fields=id,name,email&access_token=${encodeURIComponent(accessToken)}`,
   );
   ok(res, await signInWithSocial({ provider: 'facebook', id: me.id, email: me.email, name: me.name ?? '' }));
+});
+
+/**
+ * Continue with Instagram (Instagram API with Instagram Login). The website
+ * sends the one-time code Instagram gave it; only the server knows the app
+ * secret, so only the server can turn that code into the customer's Instagram
+ * id - a code made for another app is refused by Instagram itself. Instagram
+ * shares no email, so the account is matched on the Instagram id alone.
+ */
+export const instagramLogin = asyncHandler(async (req, res) => {
+  const { instagramAppId, instagramAppSecret } = await getIntegrations();
+  if (!instagramAppId || !instagramAppSecret) throw new ApiError(503, 'Login with Instagram is not switched on yet.');
+  const { code, redirectUri } = req.body as { code: string; redirectUri: string };
+  const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: instagramAppId,
+      client_secret: instagramAppSecret,
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+      code: code.replace(/#_$/, ''),
+    }),
+  });
+  const token = (await tokenRes.json().catch(() => ({}))) as { access_token?: string; user_id?: string | number; error_message?: string };
+  if (!tokenRes.ok || !token.access_token) {
+    throw new ApiError(401, 'Instagram did not confirm this login. Please try again, or continue with your phone number.');
+  }
+  const me = await getJson<{ user_id?: string | number; id?: string; username?: string; name?: string }>(
+    `https://graph.instagram.com/me?fields=user_id,username,name&access_token=${encodeURIComponent(token.access_token)}`,
+  );
+  const id = String(me.user_id ?? token.user_id ?? me.id ?? '');
+  if (!id) throw new ApiError(401, 'Instagram did not confirm this login. Please try again.');
+  ok(res, await signInWithSocial({ provider: 'instagram', id, name: me.name || me.username || '' }));
 });

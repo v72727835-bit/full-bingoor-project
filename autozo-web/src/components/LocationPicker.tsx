@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { matchState } from '../lib/india';
+import { accuratePosition, reverseGeocode, searchPlaces } from '../lib/geo';
 import { addBaseLayer } from '../lib/mapBase';
 import { useSettings } from '../context/SettingsContext';
 import { Icon } from './Icon';
@@ -30,27 +30,9 @@ interface Hit {
 
 const START = { lat: 24.7, lng: 83.07 }; // Robertsganj, until the customer moves the pin
 
-/** City, state and PIN for a pin, from the free OpenStreetMap lookup. Failure just leaves the form as it was. */
+/** City, state and PIN for a pin (Google when a Maps key is set, else OpenStreetMap). Failure just leaves the form as it was. */
 export async function reverse(lat: number, lng: number): Promise<Partial<PickedPlace>> {
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`, {
-      headers: { 'Accept-Language': 'en' },
-    });
-    const j = (await r.json()) as { address?: Record<string, string>; display_name?: string };
-    const a = j.address ?? {};
-    const street = a.road || a.pedestrian || a.footway || a.residential || '';
-    const line1 = [a.house_number, street].filter(Boolean).join(', ');
-    return {
-      city: a.city || a.town || a.village || a.municipality || a.county || a.state_district,
-      state: matchState(a.state) || a.state,
-      pincode: a.postcode?.replace(/\D/g, '').slice(0, 6),
-      line: j.display_name,
-      line1: line1 || a.amenity || a.building || undefined,
-      area: a.suburb || a.neighbourhood || a.city_district || a.hamlet || undefined,
-    };
-  } catch {
-    return {};
-  }
+  return reverseGeocode(lat, lng);
 }
 
 /**
@@ -115,8 +97,7 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
     setSearching(true);
     setNote('');
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&limit=5&q=${encodeURIComponent(q)}`);
-      const list = (await r.json()) as Hit[];
+      const list: Hit[] = await searchPlaces(q);
       setHits(list);
       if (!list.length) setNote('No place found. Try a PIN code, or a nearby landmark.');
       else if (list.length === 1) pick(list[0]);
@@ -134,15 +115,13 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
 
   const locate = () => {
     if (!navigator.geolocation) return setNote('This browser does not support location access.');
-    setNote('Asking for your location…');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setNote('');
-        place(pos.coords.latitude, pos.coords.longitude);
-      },
-      () => setNote('Location is off. Allow it in your browser (or switch it on in settings), then tap Enable again.'),
-      { timeout: 12000, enableHighAccuracy: true },
-    );
+    setNote('Finding your exact location…');
+    accuratePosition()
+      .then((fix) => {
+        setNote(fix.accuracy > 100 ? `Pin placed (about ${Math.round(fix.accuracy)} m accurate). Drag it to your door if needed.` : '');
+        place(fix.lat, fix.lng);
+      })
+      .catch(() => setNote('Location is off. Allow it in your browser (or switch it on in settings), then tap Enable again.'));
   };
 
   return (

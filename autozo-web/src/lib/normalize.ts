@@ -125,6 +125,7 @@ export function product(raw: RawProduct): Product {
       price: v.price ?? 0,
       mrp: v.mrp && v.mrp > (v.price ?? 0) ? v.mrp : undefined,
       inStock: v.inStock ?? (v.stock ?? 0) > 0,
+      image: v.images?.find(Boolean) || (v.icon ? artSrc(v.icon) : undefined),
     })),
     foodType,
     attributes: raw.attributes ?? [],

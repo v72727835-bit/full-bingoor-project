@@ -195,8 +195,11 @@ export const stats = asyncHandler(async (req, res) => {
 
 /* ============ Products ============ */
 
+// The edit form opens from these rows, so every field it shows must be here:
+// without description / video / cartFeatured / standardCategories the form
+// opened blank and saving it wiped them.
 const ADMIN_PRODUCT_FIELDS =
-  'name slug brand images icon price mrp unit stock attributes foodType hsn gstRate paymentMode tags isActive rating ratingCount soldCount nameHi points sortCode ratingLabel variantGroup variantLabel seller shop category createdAt';
+  'name slug brand description video images icon price mrp unit stock attributes foodType hsn gstRate paymentMode tags isActive rating ratingCount soldCount nameHi points sortCode ratingLabel variantGroup variantLabel cartFeatured standardCategories seller shop category createdAt';
 
 export const listProductsAdmin = asyncHandler(async (req, res) => {
   const { q, category, shop, isActive, page, limit } = req.query as unknown as {
