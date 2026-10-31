@@ -15,23 +15,29 @@ export interface MapsConfig {
   googleMapsApiKey?: string | null;
 }
 
-let googleLoader: Promise<boolean> | null = null;
-
+/**
+ * One Google Maps script per page. The promise lives on `window`, not in this
+ * module, because the map and the address lookup can end up in separate code
+ * chunks with their own copy of the module - which loaded the script twice.
+ */
 export function loadGoogleMaps(key: string): Promise<boolean> {
   if (typeof window === 'undefined') return Promise.resolve(false);
-  const w = window as unknown as { google?: { maps?: unknown } };
+  const w = window as unknown as { google?: { maps?: unknown }; __bingoorGmaps?: Promise<boolean> };
   if (w.google?.maps) return Promise.resolve(true);
-  if (googleLoader) return googleLoader;
-  googleLoader = new Promise<boolean>((resolve) => {
+  if (w.__bingoorGmaps) return w.__bingoorGmaps;
+  w.__bingoorGmaps = new Promise<boolean>((resolve) => {
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=quarterly`;
     script.async = true;
     script.defer = true;
     script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
+    script.onerror = () => {
+      w.__bingoorGmaps = undefined;
+      resolve(false);
+    };
     document.head.appendChild(script);
   });
-  return googleLoader;
+  return w.__bingoorGmaps;
 }
 
 function osm(L: LeafletNS, map: LeafletMap) {
