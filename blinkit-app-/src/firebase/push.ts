@@ -43,7 +43,7 @@ export async function registerPush(app: 'customer' | 'rider', onForeground: (tit
     }
     await post(await messaging().getToken(), app);
     const offRefresh = messaging().onTokenRefresh((t) => void post(t, app).catch(() => undefined));
-    const offMessage = messaging().onMessage((m) => onForeground(m.notification?.title ?? 'Autozo', m.notification?.body ?? ''));
+    const offMessage = messaging().onMessage((m) => onForeground(m.notification?.title ?? 'Bingoor', m.notification?.body ?? ''));
     return () => {
       offRefresh();
       offMessage();

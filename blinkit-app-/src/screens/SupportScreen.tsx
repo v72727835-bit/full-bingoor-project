@@ -253,7 +253,7 @@ function Thread({ id, onClose }: { id: string; onClose: () => void }) {
                 {m.text}
               </Txt>
               <Txt variant="caption" tone="faint" style={styles.msgWhen}>
-                {m.from === 'customer' ? 'You' : 'Autozo care'} ·{' '}
+                {m.from === 'customer' ? 'You' : 'Bingoor care'} ·{' '}
                 {new Date(m.at).toLocaleString('en-IN', {
                   day: 'numeric',
                   month: 'short',

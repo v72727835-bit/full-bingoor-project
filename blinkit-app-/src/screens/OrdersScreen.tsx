@@ -187,7 +187,7 @@ function OrderCard({
         <SmartImage uri={order.shop?.logo} icon="shopping-cart" style={styles.shopLogo} radius={radius.sm} />
         <View style={styles.cardTitles}>
           <Txt variant="h4" numberOfLines={1}>
-            {order.shop?.name ?? 'Autozo shop'}
+            {order.shop?.name ?? 'Bingoor shop'}
           </Txt>
           <Txt variant="caption" tone="faint" numberOfLines={1}>
             {order.orderNumber} {'·'} {timeAgo(order.createdAt)}

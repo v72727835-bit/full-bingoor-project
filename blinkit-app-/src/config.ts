@@ -13,7 +13,7 @@ import { Platform } from 'react-native';
  *
  * For a production build, point this to your https:// server.
  */
-const API_URL_OVERRIDE: string | null = 'https://app-api.autozo.org/api/v1';
+const API_URL_OVERRIDE: string | null = 'https://api.bingoor.com/api/v1';
 
 const defaultUrl =
   Platform.OS === 'android' ? 'http://10.0.2.2:5000/api/v1' : 'http://localhost:5000/api/v1';
@@ -24,4 +24,4 @@ export const API_URL: string = (API_URL_OVERRIDE ?? defaultUrl).replace(/\/+$/, 
  * The storefront a shared link opens. Someone without the app installed still
  * lands on the product page, which is the whole point of sharing one.
  */
-export const WEB_URL = 'https://shop.autozo.org';
+export const WEB_URL = 'https://bingoor.com';

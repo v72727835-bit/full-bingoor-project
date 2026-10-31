@@ -18,7 +18,7 @@ x-next-build: &next-build
 services:
   api:
     build:
-      context: ${BACKEND_DIR:-./autozo-backend}
+      context: ${BACKEND_DIR:-./bingoor-backend}
     image: bingoor-api:latest
     env_file: ${BINGOOR_ENV_DIR:-/opt/bingoor-env}/backend.env
     volumes:
@@ -28,7 +28,7 @@ services:
 
   web:
     build:
-      context: ${WEB_DIR:-./autozo-web}
+      context: ${WEB_DIR:-./bingoor-web}
       <<: *next-build
     image: bingoor-web:latest
     network_mode: host
@@ -36,7 +36,7 @@ services:
 
   admin:
     build:
-      context: ${ADMIN_DIR:-./autozo-admin}
+      context: ${ADMIN_DIR:-./bingoor-admin}
       <<: *next-build
     image: bingoor-admin:latest
     network_mode: host

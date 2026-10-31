@@ -21,7 +21,7 @@ interface LegalSection {
 }
 
 /**
- * The same policy text the website shows (copied from autozo-web/src/content),
+ * The same policy text the website shows (copied from bingoor-web/src/content),
  * so the wording stays exactly as it was supplied and only the layout lives here.
  */
 const DOCS: Record<LegalDoc, { title: string; updated?: string; sections: LegalSection[] }> = {
