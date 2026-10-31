@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AddressInput } from '../api/account';
 import { Address } from '../lib/types';
+import { getErrorMessage } from '../lib/client';
 import { INDIA_STATES, matchState } from '../lib/india';
 import { Icon, IconName } from './Icon';
 import { useAuth } from '../context/AuthContext';
@@ -141,6 +142,16 @@ export function AddressForm({
       setError('Please enter a valid 6-digit PIN code.');
       return;
     }
+    if (f.name.trim().length < 2) {
+      setError('Please enter your full name.');
+      setEditContact(true);
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(f.phone.replace(/\D/g, '').slice(-10))) {
+      setError('Please enter a valid 10-digit mobile number.');
+      setEditContact(true);
+      return;
+    }
     // A map pin helps the rider and gives an exact delivery distance, but it is
     // not required: a typed address with a valid PIN is enough to order. (Many
     // customers deny location access or are on a desktop with no GPS, and
@@ -153,7 +164,10 @@ export function AddressForm({
       if (!body.location) delete body.location;
       await onSubmit(body);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save the address');
+      // The server's own reason, with its field names in the words used on this form.
+      const labels: Record<string, string> = { line1: 'Flat / house no.', line2: 'Street / area', name: 'Full name', phone: 'Phone', city: 'City', state: 'State', pincode: 'Pincode', landmark: 'Landmark', location: 'Map pin' };
+      const msg = getErrorMessage(err).replace(/\b(line1|line2|name|phone|city|state|pincode|landmark|location)\b(?=:)/g, (k) => labels[k] ?? k);
+      setError(msg || 'Could not save the address. Please check the details and try again.');
     } finally {
       setSaving(false);
     }

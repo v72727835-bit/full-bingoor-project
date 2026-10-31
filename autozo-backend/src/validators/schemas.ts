@@ -77,7 +77,8 @@ const addressFields = {
   label: z.enum(['home', 'work', 'other']).default('home'),
   name: z.string().trim().min(2).max(80),
   phone,
-  line1: z.string().trim().min(3).max(200),
+  // A flat / house number can be as short as "15" or "B2".
+  line1: z.string().trim().min(1, 'Please enter your flat / house number').max(200),
   line2: z.string().trim().max(200).optional(),
   landmark: z.string().trim().max(100).optional(),
   city: z.string().trim().min(2).max(60),
