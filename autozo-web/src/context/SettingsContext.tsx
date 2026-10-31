@@ -23,7 +23,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setGeoMaps(next?.maps);
         setSettings(next);
       })
-      .catch(() => undefined); // The storefront works fine without them.
+      .catch(() => setGeoMaps(null)); // The storefront works fine without them; address lookups stop waiting.
   }, []);
 
   return <SettingsContext.Provider value={settings}>{children}</SettingsContext.Provider>;
