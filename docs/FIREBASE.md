@@ -7,7 +7,7 @@ No server change or redeploy is needed to change keys or turn features on or off
 
 1. console.firebase.google.com → Add project.
 2. **Authentication → Sign-in method → Phone → Enable.**
-   Authentication → Settings → **Authorized domains**: add `shop.autozo.org`.
+   Authentication → Settings → **Authorized domains**: add `bingoor.com`.
 3. **Project settings → General → Your apps → Web app**: copy the config (apiKey, authDomain, projectId, appId, messagingSenderId) into the admin panel.
 4. **Project settings → Cloud Messaging → Web Push certificates → Generate key pair**: paste it as the *Web push key (VAPID)*.
 5. **Project settings → Service accounts → Generate new private key**: open the downloaded JSON and paste the whole text into *Service account JSON* in the admin panel (it is stored encrypted and is never shown again). Do not share this file anywhere else.
@@ -24,7 +24,7 @@ The apps use the native Firebase SDK, so one file is baked into each APK and can
 1. In the Firebase project add two Android apps: `com.bingoor.app` (customer) and `com.bingoor.rider` (rider).
 2. Download each `google-services.json` and put it in
    - `blinkit-app-/android/app/google-services.json`
-   - `autozo-backend/autozo-mobile/android/app/google-services.json`
+   - `bingoor-backend/bingoor-mobile/android/app/google-services.json`
 3. Add the debug and release **SHA-1 and SHA-256** fingerprints of each app in Firebase (Project settings → your Android app). Phone OTP does not work without them.
 4. `npm install` in each app, then build the APK again.
 

@@ -1,7 +1,7 @@
-# Autozo - Customer App (React Native CLI, Android)
+# Bingoor - Customer App (React Native CLI, Android)
 
 Real React Native project (no Expo). Screens: **Login**, **Signup**, **Dashboard**.
-Talks to the `autozo-backend` API.
+Talks to the `bingoor-backend` API.
 
 ## One-time setup (Windows)
 
@@ -10,7 +10,7 @@ Talks to the `autozo-backend` API.
    - `ANDROID_HOME` = `C:\Users\<you>\AppData\Local\Android\Sdk`
    - add `%ANDROID_HOME%\platform-tools` to `Path`
 3. Keep the project path short. If the Android build fails with "path too long", move this
-   folder to something like `C:\autozo-mobile`.
+   folder to something like `C:\bingoor-mobile`.
 
 ## Run
 
@@ -20,10 +20,10 @@ npm start            # Metro bundler (keep this terminal open)
 npm run android      # second terminal: builds and installs the app on the emulator/phone
 ```
 
-Or open the `android` folder in Android Studio (**File -> Open -> autozo-mobile\android**),
+Or open the `android` folder in Android Studio (**File -> Open -> bingoor-mobile\android**),
 wait for Gradle sync, pick a device at the top and press Run.
 
-Backend first: in `autozo-backend` run `npm run seed` then `npm run dev`.
+Backend first: in `bingoor-backend` run `npm run seed` then `npm run dev`.
 Demo login: `9876543210` / `Customer@123`.
 
 ## Backend URL

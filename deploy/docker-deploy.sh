@@ -61,9 +61,7 @@ cd "$SRC"
 echo "Bingoor deploy started $(date). Log: $LOG"
 echo "   code: $(git log -1 --format='%h %s')"
 
-# The repo's folders are being renamed autozo-* -> bingoor-*; build whichever exists.
-dir_of() { if [ -d "bingoor-$1" ]; then echo "./bingoor-$1"; else echo "./autozo-$1"; fi; }
-export BACKEND_DIR="$(dir_of backend)" WEB_DIR="$(dir_of web)" ADMIN_DIR="$(dir_of admin)"
+export BACKEND_DIR=./bingoor-backend WEB_DIR=./bingoor-web ADMIN_DIR=./bingoor-admin
 
 # Server-only files, carried over from the pm2 install the first time.
 mkdir -p "$BINGOOR_ENV_DIR" "$BINGOOR_DATA_DIR/uploads"

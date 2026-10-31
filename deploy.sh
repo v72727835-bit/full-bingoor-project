@@ -66,7 +66,7 @@ fail() {
   # Never leave the sites down after a failed build: bring the old versions back.
   if [ "$PAUSED" = 1 ]; then
     echo "Starting the apps again so the sites stay up..."
-    for a in autozo-backend autozo-web autozo-admin; do restart_app "$a" || true; done
+    for a in bingoor-backend bingoor-web bingoor-admin; do restart_app "$a" || true; done
   fi
   exit 1
 }
@@ -128,7 +128,7 @@ build_next() {
   run npm ci --include=dev --no-audit --no-fund
 
   rm -rf .next
-  run env AUTOZO_LOW_RESOURCE=1 NODE_OPTIONS="$BUILD_NODE_OPTIONS" npx next build --webpack
+  run env BINGOOR_LOW_RESOURCE=1 NODE_OPTIONS="$BUILD_NODE_OPTIONS" npx next build --webpack
   [ -f .next/BUILD_ID ] || fail "$app build finished without .next/BUILD_ID"
 
   # Hand the exact build-time packages to the cPanel app.
@@ -139,7 +139,7 @@ build_next() {
   echo "   $app built ($(cat .next/BUILD_ID))"
 }
 
-echo "Autozo deploy started $(date). Log: $LOG"
+echo "Bingoor deploy started $(date). Log: $LOG"
 echo "Threads in use right now: $(threads)"
 
 say "Pulling latest code"
@@ -152,41 +152,41 @@ echo "   now at $(git log -1 --format='%h %s')"
 # All three live apps are paused for the whole build, so Node gets the threads
 # it needs to start. MongoDB keeps running; sites are down until the restart.
 say "Pausing the live apps"
-stop_app autozo-backend
-stop_app autozo-web
-stop_app autozo-admin
+stop_app bingoor-backend
+stop_app bingoor-web
+stop_app bingoor-admin
 PAUSED=1
 echo "   threads in use after pausing: $(threads) (MongoDB alone holds about 10-15)"
 
 say "Building backend"
-cd "$ROOT/autozo-backend"
-[ -f .env ] || fail "autozo-backend/.env is missing"
+cd "$ROOT/bingoor-backend"
+[ -f .env ] || fail "bingoor-backend/.env is missing"
 (
   set +u
   # shellcheck disable=SC1090
-  source "$VENV/autozo-backend/$NODE_VER/bin/activate"
+  source "$VENV/bingoor-backend/$NODE_VER/bin/activate"
   set -u
-  cd "$ROOT/autozo-backend"
+  cd "$ROOT/bingoor-backend"
   # npm needs many threads; skip it when the lockfile is unchanged since the last good install.
   lock="$(sha256sum package-lock.json | cut -d' ' -f1)"
-  if [ -d node_modules ] && [ "$(cat node_modules/.autozo-lock 2>/dev/null)" = "$lock" ]; then
+  if [ -d node_modules ] && [ "$(cat node_modules/.bingoor-lock 2>/dev/null)" = "$lock" ]; then
     echo "   backend packages unchanged, skipping npm install"
   else
-    npm install --include=dev --no-audit --no-fund >>"$LOG" 2>&1 && echo "$lock" > node_modules/.autozo-lock
+    npm install --include=dev --no-audit --no-fund >>"$LOG" 2>&1 && echo "$lock" > node_modules/.bingoor-lock
   fi
   npm run build >>"$LOG" 2>&1
 ) || fail "backend build failed$(printf '\n'; tail -25 "$LOG")"
 echo "   backend built"
 
 plain_node
-build_next autozo-web
-build_next autozo-admin
+build_next bingoor-web
+build_next bingoor-admin
 
 PAUSED=0
 say "Restarting apps"
-restart_app autozo-backend
-restart_app autozo-web
-restart_app autozo-admin
+restart_app bingoor-backend
+restart_app bingoor-web
+restart_app bingoor-admin
 
 say "Checking the live sites"
 sleep 8

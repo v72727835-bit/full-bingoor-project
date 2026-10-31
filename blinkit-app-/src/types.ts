@@ -1,4 +1,4 @@
-/* Shapes returned by the Autozo API. Kept in one file so a backend change
+/* Shapes returned by the Bingoor API. Kept in one file so a backend change
  * shows up as a compile error rather than a blank screen. */
 
 export interface PageMeta {
