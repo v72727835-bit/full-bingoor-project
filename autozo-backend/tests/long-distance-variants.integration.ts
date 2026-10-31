@@ -11,6 +11,7 @@ import { Product } from '../src/models/Product';
 import { Settings } from '../src/models/Settings';
 import { StandardCategory } from '../src/models/StandardCategory';
 import { clearCatalogCache } from '../src/middleware/cache';
+import { signAccessToken } from '../src/utils/jwt';
 
 test('long-distance customers see only the ticked categories, standard rows and festival products; cards carry their sizes', { timeout: 900000 }, async () => {
   const db = await MongoMemoryServer.create({ binary: { version: '8.2.6' }, instance: { launchTimeout: 60000 } });
@@ -51,6 +52,15 @@ test('long-distance customers see only the ticked categories, standard rows and 
     const five = cards.find((c) => c.name === 'Atta 5 kg')!;
     assert.deepEqual(five.variants?.map((v) => [v.label, v.price]), [['5 kg', 250], ['10 kg', 480]]);
     assert.equal(cards.find((c) => c.name === 'Plain sweet')!.variants, undefined);
+
+    // A short flat / house number such as "15" is a valid address line.
+    const auth = { 'content-type': 'application/json', authorization: `Bearer ${signAccessToken(String(owner._id), 'customer')}` };
+    const addr = await fetch(`${base}/me/addresses`, {
+      method: 'POST',
+      headers: auth,
+      body: JSON.stringify({ label: 'home', name: 'kd', phone: '7854789652', line1: '15', line2: '45, Priyanshu Vihar Road, Sirsi', city: 'Jaipur', state: 'Rajasthan', pincode: '302041', location: { lat: 26.9, lng: 75.7 } }),
+    });
+    assert.equal(addr.status, 201, await addr.text());
 
     // Instagram login refuses politely until the admin saves its keys.
     const ig = await fetch(`${base}/auth/instagram`, {
