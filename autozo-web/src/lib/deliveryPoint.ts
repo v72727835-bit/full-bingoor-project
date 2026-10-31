@@ -12,6 +12,19 @@ export interface DeliveryPoint {
   lat: number;
   lng: number;
   label?: string;
+  /** Filled when the point came from the phone's GPS: the address found there, ready for the address form. */
+  address?: {
+    line?: string;
+    line1?: string;
+    area?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+  /** Metres; set for a GPS fix. */
+  accuracy?: number;
+  /** When it was set (ms), so a stale GPS fix is not trusted as "where I am now". */
+  at?: number;
 }
 
 const KEY = 'autozo_point';

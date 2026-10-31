@@ -48,7 +48,7 @@ const googleKey = () => (maps?.provider === 'google' && maps.googleMapsApiKey) |
  * soon as a reading is within `goodEnoughM`; rejects with the browser's
  * GeolocationPositionError when no reading comes at all.
  */
-export function accuratePosition({ goodEnoughM = 25, maxWaitMs = 12000 } = {}): Promise<Fix> {
+export function accuratePosition({ goodEnoughM = 25, maxWaitMs = 12000, onFix }: { goodEnoughM?: number; maxWaitMs?: number; onFix?: (fix: Fix) => void } = {}): Promise<Fix> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       reject({ code: 2, message: 'Geolocation is not available' });
@@ -67,7 +67,10 @@ export function accuratePosition({ goodEnoughM = 25, maxWaitMs = 12000 } = {}): 
     const watch = navigator.geolocation.watchPosition(
       (pos) => {
         const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
-        if (!best || fix.accuracy < best.accuracy) best = fix;
+        if (!best || fix.accuracy < best.accuracy) {
+          best = fix;
+          onFix?.(fix);
+        }
         if (fix.accuracy <= goodEnoughM) finish();
       },
       (err) => {
@@ -178,4 +181,30 @@ export async function searchPlaces(q: string): Promise<PlaceHit[]> {
   }
   const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&limit=5&q=${encodeURIComponent(q)}`);
   return (await r.json()) as PlaceHit[];
+}
+
+/** Straight-line distance in metres between two points. */
+export function metresBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000;
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** "Tonk Road, Sanganer, Jaipur": the street-level name shown in the header and on the address card. */
+export function shortPlace(p: PlaceParts): string {
+  return [p.line1 || p.area, p.line1 ? p.area : undefined, p.city].filter(Boolean).join(', ');
+}
+
+/**
+ * Point 16 / Blinkit-style: the customer's exact spot right now plus its
+ * address, in one call. `onFix` is told about the first reading straight away
+ * so the screen can move before the GPS settles on the most accurate one.
+ */
+export async function detectHere(onFix?: (fix: Fix) => void): Promise<Fix & { place: PlaceParts }> {
+  const fix = await accuratePosition({ onFix });
+  const place = await reverseGeocode(fix.lat, fix.lng);
+  return { ...fix, place };
 }

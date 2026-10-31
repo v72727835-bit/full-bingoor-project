@@ -16,6 +16,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useSlot } from '../../context/SlotContext';
 import { getTip, setTip } from '../../lib/tip';
 import { getDeliveryPoint } from '../../lib/deliveryPoint';
+import { metresBetween } from '../../lib/geo';
 import { useQuote } from '../../lib/useQuote';
 import { useCatalog } from '../../context/CatalogContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -108,14 +109,32 @@ function CheckoutInner() {
     else if (noOnline && !noCod) setPay('cod');
   }, [cart, settings?.onlinePaymentOn]);
 
-  const load = useCallback(async () => {
+  // Blinkit-style: the order goes to where the customer is right now. A saved
+  // address at the current location (within ~150 m) is picked for them; when
+  // none is, the address form opens already filled from the current location
+  // and they only add the flat / house number.
+  const [awayFromSaved, setAwayFromSaved] = useState(false);
+  const load = useCallback(async (first = false) => {
     const data = await fetchAddresses();
     setList(data);
-    setPicked((cur) => cur || data.find((a) => a.isDefault)?.id || data[0]?.id || '');
+    const here = getDeliveryPoint();
+    const near = here
+      ? data
+          .filter((a) => a.location)
+          .map((a) => ({ a, m: metresBetween(here, a.location!) }))
+          .sort((x, y) => x.m - y.m)[0]
+      : undefined;
+    const atHere = near && near.m <= 150 ? near.a : undefined;
+    setPicked((cur) => cur || atHere?.id || data.find((a) => a.isDefault)?.id || data[0]?.id || '');
+    // Only a fresh GPS fix counts as "where I am"; a searched area does not open the form.
+    if (first && here?.address && data.length > 0 && !atHere) {
+      setAwayFromSaved(true);
+      setAdding(true);
+    }
   }, []);
 
   useEffect(() => {
-    load().catch((e) => {
+    load(true).catch((e) => {
       setError(getErrorMessage(e));
       setList([]);
     });
@@ -256,6 +275,12 @@ function CheckoutInner() {
               ) : null}
             </div>
 
+            {showForm && awayFromSaved && adding ? (
+              <p className="body-sm" style={{ marginBottom: 12 }}>
+                You are not at any of your saved addresses, so we will deliver to your <b>current location</b>. Just add your flat / house number and
+                save. Want it at a saved address instead? Tap Cancel.
+              </p>
+            ) : null}
             {showForm ? (
               <AddressForm
                 onSubmit={async (body) => {
@@ -264,7 +289,14 @@ function CheckoutInner() {
                   setPicked(a.id);
                   setAdding(false);
                 }}
-                onCancel={list.length ? () => setAdding(false) : undefined}
+                onCancel={
+                  list.length
+                    ? () => {
+                        setAdding(false);
+                        setAwayFromSaved(false);
+                      }
+                    : undefined
+                }
               />
             ) : (
               <div className="stack" style={{ gap: 10 }}>

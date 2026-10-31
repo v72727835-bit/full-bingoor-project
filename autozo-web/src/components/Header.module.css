@@ -373,3 +373,35 @@
   margin-left: auto;
   margin-right: auto;
 }
+
+/* Phones: the delivery place above the search bar. */
+.placePhone {
+  display: none;
+}
+
+@media (max-width: 699px) {
+  .placePhone {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--bar-ink);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .placePhoneText {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .placePhoneText b {
+    font-weight: 800;
+  }
+}
