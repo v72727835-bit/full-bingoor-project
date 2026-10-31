@@ -117,7 +117,8 @@ export function Field({
   );
 }
 
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+// React 19 passes `ref` through as a normal prop, so callers can focus the box.
+export function Input(props: React.ComponentProps<'input'>) {
   return <input {...props} className={`input ${props.className ?? ''}`} />;
 }
 

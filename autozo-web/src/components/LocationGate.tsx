@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { fetchAddresses } from '../api/account';
 import { fetchCoverage } from '../api/catalog';
 import { useAuth } from '../context/AuthContext';
 import { DeliveryPoint, POINT_EVENT, getDeliveryPoint, setDeliveryPoint } from '../lib/deliveryPoint';
 import { Address } from '../lib/types';
-import { accuratePosition, searchPlaces } from '../lib/geo';
-import { reverse } from './LocationPicker';
+import { PlaceParts, detectHere, searchPlaces, shortPlace } from '../lib/geo';
 import { Alert, Button, Input } from './ui';
 import s from './LocationGate.module.css';
 
@@ -62,7 +61,9 @@ export function LocationGate() {
   }, [open, user]);
 
   /** Checks a warehouse delivers here, then remembers the place; otherwise says so and stays open. */
-  const choose = useCallback(async (lat: number, lng: number, label?: string) => {
+  const choose = useCallback(async (lat: number, lng: number, label?: string, here?: { place: PlaceParts; accuracy: number }) => {
+    // Anything the customer picks by hand wins over a GPS reading still on its way.
+    if (!here) gpsTurn.current++;
     setBusy('check');
     setMsg(null);
     try {
@@ -71,7 +72,8 @@ export function LocationGate() {
         setMsg({ tone: 'bad', text: `Sorry, no Bingoor warehouse delivers to ${label || 'this place'} yet. Please choose another address or area.` });
         return;
       }
-      setDeliveryPoint({ lat, lng, label });
+      // A GPS fix keeps the full address it found, so the address form can fill itself (Blinkit-style).
+      setDeliveryPoint(here ? { lat, lng, label, address: here.place, accuracy: Math.round(here.accuracy), at: Date.now() } : { lat, lng, label, at: Date.now() });
       setForced(false);
       setHits([]);
       setQ('');
@@ -82,20 +84,28 @@ export function LocationGate() {
     }
   }, []);
 
+  // Bumped whenever a new search for "where am I" starts or the customer picks
+  // something else, so a late GPS answer never overrides their choice.
+  const gpsTurn = useRef(0);
+  const [found, setFound] = useState('');
   const locate = () => {
     setMsg(null);
+    setFound('');
     if (!window.isSecureContext || !navigator.geolocation) {
       setMsg({ tone: 'bad', text: 'This browser cannot share your location here. Please search your PIN code or area below.' });
       return;
     }
+    const turn = ++gpsTurn.current;
     setBusy('geo');
-    accuratePosition().then(
-      async ({ lat, lng }) => {
-        const place = await reverse(lat, lng);
+    detectHere().then(
+      async ({ lat, lng, accuracy, place }) => {
+        if (turn !== gpsTurn.current) return;
         setBusy('');
-        await choose(lat, lng, [place.area, place.city].filter(Boolean).join(', ') || place.city);
+        setFound(place.line || shortPlace(place));
+        await choose(lat, lng, shortPlace(place) || place.city, { place, accuracy });
       },
       (err: GeolocationPositionError) => {
+        if (turn !== gpsTurn.current) return;
         setBusy('');
         setMsg({
           tone: 'bad',
@@ -108,15 +118,17 @@ export function LocationGate() {
     );
   };
 
-  // Point 16: on a first visit ask the browser for the current location straight
-  // away (the visitor only has to tap "Allow"); search stays as the fallback.
-  const [autoTried, setAutoTried] = useState(false);
+  // Point 16: the moment this opens - on a first visit or from the header's
+  // location button - the current location is looked up straight away (the
+  // customer only has to tap "Allow"); saved addresses and search stay below.
   useEffect(() => {
-    if (!open || point !== null || autoTried) return;
-    setAutoTried(true);
+    if (!open) {
+      gpsTurn.current++;
+      return;
+    }
     locate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, point, autoTried]);
+  }, [open]);
 
   const search = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,8 +161,14 @@ export function LocationGate() {
 
         <div className={s.stack}>
           <Button full icon="pin" onClick={locate} loading={busy === 'geo'} disabled={!!busy && busy !== 'geo'}>
-            Use my current location
+            {busy === 'geo' ? 'Finding your exact location…' : 'Use my current location'}
           </Button>
+          {found ? (
+            <div className={s.found}>
+              <b>Your current location</b>
+              {found}
+            </div>
+          ) : null}
         </div>
 
         {addresses.length > 0 ? (

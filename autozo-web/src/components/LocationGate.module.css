@@ -117,3 +117,20 @@
   line-height: 1;
   cursor: pointer;
 }
+
+/* The address the GPS found, shown while delivery there is checked. */
+.found {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--brand-tint);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.found b {
+  color: var(--ink);
+  font-size: 12px;
+}

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AddressInput } from '../api/account';
 import { Address } from '../lib/types';
 import { INDIA_STATES, matchState } from '../lib/india';
 import { Icon, IconName } from './Icon';
-import { accuratePosition } from '../lib/geo';
-import { LocationPicker, PickedPlace, reverse } from './LocationPicker';
+import { useAuth } from '../context/AuthContext';
+import { getDeliveryPoint, setDeliveryPoint } from '../lib/deliveryPoint';
+import { PlaceParts, detectHere, shortPlace } from '../lib/geo';
+import { LocationPicker, PickedPlace } from './LocationPicker';
 import { Alert, Button, Field, Input } from './ui';
 import s from './AddressForm.module.css';
 
@@ -27,10 +29,14 @@ export function AddressForm({
   onSubmit: (body: AddressInput) => Promise<void>;
   onCancel?: () => void;
 }) {
+  // Name and phone come from the account the customer signed up with; they only
+  // have to be typed when the account has none (e.g. signed in with Google).
+  const { user } = useAuth();
+  const accountPhone = user?.phone && /^[6-9]\d{9}$/.test(user.phone) ? user.phone : '';
   const [f, setF] = useState<AddressInput>({
     label: initial?.label ?? 'home',
-    name: initial?.name ?? '',
-    phone: initial?.phone ?? '',
+    name: initial?.name ?? user?.name ?? '',
+    phone: initial?.phone ?? accountPhone,
     line1: initial?.line1 ?? '',
     line2: initial?.line2 ?? '',
     landmark: initial?.landmark ?? '',
@@ -44,6 +50,10 @@ export function AddressForm({
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [manual, setManual] = useState(false);
+  const [editContact, setEditContact] = useState(!initial && !(user?.name && accountPhone));
+  // The address the GPS found, shown as a card above the form (Blinkit-style).
+  const [here, setHere] = useState<{ text: string; accuracy?: number } | null>(null);
+  const flatRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof AddressInput>(k: K, v: AddressInput[K]) => setF((p) => ({ ...p, [k]: v }));
 
@@ -56,12 +66,23 @@ export function AddressForm({
       city: p.city || cur.city,
       state: matchState(p.state) || cur.state,
       pincode: p.pincode || cur.pincode,
-      line1: cur.line1 || p.line1 || '',
-      line2: cur.line2 || p.area || '',
+      // The street and area found at the pin go to "Street / area"; "Flat / house"
+      // stays for the customer, who knows it better than any map.
+      line2:
+        [p.line1, p.area].filter(Boolean).join(', ') ||
+        // No street name at this spot: the first parts of the full address (village / locality).
+        (p.line ? p.line.split(',').map((x) => x.trim()).filter((x) => x && x !== p.city && x !== p.state && !/^\d{6}$/.test(x) && x !== 'India').slice(0, 2).join(', ') : '') ||
+        cur.line2,
     }));
 
   // What happened on the last tap of "Use my current location", shown right beside the buttons.
   const [geoMsg, setGeoMsg] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
+
+  /** Fills the form from a place the GPS found and remembers it as the delivery point. */
+  const fillFrom = (lat: number, lng: number, place: PlaceParts, accuracy?: number) => {
+    picked({ lat, lng, ...place });
+    setHere({ text: place.line || shortPlace(place) || `${lat.toFixed(5)}, ${lng.toFixed(5)}`, accuracy });
+  };
 
   const locate = () => {
     setGeoMsg(null);
@@ -75,22 +96,19 @@ export function AddressForm({
       return;
     }
     setLocating(true);
-    setGeoMsg({ tone: 'ok', text: 'Finding your location… if your browser asks, tap Allow.' });
-    accuratePosition().then(
-      async (pos) => {
-        const { lat, lng } = pos;
-        set('location', { lat, lng });
-        setGeoMsg({ tone: 'ok', text: 'Location saved. Filling in your address…' });
-        const place = await reverse(lat, lng);
-        picked({ lat, lng, ...place });
-        const filled = place.city || place.pincode || place.state;
-        setGeoMsg({
-          tone: 'ok',
-          text: filled
-            ? `Address filled from your location (accurate to about ${Math.round(pos.accuracy)} m). Please check it, add your flat / house number and save.`
-            : 'Your pin is saved, but we could not read the address. Please type the city, state and PIN code.',
-        });
+    setGeoMsg({ tone: 'ok', text: 'Finding your exact location… if your browser asks, tap Allow.' });
+    detectHere((fix) => set('location', { lat: fix.lat, lng: fix.lng })).then(
+      ({ lat, lng, accuracy, place }) => {
+        fillFrom(lat, lng, place, accuracy);
+        // The catalogue, the cart's delivery time and the order all follow this spot now.
+        setDeliveryPoint({ lat, lng, label: shortPlace(place) || place.city, address: place, accuracy: Math.round(accuracy), at: Date.now() });
+        setGeoMsg(
+          place.city || place.pincode
+            ? null
+            : { tone: 'bad', text: 'Your pin is saved, but we could not read the address there. Please type the city, state and PIN code.' },
+        );
         setLocating(false);
+        if (!f.line1) flatRef.current?.focus();
       },
       (err: GeolocationPositionError) => {
         const text =
@@ -104,6 +122,17 @@ export function AddressForm({
       },
     );
   };
+
+  // A new address starts from where the customer is right now: what the
+  // location step already found is filled in at once, then a fresh GPS reading
+  // makes it exact.
+  useEffect(() => {
+    if (initial) return;
+    const point = getDeliveryPoint();
+    if (point?.address && point.at && Date.now() - point.at < 30 * 60_000) fillFrom(point.lat, point.lng, point.address, point.accuracy);
+    locate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,6 +180,31 @@ export function AddressForm({
         ))}
       </div>
 
+      {here ? (
+        <div className={s.here}>
+          <Icon name="pin" size={18} />
+          <span className={s.hereText}>
+            <b>{locating ? 'Updating your exact location…' : 'Delivering to your current location'}</b>
+            {here.text}
+            {here.accuracy ? <span className={s.hereAcc}>Accurate to about {Math.round(here.accuracy)} m</span> : null}
+          </span>
+          <button type="button" className={s.hereBtn} onClick={() => setManual(true)}>
+            Change
+          </button>
+        </div>
+      ) : null}
+
+      {!editContact ? (
+        <div className={s.contact}>
+          <Icon name="user" size={16} />
+          <span>
+            <b>{f.name}</b> · {f.phone}
+          </span>
+          <button type="button" className={s.hereBtn} onClick={() => setEditContact(true)}>
+            Edit
+          </button>
+        </div>
+      ) : (
       <div className={s.two}>
         <Field label="Full name" required>
           <Input value={f.name} onChange={(e) => set('name', e.target.value)} required autoComplete="name" />
@@ -165,9 +219,17 @@ export function AddressForm({
           />
         </Field>
       </div>
+      )}
 
-      <Field label="Flat / house / building" required>
-        <Input value={f.line1} onChange={(e) => set('line1', e.target.value)} required autoComplete="address-line1" />
+      <Field label="Flat / house no. / building" required>
+        <Input
+          ref={flatRef}
+          value={f.line1}
+          onChange={(e) => set('line1', e.target.value)}
+          required
+          autoComplete="address-line1"
+          placeholder="e.g. B-12, 2nd floor, Shiv Apartment"
+        />
       </Field>
 
       <div className={s.two}>
@@ -206,7 +268,13 @@ export function AddressForm({
       </div>
 
       {manual ? (
-        <LocationPicker value={f.location} onPick={picked} />
+        <LocationPicker
+          value={f.location}
+          onPick={(p) => {
+            picked(p);
+            if (p.line) setHere({ text: p.line });
+          }}
+        />
       ) : null}
 
       <div className={s.geo}>

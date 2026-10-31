@@ -159,6 +159,19 @@ export function Header() {
       {/* On phones and small tablets the search bar is always open, no tap needed. */}
       <div className={`${s.brandBar} ${s.searchNarrow}`}>
         <div className="page">
+          {/* Phones: where the order goes, Blinkit-style. A tap finds the current location. */}
+          <button
+            type="button"
+            className={s.placePhone}
+            onClick={() => window.dispatchEvent(new Event(OPEN_LOCATION_EVENT))}
+            aria-label="Change delivery location"
+          >
+            <Icon name="pin" size={15} />
+            <span className={s.placePhoneText}>
+              <b>Delivering to</b> {place}
+            </span>
+            <Icon name="chevron-down" size={15} strokeWidth={2.4} />
+          </button>
           <SearchBar />
         </div>
       </div>
