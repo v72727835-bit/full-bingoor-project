@@ -37,9 +37,17 @@ export interface PlaceHit {
 }
 
 let maps: MapsConfig | null = null;
+let mapsKnown: () => void = () => undefined;
+// The location step can ask for an address before the public settings (and so
+// the Maps key) have arrived; lookups wait for them briefly instead of going
+// straight to the weaker free lookup.
+const mapsReady = new Promise<void>((resolve) => {
+  mapsKnown = resolve;
+});
 /** Called by SettingsProvider once the public settings arrive. */
 export function setGeoMaps(cfg: MapsConfig | null | undefined) {
   maps = cfg ?? null;
+  mapsKnown();
 }
 const googleKey = () => (maps?.provider === 'google' && maps.googleMapsApiKey) || null;
 
@@ -97,6 +105,7 @@ interface GResult {
 type Geocoder = { geocode: (req: Record<string, unknown>) => Promise<{ results: GResult[] }> };
 
 async function geocoder(): Promise<Geocoder | null> {
+  await Promise.race([mapsReady, new Promise((r) => setTimeout(r, 4000))]);
   const key = googleKey();
   if (!key || !(await loadGoogleMaps(key))) return null;
   const g = (window as unknown as { google?: { maps?: { Geocoder?: new () => Geocoder } } }).google;
