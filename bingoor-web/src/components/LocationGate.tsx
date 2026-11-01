@@ -88,9 +88,11 @@ export function LocationGate() {
   // something else, so a late GPS answer never overrides their choice.
   const gpsTurn = useRef(0);
   const [found, setFound] = useState('');
+  const [rough, setRough] = useState<{ lat: number; lng: number; accuracy: number; place: PlaceParts } | null>(null);
   const locate = () => {
     setMsg(null);
     setFound('');
+    setRough(null);
     if (!window.isSecureContext || !navigator.geolocation) {
       setMsg({ tone: 'bad', text: 'This browser cannot share your location here. Please search your PIN code or area below.' });
       return;
@@ -102,6 +104,17 @@ export function LocationGate() {
         if (turn !== gpsTurn.current) return;
         setBusy('');
         setFound(place.line || shortPlace(place));
+        // A computer without GPS only knows roughly where it is (Wi-Fi / internet
+        // provider), often a few km off. Then the customer confirms it or types
+        // their PIN code instead of us quietly using a wrong spot.
+        if (accuracy > 1000) {
+          setRough({ lat, lng, accuracy, place });
+          setMsg({
+            tone: 'bad',
+            text: `This device could only find your location roughly (about ${Math.round(accuracy / 1000)} km). For the exact place, enter your PIN code or area below.`,
+          });
+          return;
+        }
         await choose(lat, lng, shortPlace(place) || place.city, { place, accuracy });
       },
       (err: GeolocationPositionError) => {
@@ -165,8 +178,17 @@ export function LocationGate() {
           </Button>
           {found ? (
             <div className={s.found}>
-              <b>Your current location</b>
+              <b>{rough ? 'Your approximate location' : 'Your current location'}</b>
               {found}
+              {rough ? (
+                <button
+                  type="button"
+                  className={s.useRough}
+                  onClick={() => choose(rough.lat, rough.lng, shortPlace(rough.place) || rough.place.city, { place: rough.place, accuracy: rough.accuracy })}
+                >
+                  Use this location anyway
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -195,9 +217,9 @@ export function LocationGate() {
           </>
         ) : null}
 
-        <div className={s.or}>Or search your area</div>
+        <div className={s.or}>Or enter your PIN code / area</div>
         <form className={s.search} onSubmit={search}>
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="PIN code, area or landmark" aria-label="Search area" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Enter PIN code, e.g. 302015, or your area" aria-label="Search area" />
           <Button type="submit" variant="outline" loading={busy === 'search'} disabled={!!busy && busy !== 'search'}>
             Search
           </Button>

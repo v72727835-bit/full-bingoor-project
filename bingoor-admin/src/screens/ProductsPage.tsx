@@ -651,6 +651,8 @@ function ProductForm({
           </Field>
         </div>
 
+        {product ? <SizesPanel product={product} group={form.variantGroup} onGroup={(g) => set('variantGroup', g)} /> : null}
+
         <div className="field-row">
           <Field label="Hindi name (shown when the customer picks Hindi)">
             <input value={form.nameHi} onChange={(e) => set('nameHi', e.target.value)} placeholder="चावल" />
@@ -806,6 +808,121 @@ function ProductForm({
     </Modal>
   );
 }
+/**
+ * Point 22: every size of one item (500 g / 1 kg / 2 kg). Each size is its own
+ * product (own price, MRP and stock) sharing the "Size group"; this panel lists
+ * them and adds a new size in one step, copying everything else from this one.
+ * On the website the item then shows "ADD - 3 options" and all sizes.
+ */
+function SizesPanel({ product, group, onGroup }: { product: Product; group: string; onGroup: (g: string) => void }) {
+  const [sizes, setSizes] = useState<Product[]>([]);
+  const [label, setLabel] = useState('');
+  const [price, setPrice] = useState('');
+  const [mrp, setMrp] = useState('');
+  const [stock, setStock] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState('');
+
+  const load = useCallback(async (g: string) => {
+    if (!g) return setSizes([]);
+    const r = await fetchProducts({ variantGroup: g, limit: 50 });
+    setSizes(r.items);
+  }, []);
+  useEffect(() => {
+    load(group.trim().toLowerCase()).catch(() => setSizes([]));
+  }, [group, load]);
+
+  const add = async () => {
+    setError('');
+    setDone('');
+    if (!label.trim() || !price) return setError('Write the size (e.g. 1 kg) and its price.');
+    setBusy(true);
+    try {
+      let g = group.trim().toLowerCase();
+      if (!g) {
+        // First extra size: give this item a group and label its own size.
+        g = `${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}-${product._id.slice(-4)}`;
+        await updateProduct(product._id, { variantGroup: g, variantLabel: product.variantLabel || product.unit });
+        onGroup(g);
+      }
+      const shop = typeof product.shop === 'string' ? product.shop : product.shop._id;
+      const category = typeof product.category === 'string' ? product.category : product.category._id;
+      await createProduct({
+        shop,
+        category,
+        name: product.name,
+        nameHi: product.nameHi || undefined,
+        brand: product.brand || undefined,
+        description: product.description || undefined,
+        images: product.images ?? [],
+        foodType: product.foodType ?? '',
+        attributes: product.attributes ?? [],
+        paymentMode: product.paymentMode ?? 'both',
+        hsn: product.hsn ?? '',
+        gstRate: product.gstRate ?? null,
+        unit: label.trim(),
+        variantLabel: label.trim(),
+        variantGroup: g,
+        price: Number(price),
+        mrp: Number(mrp) || Number(price),
+        stock: Number(stock) || 0,
+        isActive: true,
+      } as never);
+      setDone(`${label.trim()} added.`);
+      setLabel('');
+      setPrice('');
+      setMrp('');
+      setStock('');
+      await load(g);
+    } catch (e) {
+      setError(getErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card card-pad" style={{ margin: '6px 0 16px' }}>
+      <div className="stat-label" style={{ marginBottom: 6 }}>Sizes of this product (500 g, 1 kg, 2 kg…)</div>
+      <div className="cell-muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+        Each size has its own price, MRP and stock. On the website the product shows &ldquo;ADD &middot; {Math.max(2, sizes.length + (sizes.length ? 0 : 1))} options&rdquo; and the customer picks a size.
+      </div>
+      {sizes.length > 0 ? (
+        <div style={{ marginBottom: 10 }}>
+          {sizes.map((p) => (
+            <div key={p._id} className="row-flex" style={{ padding: '4px 0', gap: 10 }}>
+              <b style={{ minWidth: 70 }}>{p.variantLabel || p.unit}</b>
+              <span>{money(p.price)}</span>
+              <span className="cell-muted">MRP {money(p.mrp)} · stock {p.stock}</span>
+              {p._id === product._id ? <Badge tone="muted">this one</Badge> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <div className="field-row">
+        <Field label="New size">
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="1 kg" />
+        </Field>
+        <Field label="Price (₹)">
+          <input type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} />
+        </Field>
+        <Field label="MRP (₹)">
+          <input type="number" min="0" value={mrp} onChange={(e) => setMrp(e.target.value)} />
+        </Field>
+        <Field label="Stock">
+          <input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} />
+        </Field>
+      </div>
+      <ErrorBanner message={error} />
+      {done ? <div className="cell-muted" style={{ color: 'var(--ok)', marginBottom: 8 }}>{done}</div> : null}
+      <Button type="button" variant="secondary" disabled={busy} onClick={() => void add()}>
+        {busy ? 'Adding…' : '+ Add another size'}
+      </Button>
+    </div>
+  );
+}
+
 function ImagePreview({
   file,
   url,

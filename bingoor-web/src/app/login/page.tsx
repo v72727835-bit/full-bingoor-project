@@ -4,9 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Icon } from '../../components/Icon';
-import { SocialSignIn } from '../../components/SocialSignIn';
-import ps from './login.module.css';
+import { OrDivider, SocialSignIn } from '../../components/SocialSignIn';
 import { getErrorMessage } from '../../lib/client';
 import { otpRequiredPhone } from '../../lib/otp';
 import { OtpDialog } from '../../components/OtpDialog';
@@ -15,7 +13,6 @@ import { Alert, Button, Field, Input, PageLoader } from '../../components/ui';
 
 function LoginInner() {
   const { login } = useAuth();
-  const [usePhone, setUsePhone] = useState(false);
   const router = useRouter();
   const next = useSearchParams().get('next') || '/';
 
@@ -56,13 +53,9 @@ function LoginInner() {
       }
     >
       {error ? <Alert tone="bad">{error}</Alert> : null}
-      <SocialSignIn next={next} onError={setError}>
-        <button type="button" className={ps.method} data-on={usePhone} onClick={() => setUsePhone((v) => !v)}>
-          <Icon name="phone" size={18} />
-          Continue with Phone number
-        </button>
-      </SocialSignIn>
-      {usePhone ? (
+      <SocialSignIn next={next} onError={setError} />
+      <OrDivider label="or sign in with phone" />
+      {/* The phone / password form is always open (the client asked for it). */}
       <form onSubmit={submit}>
         <Field label="Your phone number" required>
           <Input
@@ -92,7 +85,6 @@ function LoginInner() {
           </Link>
         </div>
       </form>
-      ) : null}
       {otpPhone ? (
         <OtpDialog
           phone={otpPhone}

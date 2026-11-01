@@ -16,6 +16,7 @@ import { useToast } from '../context/ToastContext';
 import { NotifyMeButton } from './NotifyMe';
 import { QuantityStepper } from './QuantityStepper';
 import { VariantSheet } from './VariantSheet';
+import { askForAccount } from './AccountPrompt';
 import { FoodMark, Price, Rating } from './ui';
 import s from './ProductCard.module.css';
 
@@ -46,6 +47,11 @@ export function ProductCard({
   const toggleWish = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // A visitor gets "Create account" instead of an error (the wishlist needs an account).
+    if (!user) {
+      askForAccount();
+      return;
+    }
     // Tell the customer what happened — the heart alone is easy to miss.
     const wasWished = wished;
     act(async () => {

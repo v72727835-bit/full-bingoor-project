@@ -230,12 +230,12 @@
 @media (min-width: 700px) {
   /* Point 9: the aisle names on top, the filters right under them (both in
      ProductListView's left column), so the products get the full width. */
+  /* The aisle list keeps its full size (the client asked for it back); the
+     filters follow under it and the whole column scrolls. */
   .sideRail {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    max-height: 46vh;
-    overflow-y: auto;
     border: 1px solid var(--line);
     border-radius: var(--r-md);
     background: var(--surface);

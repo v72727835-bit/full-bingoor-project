@@ -23,6 +23,7 @@ export const fetchProducts = (params: {
   category?: string;
   shop?: string;
   isActive?: boolean;
+  variantGroup?: string;
 }) => paged<Product>('/admin/products', params);
 
 /** One product with every field, for the edit form. */

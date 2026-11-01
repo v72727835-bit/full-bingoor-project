@@ -58,6 +58,7 @@
 
 /* Half a phone screen, a comfortable square on desktop. */
 .mapBox {
+  position: relative;
   height: 50vh;
   min-height: 260px;
   max-height: 420px;
@@ -90,14 +91,100 @@
   border: 0;
 }
 
-.pin {
-  display: block;
-  width: 30px;
-  height: 30px;
-  margin: 0 auto;
-  border-radius: 50% 50% 50% 0;
-  background: var(--brand);
-  transform: rotate(-45deg);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+/* Blinkit / Zepto style pin: label, round head, stick and a shadow dot. */
+.pinBox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 230px;
+  height: 112px;
+  pointer-events: none;
+  animation: nudge 0.9s ease-in-out 0.5s 2;
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-14px);
+  }
+  60% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-5px);
+  }
+}
+
+.tip {
+  display: grid;
+  gap: 1px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: #1c2230;
+  color: #fff;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.tip b {
+  font-size: 12.5px;
+}
+
+.tip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 46px;
+  width: 10px;
+  height: 10px;
+  background: #1c2230;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.head {
+  width: 22px;
+  height: 22px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: #e8175d;
   border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.stick {
+  width: 3px;
+  height: 18px;
+  background: #8a3a9b;
+}
+
+.base {
+  width: 14px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(138, 58, 155, 0.45);
+}
+
+/* "My current location" on the map, top right (Blinkit / Zepto style). */
+.locateBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: #1c2230;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
 }

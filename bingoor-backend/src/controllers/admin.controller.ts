@@ -202,11 +202,12 @@ const ADMIN_PRODUCT_FIELDS =
   'name slug brand description video images icon price mrp unit stock attributes foodType hsn gstRate paymentMode tags isActive rating ratingCount soldCount nameHi points sortCode ratingLabel variantGroup variantLabel cartFeatured standardCategories seller shop category createdAt';
 
 export const listProductsAdmin = asyncHandler(async (req, res) => {
-  const { q, category, shop, isActive, page, limit } = req.query as unknown as {
+  const { q, category, shop, isActive, variantGroup, page, limit } = req.query as unknown as {
     q?: string;
     category?: string;
     shop?: string;
     isActive?: boolean;
+    variantGroup?: string;
     page: number;
     limit: number;
   };
@@ -219,6 +220,7 @@ export const listProductsAdmin = asyncHandler(async (req, res) => {
   if (category) filter.category = category;
   if (shop) filter.shop = shop;
   if (isActive !== undefined) filter.isActive = isActive;
+  if (variantGroup) filter.variantGroup = variantGroup;
 
   const [products, total] = await Promise.all([
     Product.find(filter)
