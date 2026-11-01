@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { accuratePosition, reverseGeocode, searchPlaces } from '../lib/geo';
 import { addBaseLayer } from '../lib/mapBase';
 import { useSettings } from '../context/SettingsContext';
+import { getDeliveryPoint } from '../lib/deliveryPoint';
 import { Icon } from './Icon';
 import { Button } from './ui';
 import s from './LocationPicker.module.css';
@@ -70,10 +71,19 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
       await import('leaflet/dist/leaflet.css');
       if (dead || !box.current || mapRef.current) return;
       leaflet.current = L;
-      const start = value ?? START;
-      const map = L.map(box.current, { zoomControl: true, attributionControl: true }).setView([start.lat, start.lng], value ? 16 : 13);
+      // Start where the customer is (the delivery point) when the address has no pin yet.
+      const here = getDeliveryPoint();
+      const start = value ?? (here ? { lat: here.lat, lng: here.lng } : START);
+      const map = L.map(box.current, { zoomControl: true, attributionControl: true }).setView([start.lat, start.lng], value || here ? 17 : 13);
       await addBaseLayer(L, map, mapsCfgRef.current);
-      const icon = L.divIcon({ className: s.pinWrap, html: `<span class="${s.pin}"></span>`, iconSize: [30, 40], iconAnchor: [15, 38] });
+      // Blinkit / Zepto style: a stick pin with "Order will be delivered here" above it.
+      // It bounces when the map opens, so the customer sees it can be moved.
+      const icon = L.divIcon({
+        className: s.pinWrap,
+        html: `<div class="${s.pinBox}"><div class="${s.tip}"><b>Order will be delivered here</b><span>Move the pin to your exact location</span></div><span class="${s.head}"></span><span class="${s.stick}"></span><span class="${s.base}"></span></div>`,
+        iconSize: [230, 112],
+        iconAnchor: [115, 108],
+      });
       const pin = L.marker([start.lat, start.lng], { draggable: true, icon }).addTo(map);
       pin.on('dragend', () => {
         const p = pin.getLatLng();
@@ -159,6 +169,9 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
       ) : null}
       <div className={s.mapBox}>
         <div ref={box} className={s.map} />
+        <button type="button" className={s.locateBtn} onClick={locate} aria-label="Go to my current location" title="My current location">
+          <Icon name="pin" size={18} />
+        </button>
       </div>
       <div className={s.foot}>
         <span className="body-sm">Drag the pin, or tap the map, to your doorstep.</span>

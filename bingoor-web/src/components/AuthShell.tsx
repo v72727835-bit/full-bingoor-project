@@ -40,7 +40,6 @@ export function AuthShell({
             </li>
           ))}
         </ul>
-        <p className={s.where}>Robertsganj, Sonbhadra</p>
       </aside>
 
       <section className={s.form}>

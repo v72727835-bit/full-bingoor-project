@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useCatalog } from '../../context/CatalogContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -17,8 +17,10 @@ import { getErrorMessage } from '../../lib/client';
 import { shortDelivery } from '../../lib/deliveryText';
 import { Icon } from '../../components/Icon';
 import { QuantityStepper } from '../../components/QuantityStepper';
-import { Rail } from '../../components/Rail';
 import { TopUpSheet } from '../../components/TopUpSheet';
+import { ProductCard, ProductCardSkeleton } from '../../components/ProductCard';
+import { fetchPointsProducts } from '../../api/catalog';
+import { Product } from '../../lib/types';
 import { Alert, Badge, Button, EmptyState, PageLoader } from '../../components/ui';
 import s from './cart.module.css';
 
@@ -50,6 +52,18 @@ function CartInner() {
   // customer. If they take it out they are told it is mandatory, and unless
   // they pick one from the row within 30 seconds one is added again.
   const autoTried = useRef(false);
+  // The product added for the customer, and the ones they took out again: a
+  // removed product is never put back, and each time a different one is used.
+  const autoAdded = useRef<string | null>(null);
+  const removedIds = useRef<Set<string>>(new Set());
+  const pickTopUp = useCallback(
+    (preferred?: string | null) => {
+      const pool = (cart?.points.suggestions ?? []).map((x) => String(x.productId)).filter((id) => !removedIds.current.has(id));
+      if (preferred && pool.includes(String(preferred))) return String(preferred);
+      return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+    },
+    [cart?.points.suggestions],
+  );
   const [removedAuto, setRemovedAuto] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   useEffect(() => {
@@ -69,11 +83,16 @@ function CartInner() {
     }
     if (!autoTried.current && pts.autoAddId) {
       autoTried.current = true;
-      addItem(pts.autoAddId).catch(() => undefined);
+      const id = pickTopUp(pts.autoAddId);
+      if (id) {
+        autoAdded.current = id;
+        addItem(id).catch(() => undefined);
+      }
     } else if (autoTried.current) {
+      if (autoAdded.current) removedIds.current.add(autoAdded.current);
       setRemovedAuto(true);
     }
-  }, [cart?.points, minMet, addItem]);
+  }, [cart?.points, minMet, addItem, pickTopUp]);
 
   useEffect(() => {
     if (!removedAuto) {
@@ -88,10 +107,24 @@ function CartInner() {
   }, [removedAuto]);
   useEffect(() => {
     if (countdown !== 0) return;
-    const id = cart?.points.autoAddId ?? cart?.points.suggestions[0]?.productId;
+    const id = pickTopUp();
     setRemovedAuto(false);
-    if (id) addItem(id).catch(() => undefined);
-  }, [countdown, cart?.points, addItem]);
+    if (id) {
+      autoAdded.current = id;
+      addItem(id).catch(() => undefined);
+    }
+  }, [countdown, addItem, pickTopUp]);
+
+  // Full product cards for the top-up rows (the cart itself only carries a summary of each).
+  const topUpOpen = !!cart?.points.enabled && !cart.points.met && minMet;
+  const [topProducts, setTopProducts] = useState<Product[] | null>(null);
+  useEffect(() => {
+    if (!topUpOpen || topProducts) return;
+    fetchPointsProducts()
+      .then(setTopProducts)
+      .catch(() => setTopProducts([]));
+  }, [topUpOpen, topProducts]);
+  const suggestionIds = new Set((cart?.points.suggestions ?? []).map((x) => String(x.productId)));
 
   const [tip, setTipState] = useState(0);
   useEffect(() => setTipState(getTip()), []);
@@ -132,7 +165,8 @@ function CartInner() {
     );
 
   const left = Math.max(0, cart.freeDeliveryAbove - cart.subtotal);
-  const pct = cart.freeDeliveryAbove ? Math.min(100, (cart.subtotal / cart.freeDeliveryAbove) * 100) : 0;
+  // Only while a delivery charge is actually being paid.
+  const freeGap = quote ? (quote.deliveryFee > 0 ? Math.ceil(quote.addForFree) : 0) : cart.deliveryFee > 0 ? Math.ceil(left) : 0;
 
   return (
     <div className="page rise" style={{ paddingTop: 22 }}>
@@ -171,41 +205,12 @@ function CartInner() {
         </Button>
       </div>
 
-      {quote && quote.addForFree > 0 ? (
-        <div className={s.freeBar}>
-          <div className={s.freeTop}>
-            <Icon name="truck" size={17} />
-            <span>
-              For free delivery, shop ₹{quote.freeAbove} — add <b>₹{quote.addForFree}</b> more
-            </span>
-          </div>
-          <div className={s.track}>
-            <span className={s.fill} style={{ width: `${Math.min(100, (quote.subtotal / quote.freeAbove) * 100)}%` }} />
-          </div>
-        </div>
-      ) : quote ? null : cart.freeDeliveryAbove > 0 ? (
-        <div className={s.freeBar}>
-          <div className={s.freeTop}>
-            <Icon name="truck" size={17} />
-            <span>
-              {left > 0 ? (
-                <>
-                  Add <b>₹{left}</b> more to get free delivery
-                </>
-              ) : (
-                'You have unlocked free delivery'
-              )}
-            </span>
-          </div>
-          <div className={s.track}>
-            <span className={s.fill} style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-      ) : null}
-
       {quote && !quote.meetsMinOrder ? (
         <Alert tone="bad">
-          Shop at least ₹{quote.minOrder} to check out — add ₹{Math.round(quote.minOrder - quote.subtotal)} more.
+          {quote.subtotal < quote.minOrder
+            ? `Shop at least ₹${quote.minOrder} to check out — add ₹${Math.ceil(quote.minOrder - quote.subtotal)} more.`
+            : // The basket is big enough, but one warehouse's part of it is not.
+              `Each delivery needs at least ₹${quote.minOrder}. Add more from the delivery marked below, or remove it.`}
         </Alert>
       ) : null}
       {quote?.longDistance ? (
@@ -287,26 +292,15 @@ function CartInner() {
               ) : (
                 <p className={s.topupNote}>Add any one product from below to proceed to payment</p>
               )}
-              {rowsOf(cart.points.suggestions).map((row, r) => (
-                <Rail key={r} className={s.topupRail}>
-                  {row.map((sg) => (
-                    <div key={sg.productId} className={s.topupItem}>
-                      <Link href={`/products/${sg.slug}`} className={s.topupArt}>
-                        <Image src={sg.image || sg.art} alt="" width={80} height={80} className={s.topupImg} unoptimized />
-                      </Link>
-                      <span className={`${s.topupName} clamp-2`}>{sg.name}</span>
-                      {sg.unit ? <span className={s.topupUnit}>{sg.unit}</span> : null}
-                      <span className={s.topupFoot}>
-                        <span className="num">₹{sg.price}</span>
-                        {sg.mrp && sg.mrp > sg.price ? <s className={s.topupMrp}>₹{sg.mrp}</s> : null}
-                      </span>
-                      <button type="button" className={s.topupAdd} disabled={busy} onClick={() => run(() => addItem(sg.productId))}>
-                        ADD
-                      </button>
-                    </div>
-                  ))}
-                </Rail>
-              ))}
+              {/* Blinkit-style: the first products as full cards (ADD on the photo), then "See all". */}
+              <div className={s.topupGrid}>
+                {topProducts
+                  ? topProducts
+                      .filter((p) => suggestionIds.has(p.id))
+                      .slice(0, 6)
+                      .map((p) => <ProductCard key={p.id} product={p} compact />)
+                  : Array.from({ length: 3 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </div>
               <button type="button" className={s.topupAll} onClick={() => setShowAll(true)}>
                 {cart.points.suggestions.some((x) => x.image || x.art) ? (
                   <span className={s.topupAllImgs} aria-hidden="true">
@@ -327,7 +321,7 @@ function CartInner() {
           ) : null}
         </div>
 
-        <TopUpSheet open={showAll} onClose={() => setShowAll(false)} />
+        <TopUpSheet open={showAll} onClose={() => setShowAll(false)} onlyIds={suggestionIds} />
 
         <aside className={`card side-sticky ${s.summary}`}>
           <h2 className="h3" style={{ marginBottom: 14 }}>
@@ -348,6 +342,8 @@ function CartInner() {
           ) : (
             <Row label={t('delivery')} value={cart.deliveryFee === 0 ? t('free') : `₹${cart.deliveryFee}`} good={cart.deliveryFee === 0} />
           )}
+          {/* Blinkit-style: how far from free delivery, right under the delivery charge. */}
+          {freeGap > 0 ? <p className={s.freeHint}>Shop for ₹{freeGap} more to get FREE delivery</p> : null}
           {quote && quote.twoHourFee > 0 ? <Row label="2 hour delivery" value={`₹${quote.twoHourFee}`} /> : null}
           <hr className="divider" style={{ margin: '12px 0' }} />
           {tip > 0 ? <Row label="Tip for delivery partner" value={`₹${tip}`} /> : null}
@@ -374,12 +370,33 @@ function CartInner() {
                     if (guest) {
                       e.preventDefault();
                       setAskLogin(true);
+                      // The choice opens right under the button; keep it on screen.
+                      requestAnimationFrame(() => document.getElementById('ask-login')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
                     }
                   }}
                 >
                   {t('proceed')}
                   <Icon name="arrow-right" size={17} />
                 </Link>
+                {askLogin ? (
+                  <div id="ask-login" className={s.ask} role="dialog" aria-labelledby="ask-login-title">
+                    <button type="button" className={s.askClose} onClick={() => setAskLogin(false)} aria-label="Close">
+                      <Icon name="x" size={18} />
+                    </button>
+                    <h2 id="ask-login-title" className="h3">
+                      Create your account to continue
+                    </h2>
+                    <p className="body-sm" style={{ margin: '6px 0 14px' }}>
+                      Your cart is saved. Make a free account (or sign in) and we will take you straight to payment.
+                    </p>
+                    <Link href="/signup?next=%2Fcheckout" className="btn btn-lg btn-primary btn-full">
+                      Create account
+                    </Link>
+                    <Link href="/login?next=%2Fcheckout" className="btn btn-lg btn-outline btn-full" style={{ marginTop: 10 }}>
+                      I already have an account
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             );
           })()}
@@ -389,27 +406,6 @@ function CartInner() {
           </p>
         </aside>
       </div>
-      {askLogin ? (
-        <div className={s.askBack} role="dialog" aria-modal="true" aria-labelledby="ask-login" onClick={() => setAskLogin(false)}>
-          <div className={`card ${s.ask}`} onClick={(e) => e.stopPropagation()}>
-            <button type="button" className={s.askClose} onClick={() => setAskLogin(false)} aria-label="Close">
-              <Icon name="x" size={18} />
-            </button>
-            <h2 id="ask-login" className="h3">
-              Create your account to continue
-            </h2>
-            <p className="body-sm" style={{ margin: '6px 0 16px' }}>
-              Your cart is saved. Make a free account (or sign in) and we will take you straight to payment.
-            </p>
-            <Link href="/signup?next=%2Fcheckout" className="btn btn-lg btn-primary btn-full">
-              Create account
-            </Link>
-            <Link href="/login?next=%2Fcheckout" className="btn btn-lg btn-outline btn-full" style={{ marginTop: 10 }}>
-              I already have an account
-            </Link>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -428,13 +424,6 @@ function Row({ label, value, big, good, was }: { label: string; value: string; b
 
 export default function CartPage() {
   return <CartInner />;
-}
-
-/** #35: the cart rows - one row up to 8 products, then two, then three, each sliding sideways. */
-function rowsOf<T>(list: T[]): T[][] {
-  const count = list.length > 16 ? 3 : list.length > 8 ? 2 : 1;
-  const size = Math.ceil(list.length / count);
-  return Array.from({ length: count }, (_, i) => list.slice(i * size, (i + 1) * size)).filter((r) => r.length > 0);
 }
 
 function TipPicker({ tip, onPick }: { tip: number; onPick: (n: number) => void }) {

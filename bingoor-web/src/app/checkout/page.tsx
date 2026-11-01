@@ -64,6 +64,11 @@ function CheckoutInner() {
   const [list, setList] = useState<Address[] | null>(null);
   const [picked, setPicked] = useState('');
   const [adding, setAdding] = useState(false);
+  // A saved address being changed, and whether its map opens straight away.
+  const [editing, setEditing] = useState<{ address: Address; map: boolean } | null>(null);
+  useEffect(() => {
+    if (editing) document.getElementById('delivery-address')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [editing]);
   const [opt, setOpt] = useState<PayKey>('cod');
   const [tipFor, setTipFor] = useState<PayKey | null>(null);
   // #35: the tip picked on the cart page.
@@ -222,7 +227,7 @@ function CheckoutInner() {
     }
   };
 
-  const showForm = adding || list.length === 0;
+  const showForm = adding || list.length === 0 || !!editing;
   // The same promise the cart showed: far addresses are next day or a few working days.
   const etaText =
     quote && quote.days > 0
@@ -242,7 +247,11 @@ function CheckoutInner() {
   if (cart.hasIssues) blockers.push('Some items in your cart need attention. Go back to the cart and fix the items marked in red.');
   if (!cart.points.met) blockers.push('Add 1 product from the list below your cart to continue.');
   if (quote && !quote.meetsMinOrder) {
-    blockers.push(`The minimum order is ₹${quote.minOrder}. Add ₹${Math.max(1, Math.round(quote.minOrder - quote.subtotal))} more to continue.`);
+    blockers.push(
+      quote.subtotal < quote.minOrder
+        ? `The minimum order is ₹${quote.minOrder}. Add ₹${Math.max(1, Math.ceil(quote.minOrder - quote.subtotal))} more to continue.`
+        : `Each delivery needs at least ₹${quote.minOrder}. Go back to the cart and add more to the smaller delivery, or remove it.`,
+    );
   }
   if (pay === 'cod' && codTooFar) blockers.push(farCodMessage);
   if (incompatiblePayments) blockers.push('This cart contains both COD-only and online-only items. Place separate orders for these items.');
@@ -262,7 +271,7 @@ function CheckoutInner() {
 
       <div className="side-grid">
         <div className="stack" style={{ gap: 22 }}>
-          <section className="card card-pad">
+          <section id="delivery-address" className="card card-pad">
             <div className={s.secHead}>
               <span className={s.step}>1</span>
               <h2 className="h3">Delivery address</h2>
@@ -281,7 +290,20 @@ function CheckoutInner() {
                 save. Want it at a saved address instead? Tap Cancel.
               </p>
             ) : null}
-            {showForm ? (
+            {editing ? (
+              <AddressForm
+                key={editing.address.id}
+                initial={editing.address}
+                openMap={editing.map}
+                onSubmit={async (body) => {
+                  await updateAddress(editing.address.id, body);
+                  await load();
+                  setPicked(editing.address.id);
+                  setEditing(null);
+                }}
+                onCancel={() => setEditing(null)}
+              />
+            ) : showForm ? (
               <AddressForm
                 onSubmit={async (body) => {
                   const a = await addAddress({ ...body, isDefault: body.isDefault || list.length === 0 });
@@ -315,6 +337,19 @@ function CheckoutInner() {
                         {[a.line1, a.line2, a.landmark, a.city, a.state, a.pincode].filter(Boolean).join(', ')}
                       </span>
                     </span>
+                    {/* A saved address can always be changed here. */}
+                    <button
+                      type="button"
+                      className={s.editBtn}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPicked(a.id);
+                        setEditing({ address: a, map: false });
+                      }}
+                    >
+                      <Icon name="edit" size={14} />
+                      Edit
+                    </button>
                   </label>
                 ))}
               </div>
@@ -330,6 +365,13 @@ function CheckoutInner() {
               <p className="body-sm" style={{ marginBottom: 12 }}>
                 Your name and phone come from the address above. Add a landmark so the rider finds you, and an email if you want the bill sent there.
               </p>
+              {pickedAddress ? (
+                <div style={{ marginBottom: 14 }}>
+                  <Button variant="outline" size="sm" icon="pin" onClick={() => setEditing({ address: pickedAddress, map: true })}>
+                    Open map and set your home address
+                  </Button>
+                </div>
+              ) : null}
               <div className="two-col">
                 <Field label="Landmark name">
                   <Input value={landmark} onChange={(e) => setLandmark(e.target.value)} placeholder="Near the temple" />

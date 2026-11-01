@@ -18,6 +18,7 @@ import { LocationGate } from '../components/LocationGate';
 import { OrderProgressToast } from '../components/OrderProgressToast';
 import { PushRegister } from '../components/PushRegister';
 import { PwaRegister } from '../components/PwaRegister';
+import { AccountPrompt } from '../components/AccountPrompt';
 import { INSTALL_BOOT } from '../lib/install';
 import { RateOrderPrompt } from '../components/RateOrderPrompt';
 
@@ -107,6 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <OrderProgressToast />
                     <RateOrderPrompt />
                     <PwaRegister />
+                    <AccountPrompt />
                     <PushRegister />
                   </ToastProvider>
                  </WishlistProvider>

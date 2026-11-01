@@ -25,10 +25,13 @@ export function AddressForm({
   initial,
   onSubmit,
   onCancel,
+  openMap,
 }: {
   initial?: Address;
   onSubmit: (body: AddressInput) => Promise<void>;
   onCancel?: () => void;
+  /** Open with the map showing (the "Open map and set your home address" buttons). */
+  openMap?: boolean;
 }) {
   // Name and phone come from the account the customer signed up with; they only
   // have to be typed when the account has none (e.g. signed in with Google).
@@ -50,7 +53,7 @@ export function AddressForm({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
-  const [manual, setManual] = useState(false);
+  const [manual, setManual] = useState(!!openMap);
   const [editContact, setEditContact] = useState(!initial && !(user?.name && accountPhone));
   // The address the GPS found, shown as a card above the form (Blinkit-style).
   const [here, setHere] = useState<{ text: string; accuracy?: number } | null>(null);
@@ -123,6 +126,13 @@ export function AddressForm({
       },
     );
   };
+
+  // "Open map and set your home address": bring the map into view straight away.
+  useEffect(() => {
+    if (!openMap) return;
+    const t = setTimeout(() => document.getElementById('address-map')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    return () => clearTimeout(t);
+  }, [openMap]);
 
   // A new address starts from where the customer is right now: what the
   // location step already found is filled in at once, then a fresh GPS reading
@@ -282,6 +292,9 @@ export function AddressForm({
       </div>
 
       {manual ? (
+        <div id="address-map" />
+      ) : null}
+      {manual ? (
         <LocationPicker
           value={f.location}
           onPick={(p) => {
@@ -292,12 +305,15 @@ export function AddressForm({
       ) : null}
 
       <div className={s.geo}>
-        <Button variant="outline" size="sm" icon="pin" onClick={locate} loading={locating}>
-          Use my current location
+        <Button variant="outline" size="sm" icon="pin" onClick={() => setManual((v) => !v)}>
+          {manual ? 'Hide map' : 'Open map and set your home address'}
         </Button>
-        <Button variant="ghost" size="sm" icon="plus" onClick={() => setManual((v) => !v)}>
-          {manual ? 'Hide map' : 'Add new address manually'}
-        </Button>
+        {/* The open map has its own "Use my current location". */}
+        {manual ? null : (
+          <Button variant="ghost" size="sm" icon="bolt" onClick={locate} loading={locating}>
+            Use my current location
+          </Button>
+        )}
         {f.location ? (
           <span className={s.geoOk}>
             <Icon name="check-circle" size={14} />

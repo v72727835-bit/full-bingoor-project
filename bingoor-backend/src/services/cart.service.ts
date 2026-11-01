@@ -171,20 +171,21 @@ async function pointsView(groups: ResolvedGroup[]) {
     stock: { $gt: 0 },
     $or: [{ cartFeatured: true }, { _id: { $in: rule.suggestions ?? [] } }],
   })
-    .select('name slug images icon unit price mrp points stock sortCode category')
-    .lean()) as unknown as (Pick<IProduct, 'name' | 'slug' | 'images' | 'icon' | 'unit' | 'price' | 'mrp' | 'points' | 'stock' | 'sortCode' | 'category'> & { _id: Types.ObjectId })[];
-  const usable = pool.filter((p) => !inCart.has(String(p._id)) && p.points > 0);
+    .select('name slug images icon unit price mrp points stock sortCode category shop')
+    .lean()) as unknown as (Pick<IProduct, 'name' | 'slug' | 'images' | 'icon' | 'unit' | 'price' | 'mrp' | 'points' | 'stock' | 'sortCode' | 'category' | 'shop'> & { _id: Types.ObjectId })[];
+  // Only from the warehouses already in the basket: a top-up from another
+  // warehouse becomes a separate delivery with its own minimum order, which
+  // blocked checkout (it showed "add ₹-113 more").
+  const cartShops = new Set(groups.map((g) => String(g.shop._id)));
+  const notInCart = pool.filter((p) => !inCart.has(String(p._id)) && p.points > 0);
+  const sameShop = notInCart.filter((p) => cartShops.has(String(p.shop)));
+  const usable = sameShop.length ? sameShop : notInCart;
 
-  // The child category the customer has put the most into: the product added for them comes from there when it can (#35).
-  const qtyByCategory = new Map<string, number>();
-  for (const g of groups) for (const l of g.lines) qtyByCategory.set(String(l.product.category), (qtyByCategory.get(String(l.product.category)) ?? 0) + l.quantity);
-  const favourite = [...qtyByCategory].sort((a, b) => b[1] - a[1])[0]?.[0];
   const closes = (p: (typeof usable)[number]) => p.points >= needed;
-  const cheapest = (list: typeof usable) => [...list].sort((a, b) => a.price - b.price)[0];
-  const pick =
-    cheapest(usable.filter((p) => closes(p) && String(p.category) === favourite)) ??
-    cheapest(usable.filter(closes)) ??
-    [...usable].sort((a, b) => b.points - a.points)[0];
+  // A different product each time, from every product that closes the gap - the
+  // client saw the same two again and again when it was always the cheapest one.
+  const anyOf = (list: typeof usable) => (list.length ? list[Math.floor(Math.random() * list.length)] : undefined);
+  const pick = anyOf(usable.filter(closes)) ?? [...usable].sort((a, b) => b.points - a.points)[0];
   return {
     enabled: true,
     met: false,

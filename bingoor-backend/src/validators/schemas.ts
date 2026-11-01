@@ -274,6 +274,8 @@ export const adminProductsQuery = pagination.extend({
   category: objectId.optional(),
   shop: objectId.optional(),
   isActive: boolFromQuery.optional(),
+  /** Every size of one item (the product form's "Sizes of this product"). */
+  variantGroup: z.string().trim().toLowerCase().max(60).optional(),
 });
 
 export const adminCategoryBody = z.object({

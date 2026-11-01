@@ -765,8 +765,12 @@ select.input {
   border: 0;
 }
 
+/* "backwards", not "both": an animation that keeps holding `transform` after
+   it ends turns the page into the frame for every fixed popup inside it, so
+   the cart's sign-up box and "Add more" sheet sat inside the page (far up, or
+   mid-page with scrolling locked) instead of on the screen. */
 .rise {
-  animation: rise 0.3s var(--ease) both;
+  animation: rise 0.3s var(--ease) backwards;
 }
 
 @keyframes rise {

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchPointsProducts } from '../api/catalog';
 import { getErrorMessage } from '../lib/client';
 import { Product } from '../lib/types';
@@ -14,7 +15,7 @@ import s from './TopUpSheet.module.css';
  * the cart and lists every top-up (50-point) product in a scrollable grid, so
  * the customer can pick one without leaving the cart.
  */
-export function TopUpSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function TopUpSheet({ open, onClose, onlyIds }: { open: boolean; onClose: () => void; /** The cart's own suggestions (same warehouse, not in the basket yet). */ onlyIds?: Set<string> }) {
   const [items, setItems] = useState<Product[] | null>(null);
   const [error, setError] = useState('');
 
@@ -42,7 +43,8 @@ export function TopUpSheet({ open, onClose }: { open: boolean; onClose: () => vo
 
   if (!open) return null;
 
-  return (
+  // On <body>, so no animated parent can trap the sheet inside the page.
+  return createPortal(
     <div className={s.overlay} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
         <div className={s.grip} />
@@ -66,13 +68,14 @@ export function TopUpSheet({ open, onClose }: { open: boolean; onClose: () => vo
             </p>
           ) : (
             <div className="grid-products">
-              {items.map((p) => (
+              {(onlyIds && onlyIds.size ? items.filter((p) => onlyIds.has(p.id)) : items).map((p) => (
                 <ProductCard key={p.id} product={p} compact />
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
