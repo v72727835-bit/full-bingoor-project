@@ -8,7 +8,7 @@ mkdir -p "$OUT"
 # "isn't responding" dialogs from covering the app.
 adb shell settings put global hide_error_dialogs 1 || true
 adb shell settings put secure anr_show_background 0 || true
-sleep 25
+sleep 45
 adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null 2>&1 || true
 adb install -r -g app.apk
 adb logcat -c

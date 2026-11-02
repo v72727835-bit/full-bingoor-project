@@ -10,6 +10,7 @@ import { errorHandler, notFound } from './middleware/error';
 import { parseRange } from './utils/range';
 import { findImage } from './utils/imageStore';
 import routes from './routes';
+import { upgradeOwnLinks } from './utils/publicUrl';
 import { ensureSettings } from './services/settings.service';
 
 const app = express();
@@ -101,10 +102,15 @@ app.use(
   express.static(path.resolve(process.cwd(), 'downloads'), {
     maxAge: '10m',
     setHeaders: (res, file) => {
-      res.setHeader('Content-Disposition', 'attachment');
+      // An explicit file name: some phone browsers save a nameless attachment as "file.bin" or refuse it.
+      res.setHeader('Content-Disposition', `attachment; filename="${path.basename(file)}"`);
       if (file.endsWith('.apk')) res.setHeader('Content-Type', 'application/vnd.android.package-archive');
     },
   }),
+  // Not published yet (e.g. a new build is still running): never let a phone keep this answer.
+  (_req: express.Request, res: express.Response) => {
+    res.status(404).set('Cache-Control', 'no-store').json({ success: false, message: 'This app is being updated. Please try again in a few minutes.' });
+  },
 );
 if (env.NODE_ENV !== 'test') app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
@@ -115,6 +121,13 @@ app.use(
 
 app.get('/health', (_req, res) => {
   res.json({ success: true, service: 'bingoor-backend', uptime: process.uptime() });
+});
+
+// Images saved as http://api.bingoor.com/... (see utils/publicUrl) go out as https, so the Android apps load them.
+app.use('/api', (_req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body?: unknown) => json(upgradeOwnLinks(body));
+  next();
 });
 
 app.use('/api/v1', ensureSettings, routes);

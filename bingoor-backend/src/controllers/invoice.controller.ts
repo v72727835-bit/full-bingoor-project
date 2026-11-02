@@ -7,9 +7,10 @@ import { ok } from '../utils/response';
 import { invoiceToken, invoiceTokenValid, renderInvoiceHtml } from '../services/invoice.service';
 import { User } from '../models/User';
 import { Product } from '../models/Product';
+import { publicOrigin } from '../utils/publicUrl';
 import { computeGst, resolveState } from '../services/gst';
 
-const origin = (req: Request) => `${req.get('x-forwarded-proto')?.split(',')[0]?.trim() || req.protocol}://${req.get('host')}`;
+const origin = (req: Request) => publicOrigin(req);
 
 /** A 30-minute link that opens the bill in any browser, so the apps can hand it to the phone's browser to print or save. */
 function linkResponse(req: Request, res: Response, orderId: string) {

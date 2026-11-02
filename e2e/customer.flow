@@ -5,7 +5,8 @@ dump 01-start
 tapif I already have an account
 wait 2
 # "Continue with phone number" opens the form; tap it only if the boxes are not showing yet.
-reveal ^9876543210$|Mobile.number.or.email Continue.with.phone.number
+# A freshly booted emulator can recreate the app (a system app updating): reveal then goes in again.
+reveal ^9876543210$|Mobile.number.or.email Continue.with.phone.number I.already.have.an.account
 type ^9876543210$|Mobile.number.or.email 9876543210
 type Your.password|^Password$ Customer@123
 hidekb

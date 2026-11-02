@@ -8,7 +8,8 @@ Each command line in a flow file is one step:
     tapif <regex>          same, but skip quietly if it is not on screen
     type <regex> <text>    fill the input box (matched by its hint, or the label above it) and check it took
     typekeep <regex> <txt> the same, but leave the keyboard open (inside a sheet, "back" would close the sheet)
-    reveal <box> <button>  tap the button only if that input box is not on screen yet (forms behind a toggle)
+    reveal <box> <button> [<entry>]  tap the button only if that input box is not on screen yet (forms behind
+                           a toggle); if the app is back on its first screen, tap <entry> to come back
     see <regex>            fail unless it shows up on screen within ~15 s
     gone <regex>           fail unless it has left the screen within ~15 s
     key <name>             e.g. back, enter
@@ -165,9 +166,29 @@ def find_box(ns, pattern):
     return None
 
 
+LAUNCHER = re.compile(r'launcher', re.I)
+
+
+def bring_app_back(ns):
+    """A freshly booted emulator sometimes sends the app to the background (a system app updates
+    and Android recreates every activity). If the home screen is showing instead of the app,
+    open the app again. Returns True when it did."""
+    if not PKG or not ns:
+        return False
+    packages = {n.get('package') or '' for n in ns}
+    if PKG in packages or not any(LAUNCHER.search(p) for p in packages):
+        return False
+    print('  (the app went to the background - opening it again)')
+    adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1', check=False)
+    time.sleep(4)
+    return True
+
+
 def fresh_nodes():
     ns = nodes()
-    return nodes() if clear_system_dialogs(ns) else ns
+    if clear_system_dialogs(ns) or bring_app_back(ns):
+        return nodes()
+    return ns
 
 
 # ------------------------------------------------------------------- actions
@@ -198,12 +219,22 @@ def tap(pattern, optional=False):
     return False
 
 
-def reveal(box_pattern, button_pattern):
-    """Tap a button (once) only when the input box is not on screen yet, e.g. a form behind a toggle."""
-    for _ in range(6):
+def reveal(box_pattern, button_pattern, entry_pattern=None):
+    """Tap a button (once) only when the input box is not on screen yet, e.g. a form behind a toggle.
+
+    entry_pattern: the way onto this screen (e.g. "I already have an account"). If Android
+    recreated the app and it is back on its first screen, that is tapped again.
+    """
+    for _ in range(8):
         ns = fresh_nodes()
         if find_box(ns, box_pattern) is not None:
             return True
+        entry = find_node(ns, entry_pattern) if entry_pattern else None
+        if entry is not None:
+            print('  (back on the first screen, going in again)')
+            adb('shell', 'input', 'tap', *map(str, center(entry)))
+            time.sleep(2.5)
+            continue
         button = find_node(ns, button_pattern)
         if button is not None:
             adb('shell', 'input', 'tap', *map(str, center(button)))
@@ -294,8 +325,8 @@ def run(flow):
             pattern, _, text = rest.partition(' ')
             type_into(pattern, text, hide=cmd == 'type')
         elif cmd == 'reveal':
-            box_pattern, _, button_pattern = rest.partition(' ')
-            reveal(box_pattern, button_pattern)
+            box_pattern, button_pattern, *entry = rest.split(' ')
+            reveal(box_pattern, button_pattern, entry[0] if entry else None)
         elif cmd in ('see', 'gone'):
             see(rest, present=cmd == 'see')
         elif cmd == 'hidekb':

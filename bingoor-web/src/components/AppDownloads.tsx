@@ -8,6 +8,8 @@ import s from './AppDownloads.module.css';
 
 /** Where the server publishes the latest APKs (deploy/docker-deploy.sh). */
 const DOWNLOADS = `${API_URL.replace(/\/api\/v\d+\/?$/, '')}/downloads`;
+/** Changes with every website build, so a phone that once got an error for a link asks again. */
+const V = process.env.NEXT_PUBLIC_BUILD_ID ? `?v=${process.env.NEXT_PUBLIC_BUILD_ID}` : '';
 
 /**
  * The three Bingoor Android apps, just above the footer. Each link is the
@@ -21,21 +23,21 @@ export function AppDownloads() {
       name: 'Bingoor',
       who: 'For shoppers',
       line: 'Order groceries and daily needs, track your delivery live.',
-      href: links.android || `${DOWNLOADS}/bingoor-customer.apk`,
+      href: links.android || `${DOWNLOADS}/bingoor-customer.apk${V}`,
     },
     {
       key: 'rider',
       name: 'Bingoor Rider',
       who: 'For delivery partners',
       line: 'Get new pickups with a loud bell, deliver with the customer OTP.',
-      href: links.rider || `${DOWNLOADS}/bingoor-rider.apk`,
+      href: links.rider || `${DOWNLOADS}/bingoor-rider.apk${V}`,
     },
     {
       key: 'warehouse',
       name: 'Bingoor Warehouse',
       who: 'For sellers',
       line: 'Manage orders, products, stock and your riders.',
-      href: links.warehouse || `${DOWNLOADS}/bingoor-warehouse.apk`,
+      href: links.warehouse || `${DOWNLOADS}/bingoor-warehouse.apk${V}`,
     },
   ];
 
@@ -50,7 +52,7 @@ export function AppDownloads() {
         </div>
         <div className={s.grid}>
           {apps.map((a) => (
-            <a key={a.key} href={a.href} className={s.card} download rel="noopener">
+            <a key={a.key} href={a.href} className={s.card} rel="noopener">
               <img src={`/apps/${a.key}.png`} alt="" width={56} height={56} className={s.icon} />
               <span className={s.text}>
                 <small className={s.who}>{a.who}</small>

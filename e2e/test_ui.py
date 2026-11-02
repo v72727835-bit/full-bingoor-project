@@ -140,10 +140,44 @@ class FakePhone(unittest.TestCase):
         self.assertTrue(ui.reveal('^9876543210$|Mobile.number.or.email', 'Continue.with.phone.number'))
         self.assertEqual(len(self.taps), 1)
 
+    def test_reveal_goes_back_in_when_the_app_was_reset_to_its_first_screen(self):
+        onboarding, collapsed, opened = self.xml('customer-onboarding'), self.xml('customer-login-collapsed'), self.xml('customer-login')
+        # reset to onboarding -> tap "I already have an account" -> collapsed form -> tap the toggle -> open form
+        self.screens = [onboarding, collapsed, collapsed, opened]
+        self.assertTrue(ui.reveal('^9876543210$|Mobile.number.or.email', 'Continue.with.phone.number', 'I.already.have.an.account'))
+        self.assertEqual(len(self.taps), 2)
+        self.assertEqual(ui.failures, [])
+
     def test_reveal_leaves_an_open_form_alone(self):
         self.screens = [self.xml('customer-login')]
         self.assertTrue(ui.reveal('^9876543210$|Mobile.number.or.email', 'Continue.with.phone.number'))
         self.assertEqual(self.taps, [], 'the toggle must not be pressed when the boxes already show')
+
+    def test_the_app_is_opened_again_when_the_home_screen_shows(self):
+        ui.PKG = 'com.bingoor.delivery'
+        try:
+            launcher, login = self.xml('launcher'), self.xml('rider-login')
+            self.screens = [launcher, login]
+            calls = []
+            saved = ui.adb
+
+            def adb(*args, check=True):
+                calls.append(args)
+                return saved(*args, check=check)
+
+            ui.adb = adb
+            ns = ui.fresh_nodes()
+            self.assertTrue(any(a[:3] == ('shell', 'monkey', '-p') for a in calls), 'the app is relaunched')
+            self.assertIsNotNone(ui.find_node(ns, 'Sign in as rider'))
+        finally:
+            ui.PKG = ''
+
+    def test_the_app_is_left_alone_while_it_is_in_front(self):
+        ui.PKG = 'com.bingoor.delivery'
+        try:
+            self.assertFalse(ui.bring_app_back(ui.parse(self.xml('rider-login'))))
+        finally:
+            ui.PKG = ''
 
     def test_the_battery_dialog_is_answered_with_allow(self):
         dialog = (
