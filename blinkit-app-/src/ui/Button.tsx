@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleProp, View, ViewStyle } from 'react-native';
 import Icon from '@react-native-vector-icons/ionicons/static';
-import { HIT_SIZE, glowShadow, gradient, ms, radius, space, useStyles, useTheme } from '../theme';
+import { HIT_SIZE, ms, radius, space, useStyles, useTheme } from '../theme';
 import { Txt } from './Text';
 
 export type IconName = string;
@@ -36,7 +36,9 @@ export function Button({
   iconRight,
   loading,
   disabled,
-  block,
+  // A large button is a page's main action, so it spans the column unless a
+  // layout (a bar with a price beside it) asks otherwise.
+  block = size === 'lg',
   style,
 }: ButtonProps) {
   const { c } = useTheme();
@@ -59,7 +61,7 @@ export function Button({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: radius.md,
+      borderRadius: radius.sm,
       borderWidth: 1,
       alignSelf: 'flex-start',
     },
@@ -76,11 +78,6 @@ export function Button({
       style={({ pressed }) => [
         s.base,
         { backgroundColor: pressed ? t.press : t.bg, borderColor: t.bd, paddingVertical: p.v, paddingHorizontal: p.h, minHeight: p.min, gap: p.gap },
-        // The main call to action gets a lit gradient and a pool of light under
-        // it; letting go of the finger drops both, which reads as a real press.
-        variant === 'primary' && !off && !pressed
-          ? { backgroundImage: gradient.diagonal(c.brandLight, c.brand), boxShadow: glowShadow(c.glow, 6, 16) }
-          : null,
         block && s.block,
         off && { opacity: 0.55 },
         style,

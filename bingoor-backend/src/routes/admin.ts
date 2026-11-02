@@ -33,7 +33,6 @@ router.get('/me', admin.me);
 router.get('/integrations', extra.getIntegrationsAdmin);
 router.put('/integrations', validate({ body: v.integrationsBody }), extra.updateIntegrationsAdmin);
 router.post('/integrations/razorpay/test', extra.testRazorpayAdmin);
-router.post('/integrations/firebase/test', extra.testFirebaseAdmin);
 router.post('/integrations/shiprocket/test', extra.testShiprocketAdmin);
 router.post('/integrations/razorpayx/test', extra.testRazorpayxAdmin);
 router.get('/standard-categories', extra.listStandardCategories);

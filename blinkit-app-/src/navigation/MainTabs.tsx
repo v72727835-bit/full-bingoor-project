@@ -11,7 +11,6 @@ import { OrdersScreen } from '../screens/OrdersScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { usePublicSettingsQuery } from '../store/catalogApi';
 import { themed } from '../theme';
-import { useAutoLocation } from '../utils/useAutoLocation';
 import { TabBar, TabDef } from './TabBar';
 import { useTabs } from './TabsContext';
 
@@ -28,7 +27,6 @@ export function MainTabs() {
   const [barHeight, setBarHeight] = useState(0);
   const { data: settings } = usePublicSettingsQuery();
   const festival = settings?.festival.enabled ? settings.festival.name : null;
-  useAutoLocation();
 
   // The festival tab takes the second slot while the admin has it switched on,
   // and Orders steps aside rather than crowding a sixth tab onto the bar.
@@ -69,7 +67,7 @@ export function MainTabs() {
         </Pane>
       </View>
       <View onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
-        <OrderProgressPopup />
+        <OrderProgressPopup hidden={active !== 'home' && active !== 'browse' && active !== 'festival'} />
         <TabBar tabs={tabs} active={active} onSelect={goToTab} />
       </View>
       {/* Positioned against the whole screen rather than hung off the tab bar:

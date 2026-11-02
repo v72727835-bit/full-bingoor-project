@@ -4,34 +4,27 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Easing, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeedFooter, HomeSectionView, SectionHandlers } from '../components/HomeSections';
+import { CategoryArt } from '../components/CategoryTile';
 import { NoticeBell } from '../components/NoticeBell';
 import { useAuth } from '../context/AuthContext';
 import type { AppNav } from '../navigation/types';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import { useTabs } from '../navigation/TabsContext';
-import { gradient, gutter, hitSlop, ms, radius, space, themed, useTheme } from '../theme';
+import { gutter, hitSlop, ms, radius, space, themed, useTheme } from '../theme';
 import { catalogApi, useHomeQuery } from '../store/catalogApi';
 import { useDeliveryPointKey } from '../store/deliveryPoint';
 import type { Category } from '../types';
 import { Banner, EmptyState } from '../ui/Feedback';
-import { Illustration } from '../ui/Illustration';
 import { ProductCardSkeleton, SkeletonBlock } from '../ui/Skeleton';
 import { Txt } from '../ui/Text';
 import { shortDelivery } from '../utils/delivery';
 import { tapConfirm } from '../utils/haptics';
 import { useGrid, useRailCardWidth } from '../utils/layout';
-import { setLang, useLang } from '../store/language';
+import { loadPopularTerms } from '../utils/popularTerms';
 
-const TRUST = [
-  { icon: 'leaf-outline', label: 'Fresh every day' },
-  { icon: 'pricetag-outline', label: 'Honest prices' },
-  { icon: 'shield-checkmark-outline', label: 'Easy returns' },
-] as const;
-
-const ALL: Category = { _id: 'all', name: 'All', nameHi: 'सभी', slug: 'all', icon: 'shopping-bags', short: 'All' };
+const ALL: Category = { _id: 'all', name: 'All', slug: 'all', icon: 'shopping-bags', short: 'All' };
 
 /** What the search box suggests, one at a time - the things people type most. */
-const HINTS = ['milk', 'atta', 'paneer', 'chips', 'maggi', 'shampoo', 'eggs', 'chocolate'];
 
 /**
  * The shopfront.
@@ -45,7 +38,6 @@ export function HomeScreen({ active }: TabScreenProps) {
   const { user } = useAuth();
   const { goToTab } = useTabs();
   const { c } = useTheme();
-  const lang = useLang();
   const insets = useSafeAreaInsets();
   const grid = useGrid();
   const railWidth = useRailCardWidth();
@@ -83,8 +75,6 @@ export function HomeScreen({ active }: TabScreenProps) {
 
   const address = user?.addresses?.find((a) => a.isDefault) ?? user?.addresses?.[0];
   const firstName = (user?.name ?? '').split(' ')[0];
-  const hour = new Date().getHours();
-  const greeting = hour < 5 ? 'Up late' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   // Never two tabs with the same label, whatever the data says.
   const tabs = useMemo(() => {
@@ -124,6 +114,8 @@ export function HomeScreen({ active }: TabScreenProps) {
   const hero = (
     <View style={[styles.hero, { paddingTop: insets.top + space.md }]}>
       <View style={styles.heroTop}>
+        <NoticeBell onDark />
+
         {/* The delivery promise answers "how soon?", so a tap buzzes back and
             opens the live order. */}
         <Pressable
@@ -135,34 +127,16 @@ export function HomeScreen({ active }: TabScreenProps) {
           accessibilityLabel="Delivery time, see your orders"
           style={styles.heroTitle}
         >
-          <Txt variant="labelSm" style={styles.kicker}>
-            {firstName ? `${greeting}, ${firstName}! Delivery in` : `${greeting}! Delivery in`}
+          <Txt variant="overline" center style={styles.kicker}>
+            Delivery in
           </Txt>
           <View style={styles.timeRow}>
-            <Icon name="flash" size={ms(24)} color={c.priceMark} />
-            <Txt variant="display" tone="onHeader" numberOfLines={1}>
+            <Icon name="flash" size={ms(20)} color={c.priceMark} />
+            <Txt variant="h1" tone="onHeader" numberOfLines={1}>
               {shortDelivery(data)}
             </Txt>
           </View>
         </Pressable>
-
-        {/* English / Hindi names, like the website's language menu. */}
-        <Pressable
-          onPress={() => {
-            tapConfirm();
-            setLang(lang === 'hi' ? 'en' : 'hi');
-          }}
-          hitSlop={hitSlop}
-          accessibilityRole="button"
-          accessibilityLabel={lang === 'hi' ? 'Switch to English' : 'हिंदी में देखें'}
-          style={({ pressed }) => [styles.langChip, pressed && { opacity: 0.8 }]}
-        >
-          <Txt variant="labelSm" tone="onHeader">
-            {lang === 'hi' ? 'EN' : 'हिं'}
-          </Txt>
-        </Pressable>
-
-        <NoticeBell onDark />
 
         <Pressable
           onPress={() => goToTab('profile')}
@@ -172,11 +146,11 @@ export function HomeScreen({ active }: TabScreenProps) {
           style={({ pressed }) => [styles.avatar, pressed && { opacity: 0.8 }]}
         >
           {firstName ? (
-            <Txt variant="h3" style={styles.avatarText}>
+            <Txt variant="h4" style={styles.avatarText}>
               {firstName[0].toUpperCase()}
             </Txt>
           ) : (
-            <Icon name="person" size={ms(19)} color={c.brand} />
+            <Icon name="person" size={ms(17)} color={c.brand} />
           )}
         </Pressable>
       </View>
@@ -187,27 +161,15 @@ export function HomeScreen({ active }: TabScreenProps) {
         accessibilityLabel="Change delivery address"
         style={({ pressed }) => [styles.addressRow, pressed && { opacity: 0.75 }]}
       >
-        <Icon name="location" size={ms(15)} color={c.onHeader} />
-        <Txt variant="label" tone="onHeader" numberOfLines={1}>
+        <Icon name="location-sharp" size={ms(13)} color={c.priceMark} />
+        <Txt variant="labelSm" tone="onHeader" numberOfLines={1}>
           {address ? address.label.charAt(0).toUpperCase() + address.label.slice(1) : 'Add address'}
         </Txt>
-        <Txt variant="bodySm" numberOfLines={1} style={styles.addressText}>
-          {address ? `· ${address.line1}, ${address.city}` : '· so we can show what delivers to you'}
+        <Txt variant="caption" numberOfLines={1} style={styles.addressText}>
+          {address ? `${address.line1}, ${address.city}` : 'to see what delivers to you'}
         </Txt>
-        <Icon name="chevron-down" size={ms(15)} color={c.onHeader} />
+        <Icon name="chevron-down" size={ms(13)} color={c.onHeader} />
       </Pressable>
-
-      {/* The three promises we keep, small enough not to push products down. */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trustRow}>
-        {TRUST.map((item) => (
-          <View key={item.label} style={styles.trustChip}>
-            <Icon name={item.icon} size={ms(13)} color={c.priceMark} />
-            <Txt variant="caption" tone="onHeader" weight="700">
-              {item.label}
-            </Txt>
-          </View>
-        ))}
-      </ScrollView>
     </View>
   );
 
@@ -238,7 +200,8 @@ export function HomeScreen({ active }: TabScreenProps) {
               style={styles.tab}
             >
               <View style={[styles.tabArt, on && styles.tabArtOn]}>
-                <Illustration name={t.icon} size={24} />
+                {/* The uploaded brand / aisle photo, like the website; bundled artwork when there is none. */}
+                <CategoryArt category={t} size={24} />
               </View>
               <Txt
                 variant="caption"
@@ -246,7 +209,7 @@ export function HomeScreen({ active }: TabScreenProps) {
                 weight={on ? '800' : '600'}
                 style={{ color: on ? c.onHeader : c.onHeaderMuted }}
               >
-                {lang === 'hi' && t.nameHi ? t.nameHi : t.short ?? t.name}
+                {t.short ?? t.name}
               </Txt>
               <View style={[styles.tabLine, on && styles.tabLineOn]} />
             </Pressable>
@@ -327,24 +290,40 @@ export function HomeScreen({ active }: TabScreenProps) {
 }
 
 /**
- * `Search "milk"` → `Search "atta"` → ... The word slides up and out every
- * couple of seconds, which both hints at the range and makes an idle screen
- * feel alive.
+ * `Search "Bajaj Pulsar"` → `Search "Volvo"` → ... real products and aisles
+ * from the store. The word slides up and out every couple of seconds, which
+ * both hints at the range and makes an idle screen feel alive.
  */
 function RotatingHint() {
   const [i, setI] = useState(0);
+  const [hints, setHints] = useState<string[]>([]);
   const y = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let alive = true;
+    loadPopularTerms().then((list) => { if (alive) setHints(list); });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (hints.length < 2) return;
     const t = setInterval(() => {
       Animated.timing(y, { toValue: 1, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
-        setI((n) => (n + 1) % HINTS.length);
+        setI((n) => (n + 1) % hints.length);
         y.setValue(-1);
         Animated.timing(y, { toValue: 0, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
       });
     }, 2400);
     return () => clearInterval(t);
-  }, [y]);
+  }, [y, hints.length]);
+
+  if (!hints.length) {
+    return (
+      <View style={styles.hint}>
+        <Txt variant="body" tone="faint">Search products</Txt>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.hint}>
@@ -358,7 +337,7 @@ function RotatingHint() {
         }}
       >
         <Txt variant="body" tone="body" weight="600">
-          “{HINTS[i]}”
+          “{hints[i % hints.length]}”
         </Txt>
       </Animated.View>
     </View>
@@ -371,38 +350,37 @@ const styles = themed(({ c }) => ({
 
   hero: {
     paddingHorizontal: gutter,
-    paddingBottom: space.sm,
-    // The glow sits in the top-right corner, behind the avatar, where there is
-    // no small text to lose contrast against it.
-    backgroundImage: `${gradient.glow(c.headerGlow, '100% 0%')}, ${gradient.down(c.headerFrom, c.headerTo)}`,
+    paddingBottom: space.xs,
+    backgroundColor: c.headerFrom,
   },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  heroTitle: { flex: 1 },
-  kicker: { color: c.onHeaderMuted, letterSpacing: 0.3 },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: ms(2), marginTop: ms(1) },
+  heroTitle: { flex: 1, alignItems: 'center' },
+  kicker: { color: c.onHeaderMuted },
+  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: ms(4), marginTop: ms(2) },
   avatar: {
-    width: ms(42),
-    height: ms(42),
+    width: ms(40),
+    height: ms(40),
     borderRadius: radius.pill,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.45)',
-    boxShadow: '0px 4px 14px 0px rgba(0,0,0,0.22)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
-  langChip: {
-    minWidth: ms(36),
-    height: ms(30),
-    paddingHorizontal: space.sm,
-    borderRadius: radius.pill,
+  avatarText: { color: c.onHeader },
+  addressRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.45)',
+    alignSelf: 'center',
+    maxWidth: '100%',
+    gap: ms(5),
+    marginTop: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: ms(5),
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
-  avatarText: { color: c.mode === 'dark' ? c.headerTo : c.brand },
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: ms(5), marginTop: space.sm },
   addressText: { flexShrink: 1, color: c.onHeaderMuted },
 
   sticky: { backgroundColor: c.headerTo, paddingTop: space.sm },
@@ -418,8 +396,7 @@ const styles = themed(({ c }) => ({
     borderColor: c.borderStrong,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
-    height: ms(48),
-    boxShadow: '0px 6px 18px 0px rgba(0,0,0,0.18)',
+    height: ms(46),
   },
   hint: { flex: 1, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   searchDivider: { width: StyleSheet.hairlineWidth, height: ms(22), backgroundColor: c.borderStrong },
@@ -432,24 +409,13 @@ const styles = themed(({ c }) => ({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden', // the photo fills the tile edge to edge
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
   tabArtOn: { backgroundColor: 'rgba(255,255,255,0.95)' },
   tabLine: { height: ms(3), width: '70%', borderTopLeftRadius: ms(3), borderTopRightRadius: ms(3), marginTop: ms(4) },
   tabLineOn: { backgroundColor: c.priceMark },
 
-  trustRow: { gap: space.sm, marginTop: space.md, paddingRight: gutter },
-  trustChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(5),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255, 210, 63, 0.16)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 210, 63, 0.55)',
-  },
   sectionWrap: { marginBottom: space.sm },
 
   loading: { padding: gutter, gap: space.md, backgroundColor: c.surface },

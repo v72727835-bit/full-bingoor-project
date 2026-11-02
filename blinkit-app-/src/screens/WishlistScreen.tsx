@@ -11,9 +11,8 @@ import { EmptyState } from '../ui/Feedback';
 import { Screen } from '../ui/Screen';
 import { ProductCardSkeleton } from '../ui/Skeleton';
 import { useGrid } from '../utils/layout';
-import { NeedsAccount } from '../components/SignInPrompt';
 
-function WishlistScreenInner() {
+export function WishlistScreen() {
   const navigation = useNavigation<AppNav>();
   const { goToTab } = useTabs();
   const { items, loading, refresh } = useWishlist();
@@ -94,12 +93,3 @@ const styles = StyleSheet.create({
   content: { paddingTop: space.lg, paddingBottom: space.xxxl, flexGrow: 1 },
   card: { marginBottom: space.md },
 });
-
-/** #23: visitors can browse and fill a cart; this page needs an account. */
-export function WishlistScreen() {
-  return (
-    <NeedsAccount title="Wish list" message="Sign in to save products to your wish list.">
-      <WishlistScreenInner />
-    </NeedsAccount>
-  );
-}

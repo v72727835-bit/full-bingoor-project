@@ -1,4 +1,3 @@
-import * as device from '../controllers/device.controller';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import * as auth from '../controllers/auth.controller';
@@ -37,15 +36,12 @@ const authLimiter = rateLimit({
 /* ============ Auth ============ */
 router.post('/auth/register', authLimiter, validate({ body: v.registerBody }), auth.register);
 router.post('/auth/login', authLimiter, validate({ body: v.loginBody }), auth.login);
-router.post('/auth/reset-password', authLimiter, validate({ body: v.resetPasswordBody }), auth.resetPassword);
 router.post('/auth/google', authLimiter, validate({ body: v.socialLoginBody }), auth.googleLogin);
 router.post('/auth/facebook', authLimiter, validate({ body: v.socialLoginBody }), auth.facebookLogin);
 router.post('/auth/instagram', authLimiter, validate({ body: v.instagramLoginBody }), auth.instagramLogin);
 router.post('/rider/auth/login', authLimiter, validate({ body: v.loginBody }), auth.riderLogin);
 router.post('/auth/refresh', authLimiter, validate({ body: v.refreshBody }), auth.refresh);
 router.post('/auth/logout', protect, auth.logout);
-router.post('/devices', protect, validate({ body: v.deviceBody }), device.registerDevice);
-router.delete('/devices', protect, validate({ body: v.deviceDeleteBody }), device.removeDevice);
 router.post('/auth/change-password', ...customerOnly, validate({ body: v.changePasswordBody }), auth.changePassword);
 
 /* ============ Webhooks (no login; verified by signature or by re-fetching from the provider) ============ */

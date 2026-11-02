@@ -54,10 +54,6 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
   const toggle = useCallback(
     async (product: Pick<ProductSummary, '_id' | 'name'>) => {
-      if (!user) {
-        toast.show('Sign in from the Account tab to save products to your wish list');
-        return;
-      }
       const saved = ids.has(product._id);
       setIds((prev) => {
         const next = new Set(prev);
@@ -86,7 +82,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         toast.error(getErrorMessage(err));
       }
     },
-    [ids, refresh, toast, user],
+    [ids, refresh, toast],
   );
 
   const value = useMemo<WishlistApi>(

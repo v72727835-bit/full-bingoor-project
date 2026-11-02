@@ -135,8 +135,10 @@ export function OrderDetailScreen() {
             <Ionicons name={meta.icon as never} size={ms(24)} color={ended ? colors.danger : colors.brand} />
           </View>
           <View style={styles.statusBody}>
-            <Txt variant="h3">{meta.label}</Txt>
-            <Txt variant="bodySm" tone="muted" style={styles.statusBlurb}>
+            <Txt variant="h2" center>
+              {meta.label}
+            </Txt>
+            <Txt variant="bodySm" tone="muted" center style={styles.statusBlurb}>
               {order.cancelReason && ended ? order.cancelReason : meta.blurb}
             </Txt>
           </View>
@@ -350,26 +352,26 @@ const styles = themed(({ c }) => ({
   content: { padding: gutter, paddingBottom: space.xxxl },
 
   statusCard: {
-    flexDirection: 'row',
     alignItems: 'center',
-    padding: space.lg,
+    paddingVertical: space.xl,
+    paddingHorizontal: space.lg,
     marginBottom: space.md,
     borderRadius: radius.lg,
     backgroundColor: c.brandSurface,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.brandBorder,
   },
   statusCardEnded: { backgroundColor: c.dangerSurface, borderColor: c.danger },
   statusIcon: {
-    width: ms(48),
-    height: ms(48),
+    width: ms(56),
+    height: ms(56),
     borderRadius: radius.pill,
     backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statusIconEnded: { backgroundColor: c.surface },
-  statusBody: { flex: 1, marginLeft: space.lg },
+  statusBody: { alignItems: 'center', marginTop: space.md, maxWidth: ms(300) },
   statusBlurb: { marginTop: ms(2) },
 
   card: {
@@ -380,7 +382,7 @@ const styles = themed(({ c }) => ({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.border,
   },
-  cardTitle: { marginBottom: space.md },
+  cardTitle: { marginBottom: space.md, textAlign: 'center' },
 
   step: { flexDirection: 'row' },
   stepRail: { alignItems: 'center', width: ms(24) },

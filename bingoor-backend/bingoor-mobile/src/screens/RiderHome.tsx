@@ -1,11 +1,10 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { fetchRiderProfile } from '../api/rider';
 import { useAuth } from '../context/AuthContext';
-import { useForegroundPoll } from '../utils/useForegroundPoll';
 import { RiderProfile } from '../types';
 import { colors, radius, shadow } from '../theme';
 import { CrossFade } from '../components/anim';
@@ -37,7 +36,7 @@ export default function RiderHome() {
   const [bellOpen, setBellOpen] = useState(false);
 
   const loadProfile = useCallback(() => { fetchRiderProfile().then(setProfile).catch(() => undefined); }, []);
-  useForegroundPoll(loadProfile, 30000);
+  useEffect(() => { loadProfile(); const t = setInterval(loadProfile, 30000); return () => clearInterval(t); }, [loadProfile]);
   const notices = profile?.notices ?? [];
 
   const hour = new Date().getHours();
@@ -104,6 +103,7 @@ const styles = StyleSheet.create({
   bellDotText: { color: '#fff', fontSize: 9.5, fontWeight: '800' },
   tabbar: { flexDirection: 'row', backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 },
   tabBtn: { flex: 1, alignItems: 'center', gap: 2 },
+  tabDot: { position: 'absolute', top: 0, right: '30%', width: 9, height: 9, borderRadius: 5, backgroundColor: colors.danger },
   tabLabel: { fontSize: 11, fontWeight: '700', color: colors.muted },
   backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, paddingBottom: 30 },

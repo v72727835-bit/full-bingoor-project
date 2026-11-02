@@ -2,13 +2,11 @@ import React from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
-import { PushRegistrar } from './src/components/PushRegistrar';
 import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
 import { WishlistProvider } from './src/context/WishlistContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import { store } from './src/store';
-import { loadLang } from './src/store/language';
 import { TabsProvider } from './src/navigation/TabsContext';
 import { ThemeProvider, useTheme } from './src/theme';
 import { ToastProvider } from './src/ui/Toast';
@@ -21,9 +19,6 @@ import { ToastProvider } from './src/ui/Toast';
  * because the cart and wishlist raise toasts, and both of those need the
  * signed-in user to know whose data to load.
  */
-// The saved English / Hindi choice, read before the first screen paints names.
-loadLang();
-
 export default function App() {
   return (
     <StoreProvider store={store}>
@@ -36,7 +31,6 @@ export default function App() {
                 <WishlistProvider>
                   <TabsProvider>
                     <RootNavigator />
-                    <PushRegistrar />
                   </TabsProvider>
                 </WishlistProvider>
               </CartProvider>

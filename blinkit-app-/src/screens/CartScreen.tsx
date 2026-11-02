@@ -1,17 +1,14 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fetchPointQuote } from '../api/cart';
-import { CartPoints } from '../components/CartPoints';
-import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import { useTabs } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useHomeQuery } from '../store/catalogApi';
-import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
+import { useDeliveryPointKey } from '../store/deliveryPoint';
 import { shortDelivery } from '../utils/delivery';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { CartGroup, CartItem } from '../types';
@@ -35,48 +32,11 @@ export function CartScreen({ active }: TabScreenProps) {
   const { cart, loading, refresh, setQuantity, remove, clear, pending } = useCart();
   const area = useDeliveryPointKey();
   const { data: home } = useHomeQuery(area);
-  const { user } = useAuth();
-
-  // #28: the delivery time at the top follows the distance to the customer
-  // (up to 15 km same day, then next day, beyond 30 km a few working days).
-  const [farDays, setFarDays] = useState(0);
-  // Point 15: whether the basket meets the shopping minimum for this distance
-  // (null = not priced; the shops' own minimums decide then).
-  const [quoteMinMet, setQuoteMinMet] = useState<boolean | null>(null);
-  useEffect(() => {
-    const point = deliveryPointParams();
-    if (!user || !point || cart.itemCount === 0) {
-      setFarDays(0);
-      setQuoteMinMet(null);
-      return;
-    }
-    let live = true;
-    fetchPointQuote(point)
-      .then((q) => {
-        if (!live) return;
-        setFarDays(q.days);
-        // The basket as a whole is what counts (a top-up from another warehouse must not flip it).
-        setQuoteMinMet(typeof q.minOrder === 'number' ? q.subtotal >= q.minOrder : typeof q.meetsMinOrder === 'boolean' ? q.meetsMinOrder : null);
-      })
-      .catch(() => {
-        if (!live) return;
-        setFarDays(0);
-        setQuoteMinMet(null);
-      });
-    return () => {
-      live = false;
-    };
-  }, [user, area, cart.itemCount, cart.subtotal]);
-  const minMet = quoteMinMet ?? cart.groups.every((g) => g.meetsMinOrder);
-  const etaText = farDays > 0 ? (farDays === 1 ? 'Next day delivery' : `${farDays} working days`) : shortDelivery(home);
 
   // The slowest promise in the basket - the whole order lands on that day.
   const slowDays = cart.groups
     .flatMap((g) => g.items)
     .reduce((max, i) => Math.max(max, i.deliveryDays ?? 0), 0);
-
-  // #35: checkout stays grey until the hidden points rule is met.
-  const pointsShort = !!cart.points?.enabled && !cart.points.met;
 
   // Prices and stock move while the user is elsewhere, so re-check on entry.
   useEffect(() => {
@@ -129,9 +89,9 @@ export function CartScreen({ active }: TabScreenProps) {
         {/* The delivery promise is what a customer checks before paying, so it
             leads the page, centred and large rather than tucked in a subtitle. */}
         <View style={styles.eta}>
-          <Ionicons name="flash" size={ms(20)} color={colors.brand} />
-          <Txt variant="h2" numberOfLines={1}>
-            Delivery time: {etaText}
+          <Ionicons name="flash" size={ms(17)} color={colors.brand} />
+          <Txt variant="h3" tone="brand" numberOfLines={1}>
+            Delivery in {shortDelivery(home)}
           </Txt>
         </View>
 
@@ -152,7 +112,7 @@ export function CartScreen({ active }: TabScreenProps) {
         ) : awayFromFree > 0 ? (
           <Banner tone="info" message={`Add ${currency(awayFromFree)} more to get free delivery.`} style={styles.topBanner} />
         ) : (
-          <Banner tone="success" message="Nice - your order qualifies for free delivery." style={styles.topBanner} />
+          <Banner tone="success" message="Your order gets free delivery." style={styles.topBanner} />
         )}
 
         {cart.groups.map((group) => (
@@ -169,7 +129,7 @@ export function CartScreen({ active }: TabScreenProps) {
 
         {/* ------------------------------------------------ bill ------- */}
         <View style={styles.bill}>
-          <Txt variant="h3" style={styles.billTitle}>
+          <Txt variant="overline" tone="muted" center style={styles.billTitle}>
             Bill summary
           </Txt>
 
@@ -197,8 +157,6 @@ export function CartScreen({ active }: TabScreenProps) {
           ) : null}
         </View>
 
-        <CartPoints ready={minMet} />
-
         <Pressable onPress={() => goToTab('home')} accessibilityRole="button" style={styles.keepShopping} hitSlop={8}>
           <Ionicons name="add-circle-outline" size={ms(17)} color={colors.brand} />
           <Txt variant="label" tone="brand" style={styles.keepShoppingText}>
@@ -219,11 +177,10 @@ export function CartScreen({ active }: TabScreenProps) {
             </Txt>
           </View>
           <Button
-            label={cart.hasIssues ? 'Fix items to continue' : pointsShort ? 'Add 1 product above' : 'Proceed to checkout'}
-            iconRight={cart.hasIssues || pointsShort ? undefined : 'arrow-forward'}
+            label={cart.hasIssues ? 'Fix items to continue' : 'Proceed to checkout'}
+            iconRight={cart.hasIssues ? undefined : 'arrow-forward'}
             size="lg"
-            block={false}
-            disabled={cart.hasIssues || pointsShort}
+            disabled={cart.hasIssues}
             onPress={() => navigation.navigate('Checkout')}
             style={styles.barBtn}
           />
@@ -391,11 +348,12 @@ const styles = themed(({ c, elevation }) => ({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
+    marginHorizontal: gutter,
     marginBottom: space.md,
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.brandBorder,
     backgroundColor: c.brandSurface,
   },
@@ -487,4 +445,4 @@ const styles = themed(({ c, elevation }) => ({
   },
   barInner: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: gutter, paddingVertical: space.md },
   barPrice: { flexShrink: 1, marginRight: space.md },
-  barBtn: { flexShrink: 1, paddingHorizontal: space.lg },}));
+  barBtn: { flex: 1 },}));

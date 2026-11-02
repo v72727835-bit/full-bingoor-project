@@ -21,7 +21,6 @@ import { payoutForWithdrawal, razorpayxConfig, syncPayout, syncPayoutById, testR
 import { SellerTxn } from '../models/SellerTxn';
 import { paySellerWithdrawal, syncSellerPayout, syncSellerPayoutById } from '../services/sellerPay.service';
 import { seal } from '../utils/secretBox';
-import { checkServiceAccount, pushToUsers } from '../services/firebase.service';
 import { codSummary, ONLINE_WINDOW_MS } from '../services/rider.service';
 import { presentMedia } from '../services/media.service';
 import { getSettingsDoc } from '../services/settings.service';
@@ -516,12 +515,6 @@ async function integrationsView() {
     razorpayEnabled: doc?.razorpay?.enabled ?? true,
     // Google Maps key (client-side; shown in full so the admin can see/edit it).
     googleMapsApiKey: doc?.maps?.googleApiKey ?? '',
-    firebaseWeb: { apiKey: '', authDomain: '', projectId: '', appId: '', messagingSenderId: '', storageBucket: '', vapidKey: '', ...(doc?.firebase?.webConfig ?? {}) },
-    firebaseServiceAccountSaved: !!doc?.firebase?.serviceAccountEnc,
-    firebaseProjectId: live.firebase.serviceAccount?.project_id ?? '',
-    firebaseOtpOnSignup: !!doc?.firebase?.otpOnSignup,
-    firebaseOtpOnLogin: !!doc?.firebase?.otpOnLogin,
-    firebasePushEnabled: !!doc?.firebase?.pushEnabled,
     shiprocketEmail: doc?.shiprocket?.email ?? '',
     shiprocketPasswordSaved: !!doc?.shiprocket?.passwordEnc,
     shiprocketPickupLocation: doc?.shiprocket?.pickupLocation ?? '',
@@ -538,8 +531,6 @@ async function integrationsView() {
       facebook: !!(live.facebookAppId && live.facebookAppSecret),
       instagram: !!(live.instagramAppId && live.instagramAppSecret),
       razorpay: !!(await razorpayKeys()),
-      firebaseOtp: !!(live.firebase.webConfig.apiKey && live.firebase.webConfig.projectId),
-      firebasePush: !!live.firebase.serviceAccount,
       shiprocket: !!(live.shiprocket.enabled && live.shiprocket.email && live.shiprocket.password),
       razorpayx: !!(live.razorpayx.enabled && live.razorpayx.accountNumber && live.razorpayx.keyId && live.razorpayx.keySecret),
       googleMaps: !!live.googleMapsApiKey,
@@ -567,12 +558,6 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
     clearRazorpayWebhook?: boolean;
     razorpayEnabled?: boolean;
     googleMapsApiKey?: string;
-    firebaseWeb?: Record<string, string | undefined>;
-    firebaseServiceAccount?: string;
-    clearFirebaseServiceAccount?: boolean;
-    firebaseOtpOnSignup?: boolean;
-    firebaseOtpOnLogin?: boolean;
-    firebasePushEnabled?: boolean;
     shiprocketEmail?: string;
     shiprocketPassword?: string;
     clearShiprocketPassword?: boolean;
@@ -609,23 +594,6 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
   else if (b.clearRazorpayWebhook) unset['razorpay.webhookSecretEnc'] = 1;
   if (b.razorpayEnabled !== undefined) set['razorpay.enabled'] = b.razorpayEnabled;
   if (b.googleMapsApiKey !== undefined) set['maps.googleApiKey'] = b.googleMapsApiKey.trim();
-  for (const [k, v] of Object.entries(b.firebaseWeb ?? {})) if (v !== undefined) set[`firebase.webConfig.${k}`] = v;
-  if (b.firebaseServiceAccount) {
-    let sa: { client_email?: string; private_key?: string; project_id?: string };
-    try {
-      sa = JSON.parse(b.firebaseServiceAccount);
-    } catch {
-      throw new ApiError(400, 'The service account is not valid JSON. Paste the whole file you downloaded from Firebase.');
-    }
-    if (!sa.client_email || !sa.private_key || !sa.project_id) {
-      throw new ApiError(400, 'That JSON is not a Firebase service account (client_email, private_key or project_id is missing).');
-    }
-    set['firebase.serviceAccountEnc'] = seal(b.firebaseServiceAccount);
-    if (!b.firebaseWeb?.projectId) set['firebase.webConfig.projectId'] ??= sa.project_id;
-  } else if (b.clearFirebaseServiceAccount) unset['firebase.serviceAccountEnc'] = 1;
-  if (b.firebaseOtpOnSignup !== undefined) set['firebase.otpOnSignup'] = b.firebaseOtpOnSignup;
-  if (b.firebaseOtpOnLogin !== undefined) set['firebase.otpOnLogin'] = b.firebaseOtpOnLogin;
-  if (b.firebasePushEnabled !== undefined) set['firebase.pushEnabled'] = b.firebasePushEnabled;
   if (b.shiprocketEmail !== undefined) set['shiprocket.email'] = b.shiprocketEmail;
   if (b.shiprocketPassword) set['shiprocket.passwordEnc'] = seal(b.shiprocketPassword);
   else if (b.clearShiprocketPassword) unset['shiprocket.passwordEnc'] = 1;
@@ -646,13 +614,6 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
   invalidateIntegrations();
   clearCatalogCache(); // the public settings carry the on/off flags and the public ids
   ok(res, await integrationsView());
-});
-
-/** Proves the service account works with Google, then sends a test push to the admin's own devices (if any). */
-export const testFirebaseAdmin = asyncHandler(async (req, res) => {
-  const projectId = await checkServiceAccount();
-  const sent = await pushToUsers([req.user!.id], { title: 'Bingoor test', body: 'Push notifications are working.' });
-  ok(res, { projectId, sentToYourDevices: sent });
 });
 
 /** Checks the saved Razorpay keys against Razorpay itself, so a typo is caught before a customer pays. */

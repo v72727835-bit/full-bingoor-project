@@ -1,6 +1,6 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../components/Button';
 import { ErrorBanner } from '../components/AuthLayout';
 import { fetchWallet, fetchWalletTxns, requestWithdraw, savePayoutAccount, submitCash } from '../api/rider';
@@ -106,12 +106,14 @@ function pillTone(status: string) {
 function Sheet({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => undefined}>
-          <Text style={styles.sheetTitle}>{title}</Text>
-          {children}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Pressable style={styles.sheet} onPress={() => undefined}>
+            <Text style={styles.sheetTitle}>{title}</Text>
+            {children}
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

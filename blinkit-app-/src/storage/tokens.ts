@@ -35,31 +35,3 @@ export const tokenStore = {
     await Promise.all([remove(ACCESS_SERVICE), remove(REFRESH_SERVICE)]);
   },
 };
-
-/*
- * Small non-secret values that must survive a restart. The app has no other
- * storage library, so these ride in the keychain too (one entry each).
- */
-const GUEST_SERVICE = 'com.bingoor.app.guest';
-const GUEST_CART_SERVICE = 'com.bingoor.app.guestcart';
-const USER_SERVICE = 'com.bingoor.app.user';
-const LANG_SERVICE = 'com.bingoor.app.lang';
-
-export const localStore = {
-  /** "1" once the visitor chose to look around without an account. */
-  getGuest: () => get(GUEST_SERVICE),
-  setGuest: (on: boolean) => (on ? set(GUEST_SERVICE, '1') : remove(GUEST_SERVICE)),
-  /** The visitor's basket as JSON: [{ productId, quantity }]. */
-  getGuestCart: () => get(GUEST_CART_SERVICE),
-  setGuestCart: (json: string | null) => (json ? set(GUEST_CART_SERVICE, json) : remove(GUEST_CART_SERVICE)),
-  /**
-   * The last known signed-in profile as JSON. Used only to keep the customer
-   * logged in across a cold start when the server is briefly unreachable (e.g. a
-   * Render cold start) instead of bouncing them to the login screen (F-05).
-   */
-  getUser: () => get(USER_SERVICE),
-  setUser: (json: string | null) => (json ? set(USER_SERVICE, json) : remove(USER_SERVICE)),
-  /** "hi" when the customer picked Hindi names; missing means English. */
-  getLang: () => get(LANG_SERVICE),
-  setLang: (lang: string) => (lang === 'hi' ? set(LANG_SERVICE, 'hi') : remove(LANG_SERVICE)),
-};

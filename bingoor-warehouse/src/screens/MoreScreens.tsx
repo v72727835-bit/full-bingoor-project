@@ -160,7 +160,7 @@ function ShopCard({ shop }: { shop: Shop }) {
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
   const pickLogo = async () => {
-    const res = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1, quality: 0.8 });
+    const res = await launchImageLibrary({ mediaType: 'photo', selectionLimit: 1, quality: 0.7, maxWidth: 1080, maxHeight: 1080 });
     if (res.didCancel || !res.assets?.length) return;
     const a = res.assets[0];
     setBusy(true); setError('');

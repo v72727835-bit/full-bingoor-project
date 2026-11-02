@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchIntegrations, IntegrationsView, saveIntegrations, testFirebase, testRazorpayKeys, testRazorpayx, testShiprocket } from '../api/admin';
+import { fetchIntegrations, IntegrationsView, saveIntegrations, testRazorpayKeys, testRazorpayx, testShiprocket } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { Badge, Button, CenterSpinner, ErrorBanner, Field } from '../components/ui';
 
@@ -25,11 +25,6 @@ export default function IntegrationsPage() {
   const [rzId, setRzId] = useState('');
   const [rzSecret, setRzSecret] = useState('');
   const [rzOn, setRzOn] = useState(true);
-  const [fbWeb, setFbWeb] = useState<IntegrationsView['firebaseWeb']>({ apiKey: '', authDomain: '', projectId: '', appId: '', messagingSenderId: '', storageBucket: '', vapidKey: '' });
-  const [fbSa, setFbSa] = useState('');
-  const [otpSignup, setOtpSignup] = useState(false);
-  const [otpLogin, setOtpLogin] = useState(false);
-  const [pushOn, setPushOn] = useState(false);
   const [srEmail, setSrEmail] = useState('');
   const [srPass, setSrPass] = useState('');
   const [srPickup, setSrPickup] = useState('');
@@ -50,10 +45,6 @@ export default function IntegrationsPage() {
     setIgSecret('');
     setRzId(d.razorpayKeyId);
     setRzOn(d.razorpayEnabled);
-    setFbWeb(d.firebaseWeb);
-    setOtpSignup(d.firebaseOtpOnSignup);
-    setOtpLogin(d.firebaseOtpOnLogin);
-    setPushOn(d.firebasePushEnabled);
     setSrEmail(d.shiprocketEmail);
     setSrPickup(d.shiprocketPickupLocation);
     setSrChannel(d.shiprocketChannelId);
@@ -63,7 +54,6 @@ export default function IntegrationsPage() {
     setRxOn(d.razorpayxEnabled);
     setRxAuto(d.razorpayxAutoPayout);
     setMapsKey(d.googleMapsApiKey);
-    setFbSa('');
     setFbSecret('');
     setRzSecret('');
     setSrPass('');
@@ -205,68 +195,6 @@ export default function IntegrationsPage() {
           )}
           <Button disabled={busy === 'ig'} onClick={() => save('ig', { instagramAppId: igId, ...(igSecret ? { instagramAppSecret: igSecret } : {}) }, 'Instagram login saved.')}>
             {busy === 'ig' ? 'Saving…' : 'Save Instagram'}
-          </Button>
-        </div>
-      </div>
-
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <h2 className="card-title">
-          Phone OTP &amp; push notifications (Firebase) {status(data.live.firebaseOtp)} {data.live.firebasePush ? <Badge tone="success">Push working</Badge> : <Badge tone="muted">Push not set up</Badge>}
-        </h2>
-        <div className="page-subtitle" style={{ marginBottom: 12 }}>
-          console.firebase.google.com → create a project → Authentication → turn on <b>Phone</b> sign-in → Project settings → add a <b>Web app</b> and copy its config below.
-          Under Authentication → Settings → Authorized domains add bingoor.com. For push: Project settings → Cloud Messaging → Web Push certificates → generate a key pair (the VAPID key), and
-          Project settings → Service accounts → Generate new private key (paste the whole downloaded JSON below).
-        </div>
-        <div className="field-row">
-          <Field label="API key"><input value={fbWeb.apiKey} onChange={(e) => setFbWeb({ ...fbWeb, apiKey: e.target.value })} placeholder="AIza…" /></Field>
-          <Field label="Auth domain"><input value={fbWeb.authDomain} onChange={(e) => setFbWeb({ ...fbWeb, authDomain: e.target.value })} placeholder="myproject.firebaseapp.com" /></Field>
-        </div>
-        <div className="field-row">
-          <Field label="Project ID"><input value={fbWeb.projectId} onChange={(e) => setFbWeb({ ...fbWeb, projectId: e.target.value })} placeholder="myproject" /></Field>
-          <Field label="App ID"><input value={fbWeb.appId} onChange={(e) => setFbWeb({ ...fbWeb, appId: e.target.value })} placeholder="1:1234567890:web:abc123" /></Field>
-        </div>
-        <div className="field-row">
-          <Field label="Messaging sender ID"><input value={fbWeb.messagingSenderId} onChange={(e) => setFbWeb({ ...fbWeb, messagingSenderId: e.target.value })} /></Field>
-          <Field label="Storage bucket (optional)"><input value={fbWeb.storageBucket} onChange={(e) => setFbWeb({ ...fbWeb, storageBucket: e.target.value })} /></Field>
-        </div>
-        <Field label="Web push key (VAPID, for website notifications)"><input value={fbWeb.vapidKey} onChange={(e) => setFbWeb({ ...fbWeb, vapidKey: e.target.value })} /></Field>
-        <Field label={data.firebaseServiceAccountSaved ? `Service account JSON (saved for project ${data.firebaseProjectId} - paste a new one to replace)` : 'Service account JSON (for sending push)'}>
-          <textarea rows={4} value={fbSa} onChange={(e) => setFbSa(e.target.value)} placeholder={data.firebaseServiceAccountSaved ? '••••••••' : '{ "type": "service_account", … }'} autoComplete="off" spellCheck={false} />
-        </Field>
-        <label className="checkbox-row" style={{ marginBottom: 6 }}>
-          <input type="checkbox" checked={otpSignup} onChange={(e) => setOtpSignup(e.target.checked)} />
-          <span>Ask for an OTP when a new account is created</span>
-        </label>
-        <label className="checkbox-row" style={{ marginBottom: 6 }}>
-          <input type="checkbox" checked={otpLogin} onChange={(e) => setOtpLogin(e.target.checked)} />
-          <span>Ask for an OTP on every login (customers and riders)</span>
-        </label>
-        <label className="checkbox-row" style={{ marginBottom: 8 }}>
-          <input type="checkbox" checked={pushOn} onChange={(e) => setPushOn(e.target.checked)} />
-          <span>Send push notifications (orders, payments, deliveries)</span>
-        </label>
-        <div className="page-subtitle" style={{ marginBottom: 8 }}>
-          Switch the OTP options on only after the website and the new apps with Firebase are live; older app versions cannot show the OTP step and would be unable to log in.
-        </div>
-        <div className="modal-actions">
-          <Button variant="secondary" disabled={busy === 'test'} onClick={() => test(testFirebase)}>{busy === 'test' ? 'Checking…' : 'Test push setup'}</Button>
-          {data.firebaseServiceAccountSaved && (
-            <Button variant="ghost" disabled={!!busy} onClick={() => save('fbsaclear', { clearFirebaseServiceAccount: true, firebasePushEnabled: false }, 'Service account removed.')}>
-              Remove service account
-            </Button>
-          )}
-          <Button
-            disabled={busy === 'fbase'}
-            onClick={() =>
-              save(
-                'fbase',
-                { firebaseWeb: fbWeb, firebaseOtpOnSignup: otpSignup, firebaseOtpOnLogin: otpLogin, firebasePushEnabled: pushOn, ...(fbSa.trim() ? { firebaseServiceAccount: fbSa.trim() } : {}) },
-                'Firebase saved.',
-              )
-            }
-          >
-            {busy === 'fbase' ? 'Saving…' : 'Save Firebase'}
           </Button>
         </div>
       </div>

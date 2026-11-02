@@ -41,6 +41,7 @@ export function TextField({
   const [reveal, setReveal] = useState(false);
 
   const s = useStyles(({ c: p }) => ({
+    wrap: { marginBottom: space.md },
     field: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -48,7 +49,7 @@ export function TextField({
       minHeight: ms(50),
       paddingHorizontal: space.md,
       borderRadius: radius.md,
-      borderWidth: 1.5,
+      borderWidth: 1,
       backgroundColor: p.surface,
       borderColor: p.border,
     },
@@ -60,7 +61,7 @@ export function TextField({
   const borderColor = error ? c.danger : focused ? c.brand : c.border;
 
   return (
-    <View style={containerStyle}>
+    <View style={[s.wrap, containerStyle]}>
       {label ? (
         <Txt variant="label" tone="body" style={{ marginBottom: ms(6) }}>
           {label}

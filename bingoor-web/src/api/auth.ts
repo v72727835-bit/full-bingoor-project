@@ -1,21 +1,19 @@
 import { api, tokens } from '../lib/client';
-import { unregisterPush } from '../components/PushRegister';
 import { UserProfile } from '../lib/types';
 
-export const register = async (name: string, phone: string, password: string, email?: string, firebaseIdToken?: string) => {
-  const { data } = await api.post('/auth/register', { name, phone, password, email, firebaseIdToken });
+export const register = async (name: string, phone: string, password: string, email?: string) => {
+  const { data } = await api.post('/auth/register', { name, phone, password, email });
   tokens.save(data.data.accessToken, data.data.refreshToken, data.data.user);
   return data.data.user as UserProfile;
 };
 
-export const login = async (identifier: string, password: string, firebaseIdToken?: string) => {
-  const { data } = await api.post('/auth/login', { identifier, password, firebaseIdToken });
+export const login = async (identifier: string, password: string) => {
+  const { data } = await api.post('/auth/login', { identifier, password });
   tokens.save(data.data.accessToken, data.data.refreshToken, data.data.user);
   return data.data.user as UserProfile;
 };
 
 export const logout = async () => {
-  await unregisterPush();
   try {
     await api.post('/auth/logout', { refreshToken: tokens.refresh });
   } catch {
@@ -40,9 +38,4 @@ export const instagramLogin = async (code: string, redirectUri: string) => {
   const { data } = await api.post('/auth/instagram', { code, redirectUri });
   tokens.save(data.data.accessToken, data.data.refreshToken, data.data.user);
   return data.data.user as UserProfile;
-};
-
-/** Forgot password: the verified phone OTP token lets the customer set a new password. */
-export const resetPassword = async (phone: string, newPassword: string, firebaseIdToken: string) => {
-  await api.post('/auth/reset-password', { phone, newPassword, firebaseIdToken });
 };

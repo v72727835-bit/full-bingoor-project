@@ -1,0 +1,54 @@
+# Customer app: sign in, then tap around the way a shopper does.
+wait 12
+shot 01-start
+dump 01-start
+tapif I already have an account
+wait 2
+# "Continue with phone number" opens the form; tap it only if the boxes are not showing yet.
+reveal ^9876543210$|Mobile.number.or.email Continue.with.phone.number
+type ^9876543210$|Mobile.number.or.email 9876543210
+type Your.password|^Password$ Customer@123
+hidekb
+shot 02-login-filled
+tap ^Sign in$
+wait 8
+shot 03-home
+dump 03-home
+# a category tab in the header strip
+tapif ^Fruits|^Dairy|^Grocery|^Snacks|^Personal|^Home
+wait 3
+shot 04-header-tab
+# a product
+swipeup
+tapif ^Add$|ADD
+wait 2
+shot 05-after-add
+tapif ₹
+wait 4
+shot 06-product
+tapif ^Go back$
+wait 2
+tap ^Categories$
+wait 4
+shot 07-categories
+tapif Fruits|Vegetables|Dairy|Snacks|Bakery
+wait 4
+shot 08-category-page
+tapif ^Go back$
+wait 2
+tap ^Cart$
+wait 3
+shot 09-cart
+tap ^Account$
+wait 3
+shot 10-account
+tap ^Home$
+wait 3
+tapif Search
+wait 3
+shot 11-search
+type Search.products|Search.for milk
+wait 3
+shot 12-search-typed
+wait 1
+alive

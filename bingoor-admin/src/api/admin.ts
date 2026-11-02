@@ -456,12 +456,6 @@ export interface IntegrationsView {
   razorpayKeyId: string;
   razorpaySecretSaved: boolean;
   razorpayEnabled: boolean;
-  firebaseWeb: Record<'apiKey' | 'authDomain' | 'projectId' | 'appId' | 'messagingSenderId' | 'storageBucket' | 'vapidKey', string>;
-  firebaseServiceAccountSaved: boolean;
-  firebaseProjectId: string;
-  firebaseOtpOnSignup: boolean;
-  firebaseOtpOnLogin: boolean;
-  firebasePushEnabled: boolean;
   shiprocketEmail: string;
   shiprocketPasswordSaved: boolean;
   shiprocketPickupLocation: string;
@@ -473,17 +467,13 @@ export interface IntegrationsView {
   razorpayxEnabled: boolean;
   razorpayxAutoPayout: boolean;
   googleMapsApiKey: string;
-  live: { google: boolean; facebook: boolean; instagram?: boolean; razorpay: boolean; firebaseOtp: boolean; firebasePush: boolean; shiprocket: boolean; razorpayx: boolean; googleMaps: boolean };
+  live: { google: boolean; facebook: boolean; instagram?: boolean; razorpay: boolean; shiprocket: boolean; razorpayx: boolean; googleMaps: boolean };
 }
 export const fetchIntegrations = async (): Promise<IntegrationsView> => (await api.get('/admin/integrations')).data.data;
 export const saveIntegrations = async (body: Record<string, unknown>): Promise<IntegrationsView> =>
   (await api.put('/admin/integrations', body)).data.data;
 export const testRazorpayKeys = async (): Promise<string> => (await api.post('/admin/integrations/razorpay/test')).data.data.message;
 
-export const testFirebase = async (): Promise<string> => {
-  const d = (await api.post('/admin/integrations/firebase/test')).data.data;
-  return `Firebase project "${d.projectId}" accepted the service account. Test push sent to ${d.sentToYourDevices} of your devices.`;
-};
 export const testShiprocket = async (): Promise<string> => {
   const d = (await api.post('/admin/integrations/shiprocket/test')).data.data as { pickupLocations: string[] };
   const list = d.pickupLocations.length ? d.pickupLocations.join(', ') : 'none set up yet';

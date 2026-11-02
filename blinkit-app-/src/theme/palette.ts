@@ -104,13 +104,13 @@ export const light: Palette = {
   inkFaint: '#848F88',
 
   surface: '#FFFFFF',
-  surfaceSunken: '#F1F5F2',
+  surfaceSunken: '#F4F6F5',
   surfaceRaised: '#FFFFFF',
   surfaceTint: '#EEF8F1',
   overlay: 'rgba(17, 26, 20, 0.55)',
   skeleton: '#E6ECE8',
 
-  border: '#E2E9E4',
+  border: '#E4E9E6',
   borderStrong: '#CAD5CE',
 
   success: '#0B7A4B',
@@ -126,22 +126,22 @@ export const light: Palette = {
   veg: '#1E8E3E',
   nonveg: '#A3341F',
 
-  headerFrom: '#0A4D29',
-  headerTo: '#0E8A3E',
+  headerFrom: '#0B5C2D',
+  headerTo: '#0B5C2D',
   onHeader: '#FFFFFF',
   onHeaderMuted: 'rgba(255,255,255,0.88)',
 
   shadow: '#0A2E19',
-  headerGlow: 'rgba(255, 210, 63, 0.45)',
-  dealsFrom: '#0A5C2C',
-  dealsTo: '#11A04A',
+  headerGlow: 'rgba(255, 255, 255, 0)',
+  dealsFrom: '#0B5C2D',
+  dealsTo: '#0B5C2D',
   priceMark: '#FFD23F',
   onPriceMark: '#15101A',
-  glow: 'rgba(14, 138, 62, 0.38)',
+  glow: 'rgba(10, 46, 25, 0.10)',
 
   brandStrong: '#0A5C2C',
   brandInk: '#0A6B2F',
-  brandLight: '#2FBF6A',
+  brandLight: '#0E8A3E',
 };
 
 export const dark: Palette = {
@@ -190,22 +190,22 @@ export const dark: Palette = {
   veg: '#52D18E',
   nonveg: '#FF8A7A',
 
-  headerFrom: '#06180E',
-  headerTo: '#0C3A21',
+  headerFrom: '#0B1F14',
+  headerTo: '#0B1F14',
   onHeader: '#FFFFFF',
   onHeaderMuted: 'rgba(255,255,255,0.80)',
 
   shadow: '#000000',
-  headerGlow: 'rgba(255, 201, 60, 0.28)',
-  dealsFrom: '#0A2E19',
-  dealsTo: '#0F4A28',
+  headerGlow: 'rgba(255, 255, 255, 0)',
+  dealsFrom: '#0B1F14',
+  dealsTo: '#0B1F14',
   priceMark: '#FFD23F',
   onPriceMark: '#1A1400',
-  glow: 'rgba(47, 191, 106, 0.45)',
+  glow: 'rgba(0, 0, 0, 0.30)',
 
   brandStrong: '#2FBF6A',
   brandInk: '#6FE09C',
-  brandLight: '#6FE09C',
+  brandLight: '#178F47',
 };
 
 /**

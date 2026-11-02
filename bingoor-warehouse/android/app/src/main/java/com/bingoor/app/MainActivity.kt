@@ -1,5 +1,6 @@
 package com.bingoor.app
 
+import android.os.Bundle
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -17,6 +18,16 @@ class MainActivity : ReactActivity() {
    * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
    * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
    */
+  /**
+   * Start fresh instead of restoring the previous screens. When Android recreates the
+   * activity (app brought back after the system killed it, a settings change, returning
+   * from the OTP / payment browser), react-native-screens cannot restore its fragments
+   * and throws "Screen fragments should never be restored", which closed the app.
+   */
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(null)
+  }
+
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 }

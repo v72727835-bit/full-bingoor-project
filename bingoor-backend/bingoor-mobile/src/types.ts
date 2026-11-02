@@ -4,6 +4,15 @@ export interface ApiEnvelope<T> {
   meta?: { page: number; limit: number; total: number; totalPages: number; hasNext: boolean };
 }
 
+/** A delivery that is ringing this rider, from GET /rider/ring. */
+export interface RingItem {
+  dispatchId: string;
+  kind: string;
+  orderId?: string;
+  bookingId?: string;
+  since: string;
+}
+
 export interface User {
   _id: string;
   name: string;
@@ -78,7 +87,18 @@ export interface RiderProfile {
   deliveredCount: number;
   cancelledCount: number;
   paused: boolean;
+  /** Rider plans are on and this rider has no running plan: no new orders until one is bought. */
+  planNeeded?: boolean;
   notices: string[];
+}
+
+export interface MyPlan {
+  required: boolean;
+  active: boolean;
+  until: string | null;
+  daysLeft: number;
+  plans: { _id: string; name: string; price: number; days: number; description?: string }[];
+  canPayOnline: boolean;
 }
 
 export interface RiderOrder {

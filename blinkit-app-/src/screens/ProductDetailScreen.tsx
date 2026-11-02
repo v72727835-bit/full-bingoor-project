@@ -17,7 +17,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchReviews, submitReview } from '../api/catalog';
 import { getErrorMessage } from '../api/client';
-import { RichDescription } from '../components/RichDescription';
 import { NotifyMeSheet } from '../components/NotifyMeSheet';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
@@ -157,7 +156,7 @@ export function ProductDetailScreen() {
                 accessibilityRole="imagebutton"
                 accessibilityLabel={`${product.name}, tap to zoom`}
               >
-                <SmartImage uri={uri} icon={product.icon} artScale={0.62} style={{ width, height: width * 0.92 }} />
+                <SmartImage full uri={uri} icon={product.icon} artScale={0.62} style={{ width, height: width * 0.92 }} />
               </Pressable>
             ))}
           </ScrollView>
@@ -184,12 +183,12 @@ export function ProductDetailScreen() {
         {/* ---------------------------------------------- main block -- */}
         <View style={styles.block}>
           {product.brand ? (
-            <Txt variant="overline" tone="brand" style={styles.brand}>
+            <Txt variant="overline" tone="brand" center style={styles.brand}>
               {product.brand}
             </Txt>
           ) : null}
 
-          <Txt variant="h1" style={styles.name}>
+          <Txt variant="h1" center style={styles.name}>
             {product.name}
           </Txt>
 
@@ -221,7 +220,7 @@ export function ProductDetailScreen() {
             ) : null}
           </View>
 
-          <Txt variant="caption" tone="faint" style={styles.taxNote}>
+          <Txt variant="caption" tone="faint" center style={styles.taxNote}>
             Inclusive of all taxes
           </Txt>
 
@@ -236,7 +235,7 @@ export function ProductDetailScreen() {
           <>
             <Divider />
             <View style={styles.block}>
-              <Txt variant="overline" tone="muted" style={styles.blockTitle}>
+              <Txt variant="overline" tone="muted" center style={styles.blockTitle}>
                 Select size
               </Txt>
               <View style={styles.variantRow}>
@@ -331,7 +330,9 @@ export function ProductDetailScreen() {
               : product.onlineAvailable === false
                 ? { icon: 'cash-outline' as const, title: 'COD only', body: 'Pay when it arrives' }
                 : { icon: 'cash-outline' as const, title: 'COD & online', body: 'Pay as you like' },
-            { icon: 'bicycle-outline' as const, title: 'Free delivery', body: 'On this order' },
+            product.shop && product.shop.deliveryFee > 0
+              ? { icon: 'bicycle-outline' as const, title: `${currency(product.shop.deliveryFee)} delivery`, body: 'From this shop' }
+              : { icon: 'bicycle-outline' as const, title: 'Free delivery', body: 'From this shop' },
             product.deliveryDays && product.deliveryDays > 1
               ? { icon: 'calendar-outline' as const, title: `${product.deliveryDays} day delivery`, body: 'For this aisle' }
               : { icon: 'flash-outline' as const, title: 'Same-day delivery', body: 'Ordered before 6 pm' },
@@ -355,10 +356,12 @@ export function ProductDetailScreen() {
           <>
             <Divider />
             <View style={styles.block}>
-              <Txt variant="h3" style={styles.blockTitle}>
+              <Txt variant="h3" center style={styles.blockTitle}>
                 About this product
               </Txt>
-              <RichDescription text={product.description} />
+              <Txt variant="body" tone="body" center>
+                {product.description}
+              </Txt>
               {product.category && typeof product.category === 'object' ? (
                 <Pressable
                   onPress={() =>
@@ -386,8 +389,10 @@ export function ProductDetailScreen() {
         <View style={styles.block}>
           <View style={styles.reviewHead}>
             <View style={styles.flex}>
-              <Txt variant="h3">Ratings and reviews</Txt>
-              <Txt variant="bodySm" tone="muted" style={styles.blockSub}>
+              <Txt variant="h3" center>
+                Ratings and reviews
+              </Txt>
+              <Txt variant="bodySm" tone="muted" center style={styles.blockSub}>
                 {product.ratingCount > 0
                   ? `${product.rating.toFixed(1)} out of 5 from ${product.ratingCount} ${
                       product.ratingCount === 1 ? 'customer' : 'customers'
@@ -630,10 +635,10 @@ const styles = themed(({ c, elevation }) => ({
   blockSub: { marginTop: ms(2) },
   brand: { marginBottom: space.xs },
   name: { marginBottom: space.sm },
-  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' },
   metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: c.inkFaint, marginHorizontal: space.sm },
   ratingText: { marginLeft: space.xs },
-  priceRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: space.lg },
+  priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginTop: space.lg },
   mrp: { textDecorationLine: 'line-through', marginLeft: space.md },
   savePill: { marginLeft: space.md },
   taxNote: { marginTop: space.xxs },
@@ -658,7 +663,7 @@ const styles = themed(({ c, elevation }) => ({
   },
   promiseTitle: { marginBottom: ms(1) },
 
-  categoryLink: { flexDirection: 'row', alignItems: 'center', marginTop: space.lg },
+  categoryLink: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginTop: space.lg },
   categoryLinkText: { marginLeft: space.xs },
 
   reviewHead: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.lg },
@@ -724,9 +729,9 @@ const styles = themed(({ c, elevation }) => ({
     paddingVertical: space.md,
   },
   buyPrice: { flexShrink: 1, marginRight: space.md },
-  buyBtn: { paddingHorizontal: space.xxl },
-  buyActions: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
-  cartBtn: { marginLeft: space.sm, paddingHorizontal: space.lg },
+  buyBtn: { flex: 1 },
+  buyActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: 1 },
+  cartBtn: { marginLeft: space.sm, flex: 1 },
 
   sheetIntro: { marginBottom: space.lg },
   sheetStars: { alignItems: 'center', marginBottom: space.xl },
@@ -751,7 +756,7 @@ const styles = themed(({ c, elevation }) => ({
   zoomClose: { position: 'absolute', top: ms(44), right: gutter },
 
   /* Each size is its own product, so a size is a link, not a toggle. */
-  variantRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  variantRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, justifyContent: 'center' },
   variant: {
     minWidth: ms(86),
     gap: ms(2),

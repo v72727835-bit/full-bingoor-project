@@ -1,6 +1,6 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import React from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius, shadow } from '../theme';
 import { FadeSlide, Pulse } from './anim';
@@ -17,7 +17,8 @@ interface Props {
 export function AuthLayout({ title, subtitle, children }: Props) {
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Padding on Android too: with edge-to-edge on, Android no longer resizes the window for the keyboard. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"

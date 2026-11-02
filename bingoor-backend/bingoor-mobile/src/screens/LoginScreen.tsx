@@ -1,8 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import { getErrorMessage, getFieldErrors, otpRequiredPhone } from '../api/client';
-import { OtpModal } from '../components/OtpModal';
+import { getErrorMessage, getFieldErrors } from '../api/client';
 import { AuthLayout, ErrorBanner } from '../components/AuthLayout';
 import { Button } from '../components/Button';
 import { TextField, TextInputRef } from '../components/TextField';
@@ -19,7 +18,6 @@ export default function LoginScreen({ navigation }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [otpPhone, setOtpPhone] = useState<string | null>(null);
 
   const onSubmit = async () => {
     const next: Record<string, string> = {};
@@ -30,9 +28,7 @@ export default function LoginScreen({ navigation }: Props) {
     setSubmitting(true);
     try { await signInRider(identifier.trim(), password); }
     catch (err) {
-      const needOtp = otpRequiredPhone(err);
-      if (needOtp !== null) setOtpPhone(needOtp || identifier.trim());
-      else { setErrors(getFieldErrors(err)); setFormError(getErrorMessage(err)); }
+      setErrors(getFieldErrors(err)); setFormError(getErrorMessage(err));
       setSubmitting(false);
     }
   };
@@ -43,16 +39,6 @@ export default function LoginScreen({ navigation }: Props) {
     <TextField label="Password" icon="lock-closed-outline" placeholder="Your rider password" value={password} onChangeText={setPassword} error={errors.password} secure inputRef={passwordRef} returnKeyType="done" onSubmitEditing={onSubmit} autoComplete="password" />
     <Button title="Sign in as rider" onPress={onSubmit} loading={submitting} style={{ marginTop: 4 }} />
     <Button title="Forgot password?" variant="outline" onPress={() => navigation.navigate('ForgotPassword')} style={{ marginTop: 8 }} />
-    {otpPhone ? (
-      <OtpModal
-        phone={otpPhone}
-        onClose={() => setOtpPhone(null)}
-        onVerified={async (token) => {
-          try { await signInRider(identifier.trim(), password, token); }
-          catch (err) { setOtpPhone(null); setFormError(getErrorMessage(err)); }
-        }}
-      />
-    ) : null}
   </AuthLayout>;
 }
 

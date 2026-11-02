@@ -7,9 +7,10 @@ import { useCategoryTreeQuery } from '../store/catalogApi';
 import { CategoryTile } from '../components/CategoryTile';
 import type { AppNav } from '../navigation/types';
 import type { TabScreenProps } from '../navigation/TabsContext';
-import { gradient, gutter, ms, radius, space, themed, useTheme } from '../theme';
+import { gutter, ms, radius, space, themed, useTheme } from '../theme';
 import { EmptyState } from '../ui/Feedback';
 import { SkeletonBlock } from '../ui/Skeleton';
+import { SectionHeader } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { useGrid } from '../utils/layout';
 
@@ -54,7 +55,7 @@ export function BrowseScreen({ active }: TabScreenProps) {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + space.md }]}>
-        <Txt variant="h1" tone="onHeader">
+        <Txt variant="h2" tone="onHeader" center>
           All categories
         </Txt>
         <Pressable
@@ -90,9 +91,7 @@ export function BrowseScreen({ active }: TabScreenProps) {
           {groups
             ? groups.map((group) => (
                 <View key={group._id} style={styles.group}>
-                  <Txt variant="h2" style={styles.groupTitle}>
-                    {group.name}
-                  </Txt>
+                  <SectionHeader title={group.name} style={styles.groupTitle} />
                   <View style={[styles.grid, { gap: space.sm }]}>
                     {(group.children ?? []).map((cat) => (
                       <CategoryTile
@@ -126,8 +125,7 @@ export function BrowseScreen({ active }: TabScreenProps) {
 
 const styles = themed(({ c }) => ({
   root: { flex: 1, backgroundColor: c.surfaceSunken },
-  header: { backgroundColor: c.headerTo,
-    backgroundImage: `${gradient.glow(c.headerGlow, '100% 0%')}, ${gradient.down(c.headerFrom, c.headerTo)}`, paddingHorizontal: gutter, paddingBottom: space.md, gap: space.md },
+  header: { backgroundColor: c.headerFrom, paddingHorizontal: gutter, paddingBottom: space.md, gap: space.md },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,7 +139,7 @@ const styles = themed(({ c }) => ({
   },
   searchText: { flex: 1 },
 
-  group: { backgroundColor: c.surface, paddingVertical: space.lg, marginBottom: space.sm },
-  groupTitle: { paddingHorizontal: gutter, marginBottom: space.md },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: gutter },
+  group: { backgroundColor: c.surface, paddingVertical: space.xl, marginBottom: space.sm },
+  groupTitle: { marginBottom: space.lg },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: gutter },
 }));

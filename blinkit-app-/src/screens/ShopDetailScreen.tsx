@@ -7,7 +7,7 @@ import { fetchProducts, fetchShop } from '../api/catalog';
 import { getErrorMessage } from '../api/client';
 import { ProductCard } from '../components/ProductCard';
 import type { AppNav, AppRoute } from '../navigation/types';
-import { colors, currency, fillParent, gradient, gutter, hitSlop, ms, radius, space, themed } from '../theme';
+import { colors, currency, fillParent, gutter, hitSlop, ms, radius, space, themed } from '../theme';
 import { ProductSummary, ShopDetail } from '../types';
 import { EmptyState, FullScreenLoader } from '../ui/Feedback';
 import { RatingChip } from '../ui/Rating';
@@ -85,7 +85,7 @@ export function ShopDetailScreen() {
         ListHeaderComponent={
           <View style={[styles.header, { marginHorizontal: -grid.padding }]}>
             <View style={[styles.banner, { height: width * 0.44 }]}>
-              <SmartImage uri={shop.banner || shop.logo} icon="shopping-cart" style={styles.bannerImage} />
+              <SmartImage full uri={shop.banner || shop.logo} icon="shopping-cart" style={styles.bannerImage} />
               <View style={styles.bannerVeil} />
             </View>
 
@@ -93,7 +93,7 @@ export function ShopDetailScreen() {
               <View style={styles.cardTop}>
                 <SmartImage uri={shop.logo} icon="shopping-cart" style={styles.logo} radius={radius.md} />
                 <View style={styles.cardTitles}>
-                  <Txt variant="h2" numberOfLines={2}>
+                  <Txt variant="h2" center numberOfLines={2}>
                     {shop.name}
                   </Txt>
                   <View style={styles.badgeRow}>
@@ -104,7 +104,7 @@ export function ShopDetailScreen() {
               </View>
 
               {shop.description ? (
-                <Txt variant="body" tone="muted" style={styles.description}>
+                <Txt variant="body" tone="muted" center style={styles.description}>
                   {shop.description}
                 </Txt>
               ) : null}
@@ -149,7 +149,7 @@ export function ShopDetailScreen() {
             ) : null}
 
             <View style={[styles.listTitle, { paddingHorizontal: grid.padding }]}>
-              <Txt variant="h3">
+              <Txt variant="h3" center>
                 {products ? `${products.length} ${products.length === 1 ? 'product' : 'products'}` : 'Products'}
               </Txt>
             </View>
@@ -210,10 +210,9 @@ const styles = themed(({ c, elevation }) => ({
   listContent: { paddingBottom: space.xxxl, flexGrow: 1 },
 
   header: { marginBottom: space.md },
-  banner: { width: '100%', backgroundColor: c.headerTo,
-    backgroundImage: `${gradient.glow(c.headerGlow, '100% 0%')}, ${gradient.down(c.headerFrom, c.headerTo)}` },
+  banner: { width: '100%', backgroundColor: c.headerFrom },
   bannerImage: { width: '100%', height: '100%' },
-  bannerVeil: { ...fillParent, backgroundColor: c.mode === 'dark' ? 'rgba(0,0,0,0.45)' : 'rgba(94,0,49,0.32)' },
+  bannerVeil: { ...fillParent, backgroundColor: c.mode === 'dark' ? 'rgba(0,0,0,0.45)' : 'rgba(6,40,20,0.30)' },
 
   card: {
     marginHorizontal: gutter,
@@ -223,10 +222,10 @@ const styles = themed(({ c, elevation }) => ({
     backgroundColor: c.surface,
     ...elevation.md,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start' },
-  logo: { width: ms(58), height: ms(58) },
-  cardTitles: { flex: 1, marginLeft: space.md },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: space.sm, gap: space.sm },
+  cardTop: { alignItems: 'center' },
+  logo: { width: ms(64), height: ms(64), marginTop: -ms(48), borderWidth: 3, borderColor: c.surface, backgroundColor: c.surface },
+  cardTitles: { alignItems: 'center', marginTop: space.md },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginTop: space.sm, gap: space.sm },
   ratingChip: {},
   description: { marginTop: space.md },
 
@@ -242,8 +241,8 @@ const styles = themed(({ c, elevation }) => ({
   statValue: { marginTop: space.xs },
   statDivider: { width: StyleSheet.hairlineWidth, height: ms(30), backgroundColor: c.border },
 
-  addressRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: space.md },
-  addressText: { flex: 1, marginLeft: space.xs },
+  addressRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', marginTop: space.md },
+  addressText: { flexShrink: 1, marginLeft: space.xs, textAlign: 'center' },
 
   chipRow: { paddingHorizontal: gutter, paddingTop: space.xl, gap: space.sm },
   chip: {

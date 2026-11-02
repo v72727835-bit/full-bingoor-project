@@ -1,8 +1,8 @@
 import { ApiEnvelope, AuthResult, User } from '../types';
 import { api } from './client';
 
-export async function loginRequest(identifier: string, password: string, firebaseIdToken?: string): Promise<AuthResult> {
-  const { data } = await api.post<ApiEnvelope<AuthResult>>('/auth/login', { identifier, password, firebaseIdToken });
+export async function loginRequest(identifier: string, password: string): Promise<AuthResult> {
+  const { data } = await api.post<ApiEnvelope<AuthResult>>('/auth/login', { identifier, password });
   return data.data;
 }
 
@@ -11,8 +11,6 @@ export interface RegisterInput {
   phone: string;
   email?: string;
   password: string;
-  /** Firebase ID token from the OTP step. */
-  firebaseIdToken?: string;
 }
 
 export async function registerRequest(input: RegisterInput): Promise<AuthResult> {
@@ -35,7 +33,3 @@ export async function socialLoginRequest(provider: 'google' | 'facebook', access
   return data.data;
 }
 
-/** Forgot password: the verified phone OTP token lets the customer set a new password. */
-export async function resetPasswordRequest(phone: string, newPassword: string, firebaseIdToken: string): Promise<void> {
-  await api.post('/auth/reset-password', { phone, newPassword, firebaseIdToken });
-}

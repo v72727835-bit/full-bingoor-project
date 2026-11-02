@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
-import { gradient, ms, space, themed } from '../theme';
+import { ms, space, themed } from '../theme';
 import { Logo } from '../ui/Logo';
 import { Txt } from '../ui/Text';
 
@@ -38,7 +38,6 @@ export function SplashScreen() {
 }
 
 const styles = themed(({ c }) => ({
-  root: { flex: 1, backgroundColor: c.headerTo,
-    backgroundImage: `${gradient.glow(c.headerGlow, '100% 0%')}, ${gradient.down(c.headerFrom, c.headerTo)}`, alignItems: 'center', justifyContent: 'center' },
+  root: { flex: 1, backgroundColor: c.headerFrom, alignItems: 'center', justifyContent: 'center' },
   footer: { position: 'absolute', bottom: ms(48), paddingHorizontal: space.xl },
   footerText: { color: 'rgba(255,255,255,0.65)', textAlign: 'center' },}));

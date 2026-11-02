@@ -5,7 +5,6 @@ import { riderFilter } from './adminExtra.controller';
 import { codSummary } from '../services/rider.service';
 import { Cart } from '../models/Cart';
 import { Category, ICategory } from '../models/Category';
-import { DeviceToken } from '../models/DeviceToken';
 import { Coupon, ICoupon } from '../models/Coupon';
 import { IOrder, Order } from '../models/Order';
 import { IProduct, Product } from '../models/Product';
@@ -584,7 +583,6 @@ export const deleteUserAdmin = asyncHandler(async (req, res) => {
     }
     // Retain the identity referenced by orders, COD and wallet records.
     await User.updateOne({ _id: user._id }, { $set: { isActive: false, deletedAt: new Date(), refreshTokens: [], lastSeenAt: null } });
-    await DeviceToken.deleteMany({ user: user._id });
     return ok(res, { deleted: true });
   }
 
@@ -592,7 +590,7 @@ export const deleteUserAdmin = asyncHandler(async (req, res) => {
   if (orders > 0) {
     throw new ApiError(409, `${user.name} has ${orders} order${orders === 1 ? '' : 's'} on record, so the account cannot be deleted. Block it instead.`);
   }
-  await Promise.all([Cart.deleteMany({ user: user._id }), DeviceToken.deleteMany({ user: user._id })]);
+  await Cart.deleteMany({ user: user._id });
   await User.deleteOne({ _id: user._id });
   ok(res, { deleted: true });
 });

@@ -2,10 +2,6 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
-// Push notifications: active once android/app/google-services.json is added. Builds without it still work.
-if (file("google-services.json").exists()) {
-    apply plugin: "com.google.gms.google-services"
-}
 
 
 /**
@@ -85,7 +81,7 @@ android {
 
     namespace "com.bingoor.app"
     defaultConfig {
-        applicationId "com.bingoor.warehouse"
+        applicationId "com.bingoor.store"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Hash long generated C++ object paths before Ninja hits Windows MAX_PATH.

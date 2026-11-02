@@ -1,0 +1,31 @@
+# Rider app: sign in, open the active delivery, complete it with the customer's OTP.
+wait 12
+shot 01-start
+dump 01-start
+type Rider.mobile|^9876543210$ 9000000099
+type Your.rider.password|^Password$ Rider@1234
+hidekb
+tap Sign in as rider
+wait 8
+shot 02-home
+dump 02-home
+# The active order is under "My deliveries" (the battery / location dialogs are answered by the driver).
+tap ^My deliveries$
+wait 3
+shot 03-active
+dump 03-active
+# The bar at the bottom is always on screen while a parcel is out, whatever the phone size.
+tap ^Enter delivery OTP$
+wait 2
+shot 04-otp-sheet
+dump 04-otp-sheet
+see Confirm delivery
+typekeep ^••••$ __OTP__
+wait 1
+shot 05-otp-typed
+tap ^Mark as delivered$
+wait 4
+shot 06-after-deliver
+# Delivered: the sheet closes and the "out for delivery" bar goes away.
+gone Confirm delivery|Enter delivery OTP
+alive

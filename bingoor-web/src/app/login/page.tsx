@@ -6,8 +6,6 @@ import React, { Suspense, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { OrDivider, SocialSignIn } from '../../components/SocialSignIn';
 import { getErrorMessage } from '../../lib/client';
-import { otpRequiredPhone } from '../../lib/otp';
-import { OtpDialog } from '../../components/OtpDialog';
 import { AuthShell } from '../../components/AuthShell';
 import { Alert, Button, Field, Input, PageLoader } from '../../components/ui';
 
@@ -21,7 +19,6 @@ function LoginInner() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   // The server asks for an OTP on this number before it lets the customer in.
-  const [otpPhone, setOtpPhone] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,9 +28,7 @@ function LoginInner() {
       await login(identifier.trim(), password);
       router.replace(next);
     } catch (err) {
-      const needOtp = otpRequiredPhone(err);
-      if (needOtp !== null) setOtpPhone(needOtp || identifier.trim());
-      else setError(getErrorMessage(err));
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -85,21 +80,6 @@ function LoginInner() {
           </Link>
         </div>
       </form>
-      {otpPhone ? (
-        <OtpDialog
-          phone={otpPhone}
-          onClose={() => setOtpPhone(null)}
-          onVerified={async (token) => {
-            try {
-              await login(identifier.trim(), password, token);
-              router.replace(next);
-            } catch (err) {
-              setOtpPhone(null);
-              setError(getErrorMessage(err));
-            }
-          }}
-        />
-      ) : null}
     </AuthShell>
   );
 }

@@ -397,9 +397,9 @@ const styles = themed(({ c, elevation }) => ({
   banner: { marginBottom: space.lg },
 
   groupLabel: { marginBottom: space.sm },
-  locate: { marginBottom: space.xs },
-  pinRow: { flexDirection: 'row', gap: space.xs, marginTop: space.xs },
-  locateHint: { marginBottom: space.lg },
+  locate: { marginBottom: space.xs, alignSelf: 'stretch' },
+  pinRow: { flexDirection: 'row', justifyContent: 'center', gap: space.md, marginTop: space.xs, marginBottom: space.md },
+  locateHint: { marginBottom: space.sm, textAlign: 'center' },
   labelRow: { flexDirection: 'row', marginBottom: space.xl, gap: space.sm },
   labelBtn: {
     flex: 1,

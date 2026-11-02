@@ -2,8 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getErrorMessage, getFieldErrors, otpRequiredPhone } from '../api/client';
-import { OtpModal } from '../components/OtpModal';
+import { getErrorMessage, getFieldErrors } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { AuthNav } from '../navigation/types';
 import { colors, gutter, ms, radius, space, themed } from '../theme';
@@ -30,7 +29,6 @@ export function SignupScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [needOtp, setNeedOtp] = useState(false);
 
   const strength = useMemo(() => passwordStrength(form.password), [form.password]);
 
@@ -61,8 +59,7 @@ export function SignupScreen() {
       });
     } catch (err) {
       const fields = getFieldErrors(err);
-      if (otpRequiredPhone(err) !== null) setNeedOtp(true);
-      else if (Object.keys(fields).length) setErrors(fields);
+      if (Object.keys(fields).length) setErrors(fields);
       else setFormError(getErrorMessage(err));
     } finally {
       setBusy(false);
@@ -80,10 +77,10 @@ export function SignupScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Txt variant="h1" style={styles.title}>
+          <Txt variant="h1" center style={styles.title}>
             Let&apos;s get you set up
           </Txt>
-          <Txt variant="bodyLg" tone="muted" style={styles.subtitle}>
+          <Txt variant="bodyLg" tone="muted" center style={styles.subtitle}>
             It takes about a minute. Your number is how shops reach you about an order.
           </Txt>
 
@@ -174,15 +171,7 @@ export function SignupScreen() {
           <Button label="Create account" onPress={submit} loading={busy} size="lg" style={styles.submit} />
 
           <Txt variant="caption" tone="faint" center style={styles.legal}>
-            By continuing you agree to Bingoor&apos;s{' '}
-            <Txt variant="caption" tone="brand" onPress={() => navigation.navigate('Legal', { doc: 'terms' })}>
-              Terms & Conditions
-            </Txt>{' '}
-            and{' '}
-            <Txt variant="caption" tone="brand" onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}>
-              Privacy Policy
-            </Txt>
-            .
+            By continuing you agree to Bingoor&apos;s Terms of Service and Privacy Policy.
           </Txt>
         </ScrollView>
 
@@ -197,21 +186,6 @@ export function SignupScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-      {needOtp ? (
-        <OtpModal
-          phone={form.phone}
-          onClose={() => setNeedOtp(false)}
-          onVerified={async (token) => {
-            try {
-              await signUp({ name: form.name.trim(), phone: normalizePhone(form.phone), password: form.password, firebaseIdToken: token });
-              setNeedOtp(false);
-            } catch (err) {
-              setNeedOtp(false);
-              setFormError(getErrorMessage(err));
-            }
-          }}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

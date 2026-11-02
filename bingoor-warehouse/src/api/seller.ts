@@ -64,3 +64,4 @@ export const sellerCustomers = (p: { page?: number; limit?: number; q?: string }
 export const sellerShops = async (): Promise<Shop[]> => (await api.get('/seller/shops')).data.data;
 export const updateShop = async (id: string, body: Record<string, unknown>): Promise<Shop> => (await api.patch(`/seller/shops/${id}`, body)).data.data;
 export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => { await api.post('/seller/change-password', { currentPassword, newPassword }); };
+

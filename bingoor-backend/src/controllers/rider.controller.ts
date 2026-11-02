@@ -1,4 +1,3 @@
-import { notifyBackToPickup, notifyOrderStatus, notifyRiderAssigned } from '../services/orderNotify.service';
 import { FilterQuery } from 'mongoose';
 import { Order, IOrder } from '../models/Order';
 import { riderWarehouseIds, User } from '../models/User';
@@ -106,7 +105,6 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     { new: true },
   ).select('-statusHistory -deliveryOtp').populate('shop', 'name address phone location').populate('user', 'name phone').lean();
   if (!order) throw new ApiError(409, 'This order is no longer available for pickup');
-  notifyRiderAssigned(order, false);
   ok(res, order);
 });
 
@@ -127,7 +125,6 @@ export const deliverOrder = asyncHandler(async (req, res) => {
   const result = await Order.findById(order._id).select('-statusHistory -deliveryOtp').populate('shop', 'name').populate('user', 'name phone').lean();
   // Cash on delivery: pause the rider once their unsubmitted cash crosses the limit.
   if (order.paymentMethod === 'cod') await autoPauseIfOverLimit(req.user!.id);
-  notifyOrderStatus(order, 'delivered');
   ok(res, result);
 });
 
@@ -148,7 +145,6 @@ export const cancelOrder = asyncHandler(async (req, res) => {
   );
   if (!order) throw new ApiError(404, 'Active delivery not found');
   await User.updateOne({ _id: req.user!.id }, { $inc: { riderCancelCount: 1 } });
-  notifyBackToPickup(order);
   ok(res, { message: 'Delivery cancelled. The order is back in the pickup queue.' });
 });
 /**
