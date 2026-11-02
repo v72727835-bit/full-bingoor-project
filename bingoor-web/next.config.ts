@@ -7,6 +7,8 @@ const lowResource = process.env.BINGOOR_LOW_RESOURCE === '1';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // A new value on every build: the app download links carry it, so a phone never reuses an old answer for them.
+  env: { NEXT_PUBLIC_BUILD_ID: String(Date.now()) },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**' },

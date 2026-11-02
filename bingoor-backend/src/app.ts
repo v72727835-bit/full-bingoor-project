@@ -101,10 +101,15 @@ app.use(
   express.static(path.resolve(process.cwd(), 'downloads'), {
     maxAge: '10m',
     setHeaders: (res, file) => {
-      res.setHeader('Content-Disposition', 'attachment');
+      // An explicit file name: some phone browsers save a nameless attachment as "file.bin" or refuse it.
+      res.setHeader('Content-Disposition', `attachment; filename="${path.basename(file)}"`);
       if (file.endsWith('.apk')) res.setHeader('Content-Type', 'application/vnd.android.package-archive');
     },
   }),
+  // Not published yet (e.g. a new build is still running): never let a phone keep this answer.
+  (_req: express.Request, res: express.Response) => {
+    res.status(404).set('Cache-Control', 'no-store').json({ success: false, message: 'This app is being updated. Please try again in a few minutes.' });
+  },
 );
 if (env.NODE_ENV !== 'test') app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
