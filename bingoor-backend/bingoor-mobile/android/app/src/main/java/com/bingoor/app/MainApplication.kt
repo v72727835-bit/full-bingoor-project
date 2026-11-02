@@ -15,14 +15,16 @@ class MainApplication : Application(), ReactApplication {
       useDevSupport = BuildConfig.DEBUG,
       packageList =
         PackageList(this).packages.apply {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          // The loud booking / order bell (RingModule).
+          add(RingPackage())
         },
     )
   }
 
   override fun onCreate() {
     super.onCreate()
+    // The ring channel must exist before the first ring push, even if the app is never opened again.
+    RingModule.ensureChannel(this)
     loadReactNative(this)
   }
 }

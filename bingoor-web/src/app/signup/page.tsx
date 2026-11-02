@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../lib/client';
-import { otpRequiredPhone } from '../../lib/otp';
-import { OtpDialog } from '../../components/OtpDialog';
 import { AuthShell } from '../../components/AuthShell';
 import { PasswordField } from '../../components/PasswordField';
 import { OrDivider, SocialSignIn } from '../../components/SocialSignIn';
@@ -27,7 +25,6 @@ function SignupInner() {
   const [created, setCreated] = useState<{ phone: string; password: string } | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [needOtp, setNeedOtp] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +46,7 @@ function SignupInner() {
       await register(name.trim(), phone.trim(), password);
       setCreated({ phone: phone.trim(), password });
     } catch (err) {
-      if (otpRequiredPhone(err) !== null) setNeedOtp(true);
-      else setError(getErrorMessage(err));
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -115,22 +111,6 @@ function SignupInner() {
           Create an account
         </Button>
       </form>
-      {needOtp ? (
-        <OtpDialog
-          phone={phone}
-          onClose={() => setNeedOtp(false)}
-          onVerified={async (token) => {
-            try {
-              await register(name.trim(), phone.trim(), password, undefined, token);
-              setNeedOtp(false);
-              setCreated({ phone: phone.trim(), password });
-            } catch (err) {
-              setNeedOtp(false);
-              setError(getErrorMessage(err));
-            }
-          }}
-        />
-      ) : null}
       {created ? (
         <div className={ps.overlay} role="dialog" aria-modal="true" aria-labelledby="acct-done">
           <div className={ps.dialog}>

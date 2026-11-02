@@ -1,17 +1,17 @@
 import Icon from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { Image, Pressable, RefreshControl, ScrollView, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { ProductCard } from '../components/ProductCard';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useFestivalQuery } from '../store/catalogApi';
 import { useDeliveryPointKey } from '../store/deliveryPoint';
-import { useLocalName } from '../store/language';
 import { gutter, ms, radius, space, themed, useTheme } from '../theme';
 import { Banner, EmptyState } from '../ui/Feedback';
 import { Screen } from '../ui/Screen';
 import { ProductCardSkeleton, SkeletonBlock } from '../ui/Skeleton';
+import { SectionHeader } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { useGrid } from '../utils/layout';
 
@@ -26,11 +26,6 @@ export function FestivalScreen({ active }: TabScreenProps) {
   const nav = useNavigation<AppNav>();
   const { c } = useTheme();
   const grid = useGrid(158, space.md);
-  const ln = useLocalName();
-  // #27: each aisle is one sideways row (up to 21 products), three cards in
-  // view with the next one peeking, like the home page rails.
-  const { width: screenW } = useWindowDimensions();
-  const railCard = Math.min(ms(170), Math.floor((screenW - gutter * 2 - space.sm * 2) / 3.2));
   const area = useDeliveryPointKey();
   const { data, error: queryError, isLoading, refetch } = useFestivalQuery(area, { skip: !active });
   const [refreshing, setRefreshing] = useState(false);
@@ -73,7 +68,7 @@ export function FestivalScreen({ active }: TabScreenProps) {
         {data?.banner ? (
           <Image source={{ uri: data.banner }} style={styles.bannerArt} resizeMode="cover" accessibilityIgnoresInvertColors />
         ) : (
-          <Txt variant="display" style={styles.title}>
+          <Txt variant="display" center style={styles.title}>
             {data?.name ?? 'Festival'}
           </Txt>
         )}
@@ -88,20 +83,18 @@ export function FestivalScreen({ active }: TabScreenProps) {
 
         {data?.sections.map((section) => (
           <View key={section.category._id} style={styles.section}>
-            <Txt variant="h2" numberOfLines={2} style={styles.sectionTitle}>
-              {section.title && section.title !== section.category.name ? section.title : ln(section.category)}
-            </Txt>
+            <SectionHeader title={section.title || section.category.name} padded={false} style={styles.sectionTitle} />
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.rail} contentContainerStyle={styles.railPad}>
+            <View style={styles.grid}>
               {section.items.map((p) => (
                 <ProductCard
                   key={p._id}
                   product={p}
-                  width={railCard}
+                  width={grid.cardWidth}
                   onPress={() => nav.navigate('ProductDetail', { id: p._id, name: p.name })}
                 />
               ))}
-            </ScrollView>
+            </View>
 
             {/* Straight into the aisle, where every child aisle is listed. */}
             <Pressable
@@ -113,7 +106,7 @@ export function FestivalScreen({ active }: TabScreenProps) {
               style={({ pressed }) => [styles.seeAll, pressed && { opacity: 0.8 }]}
             >
               <Txt variant="label" tone="brand">
-                See all {ln(section.category)}
+                See all {section.category.name}
               </Txt>
               <Icon name="arrow-forward" size={ms(16)} color={c.brandText} />
             </Pressable>
@@ -137,16 +130,14 @@ const styles = themed(({ c }) => ({
   },
   title: { marginBottom: space.lg },
   section: { marginBottom: space.xl },
-  sectionTitle: { marginBottom: space.md },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
-  rail: { marginHorizontal: -gutter },
-  railPad: { paddingHorizontal: gutter, gap: space.sm },
+  sectionTitle: { marginBottom: space.lg },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: space.md },
   seeAll: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     gap: space.xs,
-    marginTop: space.md,
+    marginTop: space.lg,
     paddingVertical: space.sm,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,

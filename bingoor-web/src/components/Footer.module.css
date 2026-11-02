@@ -287,3 +287,8 @@
   transform: translateY(-2px);
   background: var(--brand, #16a34a);
 }
+
+/* The app downloads section above already gives the space. */
+.afterApps {
+  margin-top: 24px;
+}

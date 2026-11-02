@@ -2,15 +2,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Address, ProductSort } from '../types';
 
-/** The policy pages the app shows, in both the signed-out and signed-in flows. */
-export type LegalDoc = 'privacy' | 'terms' | 'cancellation';
-
 export type AuthStackParamList = {
   Onboarding: undefined;
   Login: { phone?: string } | undefined;
   Signup: undefined;
   ForgotPassword: undefined;
-  Legal: { doc: LegalDoc };
 };
 
 export type AppStackParamList = {
@@ -35,11 +31,6 @@ export type AppStackParamList = {
   Support: undefined;
   EditProfile: undefined;
   ChangePassword: undefined;
-  Legal: { doc: LegalDoc };
-  Contact: undefined;
-  Login: { phone?: string } | undefined;
-  Signup: undefined;
-  ForgotPassword: undefined;
 };
 
 export type AppNav = NativeStackNavigationProp<AppStackParamList>;

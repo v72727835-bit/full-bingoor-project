@@ -5,7 +5,7 @@ import { Animated, BackHandler, ScrollView, StatusBar, StyleSheet, View } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabs } from '../navigation/TabsContext';
 import type { AppNav, AppRoute } from '../navigation/types';
-import { colors, currency, gradient, gutter, ms, radius, space, themed } from '../theme';
+import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { Button } from '../ui/Button';
 import { LogoMark } from '../ui/Logo';
 import { Txt } from '../ui/Text';
@@ -118,8 +118,7 @@ export function OrderSuccessScreen() {
 }
 
 const styles = themed(({ c }) => ({
-  root: { flex: 1, backgroundColor: c.headerTo,
-    backgroundImage: `${gradient.glow(c.headerGlow, '100% 0%')}, ${gradient.down(c.headerFrom, c.headerTo)}` },
+  root: { flex: 1, backgroundColor: c.headerFrom },
   flex: { flex: 1 },
   content: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: gutter, paddingVertical: space.xxl },
 

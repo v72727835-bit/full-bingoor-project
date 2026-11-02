@@ -3,7 +3,6 @@ import { IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { riderWarehouseIds, User } from '../models/User';
 import { ApiError } from '../utils/ApiError';
-import { notifyOrderStatus, notifyRiderAssigned } from './orderNotify.service';
 import { ONLINE_WINDOW_MS } from './rider.service';
 import { createShiprocketOrder } from './shiprocket.service';
 import { creditSellerEarnings } from './sellerPay.service';
@@ -46,7 +45,6 @@ export async function moveOrderStatus(orderId: string, status: IOrder['status'],
   }
   // A store-side delivery (e.g. a Shiprocket order marked delivered) still earns the sellers their share.
   if (status === 'delivered') await creditSellerEarnings(updated._id).catch(() => undefined);
-  notifyOrderStatus(updated, status);
   return updated;
 }
 
@@ -113,7 +111,6 @@ export async function assignRiderToOrder(orderId: string, riderId: string, by: s
     { new: true },
   );
   if (!updated) throw new ApiError(409, 'This order changed a moment ago. Refresh and try again.');
-  notifyRiderAssigned(updated, true);
   return updated;
 }
 
@@ -138,7 +135,6 @@ export async function assignToShiprocket(orderId: string, by: string) {
     { new: true },
   );
   if (!updated) throw new ApiError(409, 'This order changed a moment ago. Refresh and try again.');
-  notifyOrderStatus(updated, 'out_for_delivery');
   return updated;
 }
 

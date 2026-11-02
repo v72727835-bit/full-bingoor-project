@@ -7,7 +7,6 @@ import { freeRidersForOrder } from '../src/services/orderFlow.service';
 import { deleteUserAdmin, listOrdersAdmin } from '../src/controllers/admin.controller';
 import { Order } from '../src/models/Order';
 import { User } from '../src/models/User';
-import { DeviceToken } from '../src/models/DeviceToken';
 import { adminShopBody, adminShopUpdateBody, riderDeliveryBody } from '../src/validators/schemas';
 
 afterEach(() => mock.restoreAll());
@@ -89,7 +88,6 @@ test('deleting an eligible rider disables login while preserving order and walle
     assert.deepEqual(body.$set.refreshTokens, []);
     return {} as any;
   });
-  mock.method(DeviceToken, 'deleteMany', async () => ({}) as any);
   const remove = mock.method(User, 'deleteOne', async () => ({}) as any);
   await invoke(deleteUserAdmin);
   assert.equal(update.mock.callCount(), 1);

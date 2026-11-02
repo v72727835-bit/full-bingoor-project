@@ -6,37 +6,14 @@ import { colors } from '../theme';
 export interface LatLng { latitude: number; longitude: number }
 
 /**
- * A map inside a WebView showing the rider and the customer with a line between
- * them. When the admin has set a Google Maps API key (passed as `googleApiKey`,
- * from /settings/public) the map uses Google Maps; otherwise it falls back to
- * the free OpenStreetMap/Leaflet map.
+ * A free OpenStreetMap map, drawn with Leaflet inside a WebView — the same
+ * maps the Bingoor website uses, so there is no Google Maps key to manage.
+ * Shows the rider and the customer with a line between them.
  */
-export function OsmMap({ rider, destination, height = 210, googleApiKey }: { rider?: LatLng | null; destination: LatLng; height?: number; googleApiKey?: string | null }) {
+export function OsmMap({ rider, destination, height = 210 }: { rider?: LatLng | null; destination: LatLng; height?: number }) {
   const html = useMemo(() => {
     const r = rider ? [rider.latitude, rider.longitude] : null;
     const d = [destination.latitude, destination.longitude];
-
-    if (googleApiKey) {
-      return `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<style>html,body,#m{height:100%;margin:0}#m{background:#e8eef2}</style></head>
-<body><div id="m"></div>
-<script>
-  var d=${JSON.stringify({ lat: d[0], lng: d[1] })}, r=${r ? JSON.stringify({ lat: r[0], lng: r[1] }) : 'null'};
-  function init(){
-    var map=new google.maps.Map(document.getElementById('m'),{center:d,zoom:15,disableDefaultUI:false,clickableIcons:false,fullscreenControl:false,mapTypeControl:false,streetViewControl:false});
-    new google.maps.Marker({position:d,map:map,title:'Customer'});
-    if(r){
-      new google.maps.Marker({position:r,map:map,title:'You',icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:'${colors.primary}',fillOpacity:1,strokeColor:'#fff',strokeWeight:2}});
-      new google.maps.Polyline({path:[r,d],map:map,strokeColor:'${colors.primary}',strokeWeight:4});
-      var b=new google.maps.LatLngBounds();b.extend(r);b.extend(d);map.fitBounds(b,40);
-    }
-  }
-  window.gmFail=function(){document.getElementById('m').innerHTML='<div style="padding:12px;font:13px system-ui;color:#666">Map unavailable</div>';};
-</script>
-<script async src="https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleApiKey)}&callback=init" onerror="gmFail()"></script>
-</body></html>`;
-    }
-
     return `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>html,body,#m{height:100%;margin:0}#m{background:#e8eef2}</style></head>
@@ -55,7 +32,7 @@ export function OsmMap({ rider, destination, height = 210, googleApiKey }: { rid
     map.fitBounds([r,d],{padding:[40,40]});
   }
 </script></body></html>`;
-  }, [rider, destination, googleApiKey]);
+  }, [rider, destination]);
 
   return (
     <View style={[styles.wrap, { height }]}>

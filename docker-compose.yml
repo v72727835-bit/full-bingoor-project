@@ -8,6 +8,7 @@
 # Server-only settings live outside the repository:
 #   $BINGOOR_ENV_DIR/backend.env   the API's .env (MONGO_URI, JWT secrets, ...)
 #   $BINGOOR_DATA_DIR/uploads      files older builds wrote to disk
+#   $BINGOOR_DATA_DIR/downloads    the app APKs served at api.bingoor.com/downloads
 
 name: bingoor
 
@@ -23,6 +24,7 @@ services:
     env_file: ${BINGOOR_ENV_DIR:-/opt/bingoor-env}/backend.env
     volumes:
       - ${BINGOOR_DATA_DIR:-/opt/bingoor-data}/uploads:/app/uploads
+      - ${BINGOOR_DATA_DIR:-/opt/bingoor-data}/downloads:/app/downloads:ro
     network_mode: host
     restart: unless-stopped
 

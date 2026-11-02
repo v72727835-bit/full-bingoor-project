@@ -15,6 +15,9 @@ Server-only files, never in git:
 
 - `/opt/bingoor-env/backend.env`: the API's `.env` (database, JWT secrets).
 - `/opt/bingoor-data/uploads`: files older builds wrote to disk.
+- `/opt/bingoor-data/downloads`: the app APKs, served at api.bingoor.com/downloads.
+  The Build APKs workflow pushes them to the `apk-builds` branch and runs the deploy
+  key with `apks`, which only copies them here (no rebuild); every deploy refreshes them too.
 
 The website and admin get their API URL at build time (`NEXT_PUBLIC_API_URL`,
 default `https://api.bingoor.com/api/v1`).

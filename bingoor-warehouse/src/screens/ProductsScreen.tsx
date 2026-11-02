@@ -107,7 +107,8 @@ function ProductForm({ product, onClose, onSaved }: { product: Product | null; o
   const catName = category ? (byId.get(category) ? path(byId.get(category)!) : name(product?.category ?? '')) : 'Choose a category';
 
   const addImages = async () => {
-    const res = await launchImageLibrary({ mediaType: 'photo', selectionLimit: Math.max(1, 10 - images.length), quality: 0.8 });
+    // Resized on the phone so each photo fits the 200 KB limit and uploads fast on mobile data.
+    const res = await launchImageLibrary({ mediaType: 'photo', selectionLimit: Math.max(1, 10 - images.length), quality: 0.7, maxWidth: 1080, maxHeight: 1080 });
     if (res.didCancel || !res.assets?.length) return;
     setBusy(true); setError('');
     try {

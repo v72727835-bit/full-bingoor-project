@@ -4,13 +4,12 @@ import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react
 import { useCart } from '../context/CartContext';
 import { NotifyMeSheet } from './NotifyMeSheet';
 import { useWishlist } from '../context/WishlistContext';
-import { colors, currency, fillParent, glowShadow, hitSlop, ms, radius, space, themed } from '../theme';
+import { colors, currency, fillParent, hitSlop, ms, radius, space, themed } from '../theme';
 import { ProductSummary } from '../types';
 import { StarLine } from '../ui/Rating';
 import { SmartImage } from '../ui/SmartImage';
 import { Stepper } from '../ui/Stepper';
 import { Txt } from '../ui/Text';
-import { useLocalName } from '../store/language';
 
 interface Props {
   product: ProductSummary;
@@ -24,14 +23,12 @@ interface Props {
 /**
  * The tile the whole shop is built on - home rails, category grids, search.
  *
- * Order matters here and follows how someone actually scans a shelf: picture,
- * then pack size, then the price and the saving, then the name, then the small
- * print. The price sits directly under the image rather than at the bottom of
- * a ragged card, so a row of cards lines up on the number that decides the sale.
+ * Picture first, with the pack size and the add control on its bottom edge,
+ * then a centred column: name, price, rating, delivery time. The name keeps a
+ * fixed two-line height so a row of cards lines up on the price.
  */
 export function ProductCard({ product, width, onPress, deliveryText = '19 min', style }: Props) {
   const { quantityOf, add, setQuantity, remove, pending } = useCart();
-  const ln = useLocalName();
   const { isSaved, toggle } = useWishlist();
   const [notifyOpen, setNotifyOpen] = useState(false);
 
@@ -137,14 +134,12 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
 
       {/* ----------------------------------------------------------- text -- */}
       <View style={styles.body}>
+        <Txt variant="bodySm" tone="ink" weight="600" center numberOfLines={2} style={styles.name}>
+          {product.name}
+        </Txt>
+
         <View style={styles.priceRow}>
-          {/* A real saving gets the highlighter-pen swipe, the way a shopkeeper
-              circles the good deals on the board outside. */}
-          <Txt
-            variant="price"
-            numberOfLines={1}
-            style={off >= 15 ? styles.priceMarked : undefined}
-          >
+          <Txt variant="priceSm" numberOfLines={1}>
             {currency(product.price)}
           </Txt>
           {product.mrp > product.price ? (
@@ -153,28 +148,6 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
             </Txt>
           ) : null}
         </View>
-
-        {off > 0 ? (
-          <Txt variant="caption" tone="save" numberOfLines={1}>
-            {off}% OFF on MRP
-          </Txt>
-        ) : null}
-
-        <Txt variant="bodySm" tone="body" numberOfLines={3} style={styles.name}>
-          {ln(product)}
-        </Txt>
-
-        {product.attributes?.length ? (
-          <View style={styles.chips}>
-            {product.attributes.slice(0, 2).map((a) => (
-              <View key={a} style={styles.chip}>
-                <Txt variant="caption" tone="muted" numberOfLines={1}>
-                  {a}
-                </Txt>
-              </View>
-            ))}
-          </View>
-        ) : null}
 
         {product.rating > 0 || product.ratingLabel ? (
           <View style={styles.rateRow}>
@@ -191,8 +164,8 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
         ) : null}
 
         <View style={styles.eta}>
-          <Icon name="time-outline" size={ms(11)} color={colors.inkFaint} />
-          <Txt variant="caption" tone="faint">
+          <Icon name="time-outline" size={ms(11)} color={colors.inkMuted} />
+          <Txt variant="caption" tone="muted">
             {/* Aisles the admin put on the slower schedule say so here. */}
             {product.deliveryDays && product.deliveryDays > 1 ? `${product.deliveryDays} days` : deliveryText}
           </Txt>
@@ -205,7 +178,7 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
 
 const styles = themed(({ c }) => ({
   card: { backgroundColor: 'transparent' },
-  rateRow: { flexDirection: 'row', alignItems: 'center', gap: ms(5), flexWrap: 'wrap' },
+  rateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: ms(5), flexWrap: 'wrap' },
   pressed: { opacity: 0.7 },
 
   imageWrap: {
@@ -222,13 +195,12 @@ const styles = themed(({ c }) => ({
     position: 'absolute',
     top: 0,
     left: 0,
-    backgroundColor: c.brand,
-    backgroundImage: `linear-gradient(135deg, ${c.brandLight} 0%, ${c.brand} 100%)`,
-    paddingHorizontal: ms(5),
+    backgroundColor: c.save,
+    paddingHorizontal: ms(6),
     paddingVertical: ms(2),
-    borderBottomRightRadius: radius.xs,
+    borderBottomRightRadius: radius.sm,
   },
-  flagText: { color: '#FFFFFF', fontWeight: '800', fontSize: ms(9.5) },
+  flagText: { color: '#FFFFFF', fontWeight: '700', fontSize: ms(9.5), letterSpacing: 0.3 },
 
   heart: {
     position: 'absolute',
@@ -299,25 +271,16 @@ const styles = themed(({ c }) => ({
     backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: glowShadow(c.glow, 3, 10),
   },
   addBtnPressed: { backgroundColor: c.brandSurface },
   notifyBtn: { borderColor: c.danger },
   notifyLabel: { color: c.danger, fontWeight: '800' },
   addLabel: { fontWeight: '800', letterSpacing: 0.7 },
 
-  body: { paddingTop: space.sm, gap: ms(3) },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: ms(5), flexWrap: 'wrap' },
-  priceMarked: {
-    backgroundColor: c.priceMark,
-    color: c.onPriceMark,
-    paddingHorizontal: ms(4),
-    borderRadius: ms(4),
-    overflow: 'hidden',
-  },
+  body: { paddingTop: space.sm, gap: ms(4), alignItems: 'center' },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: ms(5), flexWrap: 'wrap' },
   mrp: { textDecorationLine: 'line-through' },
-  name: { marginTop: ms(1) },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: ms(4) },
+  name: { minHeight: ms(38) },
   chip: {
     backgroundColor: c.surfaceSunken,
     borderRadius: radius.xs,
@@ -326,5 +289,5 @@ const styles = themed(({ c }) => ({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.border,
   },
-  eta: { flexDirection: 'row', alignItems: 'center', gap: ms(3), marginTop: ms(1) },
+  eta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: ms(3) },
 }));

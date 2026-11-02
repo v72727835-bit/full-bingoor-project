@@ -11,14 +11,13 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { colors, glowShadow, gradient, gutter, ms, radius, space, themed, useTheme } from '../theme';
+import { colors, gradient, gutter, ms, radius, space, themed, useTheme } from '../theme';
 import type { Banner, Category, HomeSection, ProductSummary, ShopSummary } from '../types';
 import { Illustration } from '../ui/Illustration';
-import { SmartImage } from '../ui/SmartImage';
+import { SectionHeader } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { CategoryCircle, CategoryTile } from './CategoryTile';
 import { ProductCard } from './ProductCard';
-import { useLang } from '../store/language';
 
 export interface SectionHandlers {
   onProduct: (p: ProductSummary) => void;
@@ -33,59 +32,29 @@ export interface SectionHandlers {
 
 function Heading({
   title,
-  titleHi,
   subtitle,
-  art,
   onDark,
   actionLabel,
   onAction,
   right,
 }: {
   title?: string;
-  titleHi?: string;
   subtitle?: string;
-  art?: string;
   onDark?: boolean;
   actionLabel?: string;
   onAction?: () => void;
   right?: React.ReactNode;
 }) {
-  const lang = useLang();
   if (!title) return null;
   return (
-    <View style={styles.heading}>
-      <View style={styles.headingText}>
-        <View style={styles.headingTitleRow}>
-          <Txt variant="h2" tone={onDark ? 'onHeader' : 'ink'} numberOfLines={2} style={styles.headingTitle}>
-            {lang === 'hi' && titleHi ? titleHi : title}
-          </Txt>
-          {art ? <Illustration name={art} size={26} /> : null}
-        </View>
-        {subtitle ? (
-          <Txt
-            variant="bodySm"
-            numberOfLines={2}
-            style={[styles.headingSub, { color: onDark ? colors.onHeaderMuted : colors.inkMuted }]}
-          >
-            {subtitle}
-          </Txt>
-        ) : null}
-      </View>
-      {right}
-      {actionLabel && onAction ? (
-        <Pressable
-          onPress={onAction}
-          hitSlop={8}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.seeAll, pressed && { opacity: 0.7 }]}
-        >
-          <Txt variant="labelSm" tone="brand">
-            {actionLabel}
-          </Txt>
-          <Icon name="chevron-forward" size={ms(13)} color={colors.brandText} />
-        </Pressable>
-      ) : null}
-    </View>
+    <SectionHeader
+      title={title}
+      subtitle={subtitle}
+      onDark={onDark}
+      right={right}
+      actionLabel={actionLabel}
+      onAction={onAction}
+    />
   );
 }
 
@@ -211,8 +180,8 @@ const BannerSlide = React.memo(function BannerSlide({
           ? [styles.bannerPhoto, { width, height: Math.round(width * (9 / 26)) }]
           : {
               width,
-              backgroundImage: `${gradient.glow('rgba(255,255,255,0.22)', '92% 8%')}, ${gradient.diagonal(from, to)}`,
-              boxShadow: glowShadow(`${to}55`, 8, 20),
+              backgroundColor: from,
+              backgroundImage: gradient.diagonal(from, to),
             },
         pressed && { transform: [{ scale: 0.985 }] },
       ]}
@@ -306,8 +275,8 @@ export function HomeSectionView({
       const w = Math.floor((gridWidth - tileGap * (cols - 1)) / cols);
       return (
         <View style={styles.strip}>
-          <Heading title={section.title} titleHi={section.titleHi} subtitle={section.subtitle} />
-          <View style={[styles.grid, { gap: tileGap }]}>
+          <Heading title={section.title} subtitle={section.subtitle} />
+          <View style={[styles.grid, styles.gridCentered, { gap: tileGap }]}>
             {section.items.map((c) => (
               <CategoryTile key={c._id} category={c} width={w} onPress={() => handlers.onCategory(c)} />
             ))}
@@ -322,15 +291,13 @@ export function HomeSectionView({
         <View
           style={[
             styles.strip,
-            deals ? { backgroundImage: gradient.down(colors.dealsFrom, colors.dealsTo) } : null,
+            deals ? { backgroundColor: colors.dealsFrom } : null,
             !deals && section.tint ? { backgroundColor: tint(section.tint) } : null,
           ]}
         >
           <Heading
             title={section.title}
-            titleHi={section.titleHi}
             subtitle={section.subtitle}
-            art={deals ? 'fire' : undefined}
             onDark={deals}
             right={deals ? <MidnightCountdown /> : undefined}
             actionLabel={section.seeAllSlug ? 'See all' : undefined}
@@ -343,6 +310,23 @@ export function HomeSectionView({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.railPad}
             style={styles.railTop}
+            ListFooterComponent={
+              section.seeAllSlug ? (
+                <Pressable
+                  onPress={() => handlers.onSeeAll(section.seeAllSlug!, section.title ?? '')}
+                  accessibilityRole="button"
+                  accessibilityLabel={`See all ${section.title ?? ''}`}
+                  style={({ pressed }) => [styles.tail, { width: Math.round(cardWidth * 0.72), height: Math.round(cardWidth * 0.94) }, pressed && { opacity: 0.7 }]}
+                >
+                  <View style={styles.tailIcon}>
+                    <Icon name="arrow-forward" size={ms(18)} color={colors.brandText} />
+                  </View>
+                  <Txt variant="labelSm" tone="brand" center>
+                    See all
+                  </Txt>
+                </Pressable>
+              ) : undefined
+            }
             renderItem={({ item }) => (
               <View style={[{ width: cardWidth + (deals ? space.md : 0) }, deals && styles.dealCard]}>
                 <ProductCard
@@ -363,8 +347,8 @@ export function HomeSectionView({
       const w = Math.floor((gridWidth - gap * (columns - 1)) / columns);
       const warm = section.style === 'trending';
       return (
-        <View style={[styles.strip, warm && { backgroundImage: gradient.down(colors.surfaceTint, colors.surface) }]}>
-          <Heading title={section.title} titleHi={section.titleHi} subtitle={section.subtitle} art={warm ? 'sparkles' : undefined} />
+        <View style={[styles.strip, warm && { backgroundColor: colors.surfaceTint }]}>
+          <Heading title={section.title} subtitle={section.subtitle} />
           <View style={[styles.grid, { gap, rowGap: space.lg }]}>
             {section.items.map((p) => (
               <ProductCard
@@ -399,7 +383,7 @@ export function FeedFooter() {
       <Txt style={styles.footerMark} numberOfLines={1} adjustsFontSizeToFit>
         Bingoor
       </Txt>
-      <Txt variant="bodySm" tone="faint">
+      <Txt variant="bodySm" tone="faint" center>
         Your neighbourhood store, in minutes.
       </Txt>
       <View style={styles.footerLine}>
@@ -418,21 +402,6 @@ export function FeedFooter() {
 const styles = themed(({ c }) => ({
   strip: { paddingTop: space.xl, paddingBottom: space.xl, backgroundColor: c.surface },
 
-  heading: { flexDirection: 'row', alignItems: 'flex-end', gap: space.md, paddingHorizontal: gutter },
-  headingText: { flex: 1 },
-  headingTitleRow: { flexDirection: 'row', alignItems: 'center', gap: ms(6) },
-  headingTitle: { flexShrink: 1 },
-  headingSub: { marginTop: ms(2) },
-  seeAll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(2),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderRadius: radius.pill,
-    backgroundColor: c.brandSurface,
-  },
-
   clock: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -440,12 +409,11 @@ const styles = themed(({ c }) => ({
     backgroundColor: c.priceMark,
     paddingHorizontal: ms(8),
     paddingVertical: ms(4),
-    borderRadius: radius.xs,
-    marginBottom: ms(2),
+    borderRadius: radius.pill,
   },
   clockText: { color: c.onPriceMark, fontVariant: ['tabular-nums'] },
 
-  railTop: { marginTop: space.md },
+  railTop: { marginTop: space.lg },
   railPad: { paddingHorizontal: gutter, gap: space.md },
   dealCard: {
     backgroundColor: c.surface,
@@ -454,7 +422,9 @@ const styles = themed(({ c }) => ({
     paddingBottom: space.sm,
   },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: space.md, paddingHorizontal: gutter },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: space.lg, paddingHorizontal: gutter },
+
+  gridCentered: { justifyContent: 'center' },
 
   circles: { paddingHorizontal: gutter - ms(6), paddingTop: space.lg, paddingBottom: space.md, backgroundColor: c.surface },
 
@@ -529,7 +499,24 @@ const styles = themed(({ c }) => ({
   storeName: { marginTop: space.sm },
   storeMeta: { flexDirection: 'row', alignItems: 'center', gap: ms(3), marginTop: ms(2) },
 
-  footer: { paddingHorizontal: gutter, paddingTop: space.xxxl, paddingBottom: space.xxxl, gap: ms(6) },
-  footerMark: { fontSize: ms(52), lineHeight: ms(58), fontWeight: '800', letterSpacing: -1.5, color: c.border },
-  footerLine: { flexDirection: 'row', alignItems: 'center', gap: ms(4), marginTop: ms(4) },
+  footer: { alignItems: 'center', paddingHorizontal: gutter, paddingTop: space.xxxl, paddingBottom: space.xxxl, gap: ms(6) },
+  footerMark: { fontSize: ms(44), lineHeight: ms(50), fontWeight: '800', letterSpacing: -1.2, color: c.borderStrong, textAlign: 'center' },
+  footerLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: ms(4), marginTop: ms(4) },
+  tail: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.brandBorder,
+    backgroundColor: c.brandSurface,
+  },
+  tailIcon: {
+    width: ms(40),
+    height: ms(40),
+    borderRadius: radius.pill,
+    backgroundColor: c.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 }));

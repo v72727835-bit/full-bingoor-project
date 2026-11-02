@@ -49,7 +49,6 @@ export function TabBar({ tabs, active, onSelect }: Props) {
             style={styles.tab}
             android_ripple={{ color: colors.brandSurfaceStrong, borderless: true, radius: ms(34) }}
           >
-            {on ? <View style={styles.indicator} /> : null}
             <View style={[styles.iconWrap, on && styles.iconWrapActive]}>
               <Ionicons
                 name={(on ? tab.iconActive : tab.icon) as never}
@@ -65,7 +64,7 @@ export function TabBar({ tabs, active, onSelect }: Props) {
             <Txt
               variant="caption"
               numberOfLines={1}
-              style={[styles.label, { color: on ? colors.brand : colors.inkMuted, fontWeight: on ? '700' : '500' }]}
+              style={[styles.label, { color: on ? colors.brand : colors.inkMuted, fontWeight: on ? '700' : '600' }]}
             >
               {tab.label}
             </Txt>
@@ -82,27 +81,17 @@ const styles = themed(({ c }) => ({
     backgroundColor: c.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.border,
-    paddingTop: space.sm,
+    paddingTop: ms(6),
     ...Platform.select({
-      ios: { shadowColor: c.shadow, shadowOffset: { width: 0, height: -2 }, shadowRadius: 10, shadowOpacity: 0.05 },
-      android: { elevation: 12 },
+      ios: { shadowColor: c.shadow, shadowOffset: { width: 0, height: -1 }, shadowRadius: 6, shadowOpacity: 0.04 },
+      android: { elevation: 8 },
       default: {},
     }),
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xxs },
-  indicator: {
-    position: 'absolute',
-    top: -space.sm,
-    width: ms(28),
-    height: ms(3),
-    borderBottomLeftRadius: ms(3),
-    borderBottomRightRadius: ms(3),
-    backgroundColor: c.brand,
-    boxShadow: `0px 2px 8px 0px ${c.glow}`,
-  },
   iconWrap: {
-    minWidth: ms(52),
-    height: ms(30),
+    minWidth: ms(56),
+    height: ms(28),
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',

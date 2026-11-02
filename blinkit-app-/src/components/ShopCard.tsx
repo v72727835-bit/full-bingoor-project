@@ -31,7 +31,7 @@ export function ShopCard({ shop, onPress, layout = 'row', width, style }: Props)
         style={({ pressed }) => [styles.rail, { width }, elevation.sm, pressed && styles.pressed, style]}
       >
         <View style={styles.railBannerWrap}>
-          <SmartImage uri={shop.banner || shop.logo} icon="shopping-cart" style={styles.railBanner} />
+          <SmartImage full uri={shop.banner || shop.logo} icon="shopping-cart" style={styles.railBanner} />
           {closed ? (
             <View style={styles.closedVeil}>
               <Txt variant="caption" tone="onBrand" weight="700">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Icon from '@react-native-vector-icons/ionicons/static';
 import { gutter, hitSlop, ms, radius, space, useStyles, useTheme } from '../theme';
 import { Txt } from './Text';
@@ -18,7 +18,7 @@ export function Card({
 }) {
   const { elevation } = useTheme();
   const s = useStyles(({ c }) => ({
-    card: { backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: c.border },
+    card: { backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: c.borderStrong },
     padded: { padding: space.lg },
   }));
   return <View style={[s.card, !flat && elevation.sm, padded && s.padded, style]}>{children}</View>;
@@ -95,12 +95,18 @@ export function SectionGap({ height = space.sm }: { height?: number }) {
   return <View style={[s.gap, { height }]} />;
 }
 
-/** Section heading with an optional right-hand action. */
+/**
+ * Section heading, set centred between two short rules - the way a printed
+ * menu or a shop window names its shelves. The action sits under the title as
+ * a quiet link so the title stays optically centred whatever its length.
+ */
 export function SectionHeader({
   title,
   subtitle,
   actionLabel,
   onAction,
+  onDark,
+  right,
   style,
   padded = true,
 }: {
@@ -108,34 +114,47 @@ export function SectionHeader({
   subtitle?: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** Light ink for headings that sit on the brand band. */
+  onDark?: boolean;
+  /** Extra element under the subtitle, e.g. a countdown. */
+  right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   padded?: boolean;
 }) {
-  const s = useStyles(() => ({
-    row: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: space.md },
+  const s = useStyles(({ c: p }) => ({
+    wrap: { alignItems: 'center' },
     padded: { paddingHorizontal: gutter },
-    text: { flex: 1 },
-    action: { flexDirection: 'row', alignItems: 'center', gap: ms(2), paddingVertical: ms(4) },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, alignSelf: 'stretch', justifyContent: 'center' },
+    rule: { flex: 1, maxWidth: ms(36), height: StyleSheet.hairlineWidth * 2, backgroundColor: p.borderStrong },
+    ruleOnDark: { backgroundColor: 'rgba(255,255,255,0.35)' },
+    title: { flexShrink: 1 },
+    sub: { marginTop: ms(3), maxWidth: ms(300) },
+    extra: { marginTop: space.sm },
+    action: { flexDirection: 'row', alignItems: 'center', gap: ms(2), marginTop: space.sm, paddingVertical: ms(2) },
   }));
   const { c } = useTheme();
+  const linkColor = onDark ? c.onHeader : c.brandText;
   return (
-    <View style={[s.row, padded && s.padded, style]}>
-      <View style={s.text}>
-        <Txt variant="h2" numberOfLines={2}>
+    <View style={[s.wrap, padded && s.padded, style]}>
+      <View style={s.titleRow}>
+        <View style={[s.rule, onDark && s.ruleOnDark]} />
+        <Txt variant="h2" center tone={onDark ? 'onHeader' : 'ink'} numberOfLines={2} style={s.title} accessibilityRole="header">
           {title}
         </Txt>
-        {subtitle ? (
-          <Txt variant="bodySm" tone="muted" numberOfLines={2} style={{ marginTop: ms(2) }}>
-            {subtitle}
-          </Txt>
-        ) : null}
+        <View style={[s.rule, onDark && s.ruleOnDark]} />
       </View>
+      {subtitle ? (
+        <Txt variant="bodySm" center numberOfLines={2} style={[s.sub, { color: onDark ? c.onHeaderMuted : c.inkMuted }]}>
+          {subtitle}
+        </Txt>
+      ) : null}
+      {right ? <View style={s.extra}>{right}</View> : null}
       {actionLabel && onAction ? (
-        <Pressable onPress={onAction} hitSlop={hitSlop} style={s.action} accessibilityRole="button">
-          <Txt variant="label" tone="brand">
+        <Pressable onPress={onAction} hitSlop={hitSlop} style={({ pressed }) => [s.action, pressed && { opacity: 0.6 }]} accessibilityRole="button">
+          <Txt variant="labelSm" style={{ color: linkColor }}>
             {actionLabel}
           </Txt>
-          <Icon name="chevron-forward" size={ms(15)} color={c.brandText} />
+          <Icon name="chevron-forward" size={ms(13)} color={linkColor} />
         </Pressable>
       ) : null}
     </View>

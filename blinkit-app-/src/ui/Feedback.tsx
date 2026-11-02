@@ -39,7 +39,7 @@ export function EmptyState({ icon, title, message, actionLabel, onAction, tone =
     iconDanger: { backgroundColor: p.dangerSurface },
     title: { marginBottom: space.sm },
     msg: { maxWidth: ms(320) },
-    btn: { marginTop: space.xl, paddingHorizontal: space.xxl },
+    btn: { marginTop: space.xl, paddingHorizontal: space.xxl, alignSelf: 'center' },
   }));
 
   return (

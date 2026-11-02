@@ -322,4 +322,4 @@ const styles = themed(({ c }) => ({
     borderTopColor: c.border,
     backgroundColor: c.surface,
   },
-  composerField: { flex: 1 },}));
+  composerField: { flex: 1, marginBottom: 0 },}));

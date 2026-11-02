@@ -58,13 +58,43 @@ flock 9
 pm2() { command pm2 "$@" 9>&-; }
 
 cd "$SRC"
+
+# The app APKs: the "Build APKs" workflow pushes them to the apk-builds branch;
+# they are copied to $BINGOOR_DATA_DIR/downloads, which the API serves at
+# /downloads. Only a file big enough to be an APK replaces the current one.
+publish_apks() {
+  local dl="$BINGOOR_DATA_DIR/downloads" n=0 f
+  mkdir -p "$dl"
+  if ! git -C "$SRC" fetch -q origin apk-builds 2>/dev/null; then
+    echo "   no apk-builds branch yet"
+    return 0
+  fi
+  for f in $(git -C "$SRC" ls-tree --name-only FETCH_HEAD | grep -E '^bingoor-[a-z]+\.apk$' || true); do
+    git -C "$SRC" show "FETCH_HEAD:$f" > "$dl/.$f.tmp"
+    if [ "$(stat -c %s "$dl/.$f.tmp")" -lt 1000000 ]; then
+      rm -f "$dl/.$f.tmp"; echo "   skipped $f (too small to be an APK)"; continue
+    fi
+    mv -f "$dl/.$f.tmp" "$dl/$f"
+    n=$((n + 1))
+  done
+  echo "   published $n APK(s) to $dl"
+}
+
+# The APK workflow connects with the same key and asks only for this (ssh ... apks):
+# no rebuild, no restart.
+if [ "${SSH_ORIGINAL_COMMAND:-}" = "apks" ]; then
+  say "Publishing the app APKs"
+  publish_apks
+  exit 0
+fi
+
 echo "Bingoor deploy started $(date). Log: $LOG"
 echo "   code: $(git log -1 --format='%h %s')"
 
 export BACKEND_DIR=./bingoor-backend WEB_DIR=./bingoor-web ADMIN_DIR=./bingoor-admin
 
 # Server-only files, carried over from the pm2 install the first time.
-mkdir -p "$BINGOOR_ENV_DIR" "$BINGOOR_DATA_DIR/uploads"
+mkdir -p "$BINGOOR_ENV_DIR" "$BINGOOR_DATA_DIR/uploads" "$BINGOOR_DATA_DIR/downloads"
 chmod 700 "$BINGOOR_ENV_DIR"
 if [ ! -f "$BINGOOR_ENV_DIR/backend.env" ] && [ -f "$LEGACY/bingoor-backend/.env" ]; then
   cp -a "$LEGACY/bingoor-backend/.env" "$BINGOOR_ENV_DIR/backend.env"
@@ -145,6 +175,9 @@ if [ -x /etc/init.d/nginx ]; then
 elif command -v systemctl >/dev/null 2>&1; then
   systemctl restart nginx >>"$LOG" 2>&1 9>&- || true
 fi
+
+say "Publishing the app APKs"
+publish_apks || true
 
 docker image prune -f >>"$LOG" 2>&1 || true
 say "Done. Live on $(git log -1 --format=%h)."

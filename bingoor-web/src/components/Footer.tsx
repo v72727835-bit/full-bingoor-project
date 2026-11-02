@@ -9,6 +9,7 @@ import { DESKTOP_PAGES, FORMS, LEGAL_PAGES } from '../lib/pages';
 import { Icon } from './Icon';
 import { LanguageMenu } from './LanguageMenu';
 import { InstallAppButton } from './InstallAppButton';
+import { AppDownloads } from './AppDownloads';
 import s from './Footer.module.css';
 
 /**
@@ -39,7 +40,10 @@ export function Footer() {
   const aisles = (home?.topTabs ?? []).slice(0, 14);
 
   return (
-    <footer className={s.ft}>
+    <>
+    {/* The three Android apps sit just above the footer. */}
+    <AppDownloads />
+    <footer className={`${s.ft} ${s.afterApps}`}>
       <div className="page">
         <div className={s.top}>
           <div className={s.brand}>
@@ -65,46 +69,17 @@ export function Footer() {
             ) : null}
           </div>
 
-          {apps.android || apps.ios || apps.rider || apps.warehouse ? (
+          {apps.ios ? (
             <div className={s.apps}>
               <div className={s.colTitle}>Get the app</div>
               <div className={s.appRow}>
-                {apps.android ? (
-                  <a href={apps.android} className={s.store} target="_blank" rel="noopener noreferrer">
-                    <Icon name="android" size={20} />
-                    <span>
-                      <small>Get it on</small>
-                      Android
-                    </span>
-                  </a>
-                ) : null}
-                {apps.rider ? (
-                  <a href={apps.rider} className={s.store} target="_blank" rel="noopener noreferrer">
-                    <Icon name="android" size={20} />
-                    <span>
-                      <small>Delivery partners</small>
-                      Rider app
-                    </span>
-                  </a>
-                ) : null}
-                {apps.warehouse ? (
-                  <a href={apps.warehouse} className={s.store} target="_blank" rel="noopener noreferrer">
-                    <Icon name="android" size={20} />
-                    <span>
-                      <small>For sellers</small>
-                      Warehouse app
-                    </span>
-                  </a>
-                ) : null}
-                {apps.ios ? (
-                  <a href={apps.ios} className={s.store} target="_blank" rel="noopener noreferrer">
-                    <Icon name="apple" size={20} />
-                    <span>
-                      <small>Download on</small>
-                      iPhone
-                    </span>
-                  </a>
-                ) : null}
+                <a href={apps.ios} className={s.store} target="_blank" rel="noopener noreferrer">
+                  <Icon name="apple" size={20} />
+                  <span>
+                    <small>Download on</small>
+                    iPhone
+                  </span>
+                </a>
               </div>
             </div>
           ) : null}
@@ -183,5 +158,6 @@ export function Footer() {
         </div>
       </div>
     </footer>
+    </>
   );
 }

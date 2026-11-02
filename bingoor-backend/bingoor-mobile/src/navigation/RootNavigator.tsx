@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { FadeSlide, Pulse } from '../components/anim';
+import { Button } from '../components/Button';
 
 const LOGO = require('../assets/logo-mark.png');
 import { useAuth } from '../context/AuthContext';
@@ -31,11 +32,23 @@ function Splash() {
   );
 }
 
+function Offline({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={styles.splash}>
+      <Image source={LOGO} style={[styles.splashLogoImg, { marginBottom: 18 }]} />
+      <Text style={styles.brand}>No connection</Text>
+      <Text style={[styles.splashTag, { paddingHorizontal: 32 }]}>Cannot reach Bingoor. Check your internet and try again.</Text>
+      <Button title="Try again" onPress={onRetry} style={{ marginTop: 22, alignSelf: 'stretch', marginHorizontal: 40 }} />
+    </View>
+  );
+}
+
 export default function RootNavigator() {
-  const { user, initializing } = useAuth();
+  const { user, initializing, offline, retry } = useAuth();
   if (initializing) return <Splash />;
+  if (offline) return <Offline onRetry={retry} />;
   return <NavigationContainer theme={navTheme}>
-    {user?.role === 'rider' ? <AppStack.Navigator screenOptions={{ headerShown: false }}><AppStack.Screen name="RiderHome" component={RiderHome} /></AppStack.Navigator> : <AuthStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}><AuthStack.Screen name="Login" component={LoginScreen} /><AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} /></AuthStack.Navigator>}
+    {user?.role === 'rider' ? <><AppStack.Navigator screenOptions={{ headerShown: false }}><AppStack.Screen name="RiderHome" component={RiderHome} /></AppStack.Navigator></> : <AuthStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}><AuthStack.Screen name="Login" component={LoginScreen} /><AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} /></AuthStack.Navigator>}
   </NavigationContainer>;
 }
 

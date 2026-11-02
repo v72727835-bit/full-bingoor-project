@@ -13,8 +13,12 @@ async function get(service: string): Promise<string | null> {
   }
 }
 
+// Plain AES (no biometrics) at any security level: some phones have no StrongBox or a
+// patchy secure-hardware Keystore, and the stricter defaults made saving fail there.
+const OPTIONS = { storage: Keychain.STORAGE_TYPE.AES_GCM_NO_AUTH, securityLevel: Keychain.SECURITY_LEVEL.ANY };
+
 async function set(service: string, value: string): Promise<void> {
-  await Keychain.setGenericPassword('token', value, { service });
+  await Keychain.setGenericPassword('token', value, { service, ...OPTIONS });
 }
 
 async function remove(service: string): Promise<void> {

@@ -1,7 +1,7 @@
 import Icon from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { fetchOrders } from '../api/orders';
 import { useAuth } from '../context/AuthContext';
 import type { AppNav } from '../navigation/types';
@@ -14,14 +14,14 @@ const REMIND_AFTER_MS = 5 * 60_000;
 const CHECK_EVERY_MS = 60_000;
 
 /** Per order, the moment the customer's dismissal runs out. */
-const hidden = new Map<string, number>();
+const snoozed = new Map<string, number>();
 
 /**
- * "Your order is in process" - a standing reminder while an order is on its
+ * "Order arriving soon" - a standing reminder while an order is on its
  * way, with the tap that opens the tracking screen. Closing it buys five
  * minutes of quiet; delivery or cancellation stops it for good.
  */
-export function OrderProgressPopup() {
+export function OrderProgressPopup({ hidden }: { hidden?: boolean }) {
   const nav = useNavigation<AppNav>();
   const { user } = useAuth();
   const { c } = useTheme();
@@ -41,7 +41,7 @@ export function OrderProgressPopup() {
         if (!alive) return;
         const live = items.find((o) => !['delivered', 'cancelled', 'rejected'].includes(o.status)) ?? null;
         setOrder(live);
-        setVisible(live ? (hidden.get(live._id) ?? 0) < Date.now() : false);
+        setVisible(live ? (snoozed.get(live._id) ?? 0) < Date.now() : false);
       } catch {
         /* offline - try again on the next tick */
       }
@@ -54,63 +54,57 @@ export function OrderProgressPopup() {
     };
   }, [user]);
 
-  if (!order || !visible) return null;
+  if (!order || !visible || hidden) return null;
 
   const eta = order.deliveryDays && order.deliveryDays > 1 ? `in about ${order.deliveryDays} days` : 'soon';
 
   return (
-    <View style={styles.wrap}>
+    <Pressable
+      onPress={() => nav.navigate('OrderDetail', { id: order._id })}
+      accessibilityRole="button"
+      accessibilityLabel={`Your order is on its way. Track order ${order.orderNumber}`}
+      style={({ pressed }) => [styles.strip, pressed && styles.pressed]}
+    >
+      <View style={styles.live} />
+      <Txt variant="labelSm" tone="brand" numberOfLines={1} style={styles.body}>
+        Order {order.orderNumber} arriving {eta}
+      </Txt>
+      <Txt variant="labelSm" tone="brand">
+        Track
+      </Txt>
+      <Icon name="chevron-forward" size={ms(13)} color={c.brandText} />
       <Pressable
-        onPress={() => nav.navigate('OrderDetail', { id: order._id })}
+        onPress={() => {
+          snoozed.set(order._id, Date.now() + REMIND_AFTER_MS);
+          setVisible(false);
+        }}
+        hitSlop={hitSlop}
         accessibilityRole="button"
-        accessibilityLabel={`Your order is in process. Track order ${order.orderNumber}`}
-        style={({ pressed }) => [styles.card, pressed && { opacity: 0.92 }]}
+        accessibilityLabel="Hide this reminder"
+        style={styles.close}
       >
-        <View style={styles.icon}>
-          <Icon name="bicycle" size={ms(19)} color={c.brand} />
-        </View>
-        <View style={styles.body}>
-          <Txt variant="label">Your order is in process</Txt>
-          <Txt variant="caption" tone="muted" numberOfLines={1}>
-            You will get it {eta} · Tap to track {order.orderNumber}
-          </Txt>
-        </View>
-        <Pressable
-          onPress={() => {
-            hidden.set(order._id, Date.now() + REMIND_AFTER_MS);
-            setVisible(false);
-          }}
-          hitSlop={hitSlop}
-          accessibilityRole="button"
-          accessibilityLabel="Hide this reminder"
-        >
-          <Icon name="close" size={ms(18)} color={c.inkMuted} />
-        </Pressable>
+        <Icon name="close" size={ms(16)} color={c.inkMuted} />
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = themed(({ c }) => ({
-  /* Sits in flow just above the tab bar, so it never covers the cart bar. */
-  wrap: { paddingHorizontal: gutter, paddingBottom: space.sm },
-  card: {
+  /* A slim strip that sits in flow on top of the tab bar, so it never covers
+     the cart bar and never reads as a second floating card. */
+  strip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm,
-    padding: space.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.brandBorder,
-    backgroundColor: c.surface,
-    boxShadow: `0px 6px 18px 0px ${c.shadow}`,
-  },
-  icon: {
-    width: ms(36),
-    height: ms(36),
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: ms(6),
+    paddingLeft: gutter,
+    paddingRight: space.sm,
+    paddingVertical: ms(9),
     backgroundColor: c.brandSurface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: c.brandBorder,
   },
-  body: { flex: 1 },}));
+  pressed: { backgroundColor: c.brandSurfaceStrong },
+  live: { width: ms(8), height: ms(8), borderRadius: radius.pill, backgroundColor: c.brand },
+  body: { flex: 1 },
+  close: { marginLeft: space.xs, padding: ms(2) },
+}));

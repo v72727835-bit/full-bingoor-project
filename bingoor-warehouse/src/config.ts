@@ -19,3 +19,6 @@ const defaultUrl =
   Platform.OS === 'android' ? 'http://10.0.2.2:5000/api/v1' : 'http://localhost:5000/api/v1';
 
 export const API_URL: string = (API_URL_OVERRIDE ?? defaultUrl).replace(/\/+$/, '');
+
+/** The Bingoor website. Plan payments open its /pay page, where Razorpay's window runs. */
+export const WEB_URL = 'https://bingoor.com';

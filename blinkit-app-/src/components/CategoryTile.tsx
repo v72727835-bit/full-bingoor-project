@@ -1,10 +1,10 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
-import { gradient, ms, radius, space, themed, useTheme } from '../theme';
+import { ms, radius, space, themed, useTheme } from '../theme';
 import { Category } from '../types';
 import { Illustration } from '../ui/Illustration';
 import { Txt } from '../ui/Text';
-import { useLocalName } from '../store/language';
+import { smallPhoto } from '../ui/SmartImage';
 
 /**
  * An uploaded photo covers the whole tile edge to edge; without one, the
@@ -16,7 +16,7 @@ export function CategoryArt({ category, size }: { category: Pick<Category, 'icon
   if (category.image && !failed) {
     return (
       <Image
-        source={{ uri: category.image }}
+        source={{ uri: smallPhoto(category.image) }}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
         onError={() => setFailed(true)}
@@ -45,11 +45,7 @@ export function CategoryTile({
   onPress: () => void;
   style?: ViewStyle;
 }) {
-  const { tint, mode } = useTheme();
-  const ln = useLocalName();
-  // A pool of light in the top-left corner makes the swatch read as a lit,
-  // slightly glossy surface instead of a flat paint chip.
-  const shine = gradient.glow(mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.75)', '18% 12%');
+  const { tint } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -60,13 +56,13 @@ export function CategoryTile({
       <View
         style={[
           styles.tile,
-          { height: Math.round(width * 0.96), backgroundColor: tint(category.tint), backgroundImage: shine },
+          { height: Math.round(width * 0.96), backgroundColor: tint(category.tint) },
         ]}
       >
         <CategoryArt category={category} size={width * 0.5} />
       </View>
-      <Txt variant="caption" tone="body" center numberOfLines={2} style={styles.label}>
-        {ln(category)}
+      <Txt variant="caption" tone="ink" weight="600" center numberOfLines={2} style={styles.label}>
+        {category.name}
       </Txt>
     </Pressable>
   );
@@ -83,7 +79,6 @@ export function CategoryCircle({
   onPress: () => void;
 }) {
   const { tint } = useTheme();
-  const ln = useLocalName();
   return (
     <Pressable
       onPress={onPress}
@@ -95,7 +90,7 @@ export function CategoryCircle({
         <CategoryArt category={category} size={size * 0.52} />
       </View>
       <Txt variant="caption" tone="body" center numberOfLines={2} style={styles.label}>
-        {ln(category)}
+        {category.name}
       </Txt>
     </Pressable>
   );

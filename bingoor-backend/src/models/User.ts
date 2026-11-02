@@ -42,7 +42,7 @@ export interface IUser {
   /** The one rider (or few) who receives orders beyond the last distance band. */
   riderLongDistance?: boolean;
   /** Customers who signed in with Google / Facebook. */
-  /** The phone number was proven with a Firebase OTP. */
+  /** The phone number was proven (set by older builds that had an OTP step). */
   phoneVerified?: boolean;
   /** Where a rider is paid their earnings. */
   payout?: { upi?: string; bankHolder?: string; bankNumber?: string; bankIfsc?: string; rzpContactId?: string; rzpFundAccountId?: string; rzpFundFingerprint?: string };

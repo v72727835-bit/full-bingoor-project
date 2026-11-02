@@ -16,13 +16,6 @@ export interface LiveIntegrations {
   razorpayEnabled: boolean;
   /** Google Maps JS API key (client-side). Empty when maps should fall back to OpenStreetMap. */
   googleMapsApiKey?: string;
-  firebase: {
-    webConfig: Record<string, string | undefined>;
-    serviceAccount?: { project_id: string; client_email: string; private_key: string };
-    otpOnSignup: boolean;
-    otpOnLogin: boolean;
-    pushEnabled: boolean;
-  };
   shiprocket: {
     email?: string;
     password?: string;
@@ -37,17 +30,6 @@ export interface LiveIntegrations {
     enabled: boolean;
     autoPayout: boolean;
   };
-}
-
-function parseServiceAccount(s?: string) {
-  const raw = safeOpen(s);
-  if (!raw) return undefined;
-  try {
-    const j = JSON.parse(raw);
-    return j.client_email && j.private_key && j.project_id ? { project_id: j.project_id, client_email: j.client_email, private_key: j.private_key } : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 const TTL_MS = 15_000;
@@ -86,13 +68,6 @@ export async function getIntegrations(): Promise<LiveIntegrations> {
     razorpayWebhookSecret: safeOpen(doc?.razorpay?.webhookSecretEnc) || env.RAZORPAY_WEBHOOK_SECRET,
     razorpayEnabled: doc?.razorpay?.enabled ?? true,
     googleMapsApiKey: (doc?.maps?.googleApiKey || env.GOOGLE_MAPS_API_KEY)?.trim() || undefined,
-    firebase: {
-      webConfig: { ...(doc?.firebase?.webConfig ?? {}) },
-      serviceAccount: parseServiceAccount(doc?.firebase?.serviceAccountEnc),
-      otpOnSignup: !!doc?.firebase?.otpOnSignup,
-      otpOnLogin: !!doc?.firebase?.otpOnLogin,
-      pushEnabled: !!doc?.firebase?.pushEnabled,
-    },
     shiprocket: {
       email: doc?.shiprocket?.email || undefined,
       password: safeOpen(doc?.shiprocket?.passwordEnc) || undefined,

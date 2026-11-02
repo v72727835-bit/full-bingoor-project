@@ -80,9 +80,9 @@ function makeElevation(p: Palette): Record<'none' | 'sm' | 'md' | 'lg', ViewStyl
         };
   return {
     none: {},
-    sm: shadow(1, 3, 0.06, 1),
-    md: shadow(4, 12, 0.09, 3),
-    lg: shadow(10, 24, 0.14, 8),
+    sm: shadow(1, 2, 0.05, 1),
+    md: shadow(3, 10, 0.07, 2),
+    lg: shadow(8, 20, 0.10, 6),
   };
 }
 
@@ -107,8 +107,8 @@ const v = (
 
 export const type = {
   display: v(30, 38, '800', -0.7),
-  h1: v(24, 31, '800', -0.5),
-  h2: v(20, 27, '800', -0.4),
+  h1: v(24, 31, '700', -0.5),
+  h2: v(19, 26, '700', -0.3),
   h3: v(17, 24, '700', -0.2),
   h4: v(15, 21, '700', -0.1),
   bodyLg: v(16, 24, '400'),
@@ -116,10 +116,10 @@ export const type = {
   bodySm: v(13, 19, '400'),
   label: v(13.5, 18, '600', 0.1),
   labelSm: v(12, 16, '600', 0.1),
-  price: v(17, 22, '800', -0.3),
-  priceSm: v(14.5, 19, '800', -0.2),
+  price: v(16, 21, '700', -0.2),
+  priceSm: v(14.5, 19, '700', -0.1),
   caption: v(11.5, 16, '500', 0.15),
-  overline: { ...v(10.5, 14, '800', 0.9), textTransform: 'uppercase' as const },
+  overline: { ...v(10.5, 14, '700', 1.1), textTransform: 'uppercase' as const },
   button: v(15, 20, '700', 0.15),
 } as const;
 

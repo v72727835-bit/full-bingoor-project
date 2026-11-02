@@ -4,8 +4,7 @@ import { deliveryPointParams } from '../store/deliveryPoint';
 import { tokenStore } from '../storage/tokens';
 import { ApiEnvelope, AuthResult } from '../types';
 
-// 30s (not 15s) so a backend cold start doesn't time out before it wakes.
-export const api = axios.create({ baseURL: API_URL, timeout: 30000 });
+export const api = axios.create({ baseURL: API_URL, timeout: 15000 });
 
 let accessToken: string | null = null;
 let onSessionExpired: (() => void) | null = null;
@@ -22,7 +21,7 @@ api.interceptors.request.use((config) => {
   // The catalogue is limited to shops that deliver to the customer's pin.
   const url = config.url ?? '';
   const point = deliveryPointParams();
-  if (point && (config.method ?? 'get') === 'get' && (url === '/home' || url === '/products' || url === '/products/suggest' || url === '/festival')) {
+  if (point && (config.method ?? 'get') === 'get' && (url === '/home' || url === '/products' || url === '/products/suggest')) {
     config.params = { ...point, ...config.params };
   }
   return config;
@@ -74,16 +73,6 @@ api.interceptors.response.use(
   },
 );
 
-/**
- * True when the request never got a reply (offline, DNS, or a timeout such as a
- * Render cold start). Distinguishes "can't reach the server" from a real
- * 401/403, so the app can keep a valid session instead of logging the user out
- * on a transient blip (F-05).
- */
-export function isNetworkError(err: unknown): boolean {
-  return axios.isAxiosError(err) && !err.response;
-}
-
 /** Human-friendly message for any error thrown by the API layer. */
 type Problem = { shop?: string; name?: string; reason?: string };
 
@@ -96,12 +85,6 @@ function explainProblem(p: Problem): string {
   if (reason === 'out_of_stock') return `${item} is out of stock - remove it from your cart`;
   if (reason === 'insufficient_stock') return `Only a few ${item} are left - lower the quantity`;
   if (reason === 'unavailable') return `${item} is no longer available - remove it from your cart`;
-  // Checkout rules that otherwise surfaced as raw text like "An item: points short".
-  if (reason === 'points_short') return 'Please add 1 product from the list below your cart to continue';
-  if (reason === 'cod_unavailable') return `Cash on delivery is not available for ${item} - choose Pay online or remove it`;
-  if (reason === 'online_unavailable') return `Online payment is not available for ${item} - choose Cash on Delivery or remove it`;
-  if (reason === 'cod_long_distance') return `${shop} is far from your address, so cash on delivery is not available - choose Pay online`;
-  if (reason.startsWith('pay_option_off_')) return 'That way of paying is switched off right now - please choose another';
   const min = /^min_order_(\d+(?:\.\d+)?)$/.exec(reason);
   if (min) return `${shop} needs a minimum order of ₹${min[1]}`;
   const range = /^out_of_delivery_range_(\d+(?:\.\d+)?)km$/.exec(reason);

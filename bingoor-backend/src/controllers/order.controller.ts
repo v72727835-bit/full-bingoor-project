@@ -1,4 +1,3 @@
-import { notifyOrderPlaced, notifyOrderStatus } from '../services/orderNotify.service';
 import crypto from 'crypto';
 import mongoose, { ClientSession, FilterQuery, HydratedDocument, Types } from 'mongoose';
 import { Cart, MAX_QTY_PER_ITEM } from '../models/Cart';
@@ -263,7 +262,6 @@ async function runPlaceOrder(
   }
   const placed = orders!;
 
-  if (!opts.quote) for (const o of placed) notifyOrderPlaced(o, !!opts.paid);
 
   return {
     checkoutId,
@@ -470,7 +468,6 @@ export const cancelOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  notifyOrderStatus(order, 'cancelled');
   ok(res, presentOrder(order.toObject()));
 });
 

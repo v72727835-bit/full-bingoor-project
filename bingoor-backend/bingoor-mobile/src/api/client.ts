@@ -33,7 +33,9 @@ async function refreshTokens(): Promise<string | null> {
     await tokenStore.save(data.data.accessToken, data.data.refreshToken);
     setAccessToken(data.data.accessToken);
     return data.data.accessToken;
-  } catch {
+  } catch (err) {
+    // No network is not a dead session: fail this request but keep the saved login.
+    if (axios.isAxiosError(err) && (!err.response || err.response.status >= 500)) throw err;
     return null;
   }
 }

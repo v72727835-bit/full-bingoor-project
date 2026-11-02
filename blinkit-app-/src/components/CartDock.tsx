@@ -2,7 +2,7 @@ import Icon from '@react-native-vector-icons/ionicons/static';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
 import { useCart } from '../context/CartContext';
-import { currency, glowShadow, gradient, gutter, ms, radius, space, themed } from '../theme';
+import { currency, gutter, ms, radius, space, themed } from '../theme';
 import { SmartImage } from '../ui/SmartImage';
 import { Txt } from '../ui/Text';
 
@@ -50,21 +50,24 @@ export function CartDock({ hidden, bottom, onPress }: { hidden: boolean; bottom:
       >
         <View style={styles.thumbs}>
           {recent.map((item, i) => (
-            <View key={item.productId} style={[styles.thumb, { marginLeft: i === 0 ? 0 : -ms(12), zIndex: 3 - i }]}>
-              <SmartImage uri={item.image} icon={item.icon} style={styles.thumbImage} radius={radius.pill} artScale={0.68} />
+            <View key={item.productId} style={[styles.thumb, { marginLeft: i === 0 ? 0 : -ms(10), zIndex: 3 - i }]}>
+              <SmartImage uri={item.image} icon={item.icon} style={styles.thumbImage} radius={radius.sm} artScale={0.68} />
             </View>
           ))}
         </View>
         <View style={styles.text}>
-          <Txt variant="h4" tone="onBrand" numberOfLines={1}>
-            View cart
-          </Txt>
           <Txt variant="caption" numberOfLines={1} style={styles.sub}>
-            {cart.itemCount} {cart.itemCount === 1 ? 'item' : 'items'} · {currency(cart.total)}
+            {cart.itemCount} {cart.itemCount === 1 ? 'item' : 'items'}
+          </Txt>
+          <Txt variant="h4" tone="onBrand" numberOfLines={1}>
+            {currency(cart.total)}
           </Txt>
         </View>
         <View style={styles.arrow}>
-          <Icon name="chevron-forward" size={ms(18)} color="#FFFFFF" />
+          <Txt variant="labelSm" tone="onBrand">
+            View cart
+          </Txt>
+          <Icon name="chevron-forward" size={ms(15)} color="#FFFFFF" />
         </View>
       </Pressable>
     </Animated.View>
@@ -77,19 +80,18 @@ const styles = themed(({ c }) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    paddingVertical: ms(9),
-    paddingLeft: ms(9),
+    paddingVertical: ms(8),
+    paddingLeft: ms(8),
     paddingRight: space.md,
-    borderRadius: radius.pill,
+    borderRadius: radius.lg,
     backgroundColor: c.brand,
-    backgroundImage: gradient.diagonal(c.brandLight, c.brand),
-    boxShadow: glowShadow(c.glow, 8, 22),
+    boxShadow: '0px 6px 16px 0px rgba(10, 46, 25, 0.22)',
   },
   thumbs: { flexDirection: 'row', alignItems: 'center' },
   thumb: {
-    width: ms(38),
-    height: ms(38),
-    borderRadius: radius.pill,
+    width: ms(36),
+    height: ms(36),
+    borderRadius: radius.sm,
     borderWidth: 2,
     borderColor: c.brand,
     backgroundColor: '#FFFFFF',
@@ -99,9 +101,12 @@ const styles = themed(({ c }) => ({
   text: { flex: 1 },
   sub: { color: 'rgba(255,255,255,0.9)' },
   arrow: {
-    width: ms(30),
-    height: ms(30),
-    borderRadius: radius.pill,
+    flexDirection: 'row',
+    gap: ms(2),
+    paddingLeft: ms(10),
+    paddingRight: ms(6),
+    height: ms(32),
+    borderRadius: radius.sm,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',

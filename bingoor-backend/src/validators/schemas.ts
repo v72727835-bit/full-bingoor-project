@@ -32,29 +32,13 @@ export const registerBody = z.object({
     .optional()
     .or(z.literal('').transform(() => undefined)),
   password,
-  /** Firebase ID token proving the phone number (sent once the OTP step is on). */
-  firebaseIdToken: z.string().min(20).max(4000).optional(),
 });
 
 export const loginBody = z.object({
   identifier: z.string().trim().min(3), // phone or email
   password: z.string().min(1),
-  firebaseIdToken: z.string().min(20).max(4000).optional(),
 });
 
-export const resetPasswordBody = z.object({
-  phone,
-  newPassword: password,
-  firebaseIdToken: z.string().min(20).max(4000),
-  role: z.enum(['customer', 'rider']).default('customer'),
-});
-
-export const deviceBody = z.object({
-  token: z.string().min(20).max(4000),
-  platform: z.enum(['web', 'android', 'ios']).default('android'),
-  app: z.enum(['customer', 'rider', 'warehouse', 'web']).default('customer'),
-});
-export const deviceDeleteBody = z.object({ token: z.string().min(20).max(4000) });
 
 export const refreshBody = z.object({ refreshToken: z.string().min(10) });
 
@@ -728,22 +712,6 @@ export const integrationsBody = z.object({
   clearRazorpayWebhook: z.boolean().optional(),
   razorpayEnabled: z.boolean().optional(),
   googleMapsApiKey: z.string().trim().max(200).optional(),
-  firebaseWeb: z
-    .object({
-      apiKey: z.string().trim().max(200).optional(),
-      authDomain: z.string().trim().max(200).optional(),
-      projectId: z.string().trim().max(100).optional(),
-      appId: z.string().trim().max(200).optional(),
-      messagingSenderId: z.string().trim().max(60).optional(),
-      storageBucket: z.string().trim().max(200).optional(),
-      vapidKey: z.string().trim().max(300).optional(),
-    })
-    .optional(),
-  firebaseServiceAccount: z.string().trim().max(10000).optional(),
-  clearFirebaseServiceAccount: z.boolean().optional(),
-  firebaseOtpOnSignup: z.boolean().optional(),
-  firebaseOtpOnLogin: z.boolean().optional(),
-  firebasePushEnabled: z.boolean().optional(),
   shiprocketEmail: z.string().trim().max(200).optional(),
   shiprocketPassword: z.string().trim().max(200).optional(),
   clearShiprocketPassword: z.boolean().optional(),

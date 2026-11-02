@@ -45,8 +45,9 @@ export function AppHeader({ title, subtitle, showBack, actions = [], flat, style
     iconBtn: { width: ms(40), height: ms(40), borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
     actionBtn: { marginLeft: space.xs },
     pressed: { backgroundColor: p.surfaceSunken },
-    titles: { flex: 1, marginLeft: space.xs, justifyContent: 'center' },
-    titlesNoBack: { marginLeft: space.sm },
+    side: { flexDirection: 'row', alignItems: 'center' },
+    sideRight: { justifyContent: 'flex-end' },
+    titles: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xs },
     subtitle: { marginTop: ms(1) },
     badge: {
       position: 'absolute',
@@ -65,51 +66,58 @@ export function AppHeader({ title, subtitle, showBack, actions = [], flat, style
     badgeText: { fontSize: ms(9.5), lineHeight: ms(12), fontWeight: '800' },
   }));
 
+  // Equal-width slots either side keep the title optically centred, whether
+  // the screen has a back button, two actions, or neither.
+  const slot = Math.max(back ? 1 : 0, actions.length) * (ms(40) + space.xs);
+
   return (
     <View style={[styles.root, flat && styles.flat, style]}>
-      {back ? (
-        <Pressable
-          onPress={() => navigation.goBack()}
-          hitSlop={hitSlop}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-        >
-          <Ionicons name="chevron-back" size={ms(24)} color={c.ink} />
-        </Pressable>
-      ) : null}
+      <View style={[styles.side, { width: slot }]}>
+        {back ? (
+          <Pressable
+            onPress={() => navigation.goBack()}
+            hitSlop={hitSlop}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          >
+            <Ionicons name="chevron-back" size={ms(24)} color={c.ink} />
+          </Pressable>
+        ) : null}
+      </View>
 
-      <View style={[styles.titles, !back && styles.titlesNoBack]}>
-        <Txt variant="h3" numberOfLines={1}>
+      <View style={styles.titles}>
+        <Txt variant="h3" center numberOfLines={1} accessibilityRole="header">
           {title}
         </Txt>
         {subtitle ? (
-          <Txt variant="caption" tone="muted" numberOfLines={1} style={styles.subtitle}>
+          <Txt variant="caption" tone="muted" center numberOfLines={1} style={styles.subtitle}>
             {subtitle}
           </Txt>
         ) : null}
       </View>
 
-      {actions.map((a) => (
-        <Pressable
-          key={a.label}
-          onPress={a.onPress}
-          hitSlop={hitSlop}
-          accessibilityRole="button"
-          accessibilityLabel={a.label}
-          style={({ pressed }) => [styles.iconBtn, styles.actionBtn, pressed && styles.pressed]}
-        >
-          <Ionicons name={a.icon as never} size={ms(21)} color={c.ink} />
-          {a.badge ? (
-            <View style={styles.badge}>
-              <Txt variant="caption" tone="onBrand" style={styles.badgeText}>
-                {a.badge > 99 ? '99+' : a.badge}
-              </Txt>
-            </View>
-          ) : null}
-        </Pressable>
-      ))}
+      <View style={[styles.side, styles.sideRight, { width: slot }]}>
+        {actions.map((a) => (
+          <Pressable
+            key={a.label}
+            onPress={a.onPress}
+            hitSlop={hitSlop}
+            accessibilityRole="button"
+            accessibilityLabel={a.label}
+            style={({ pressed }) => [styles.iconBtn, styles.actionBtn, pressed && styles.pressed]}
+          >
+            <Ionicons name={a.icon as never} size={ms(21)} color={c.ink} />
+            {a.badge ? (
+              <View style={styles.badge}>
+                <Txt variant="caption" tone="onBrand" style={styles.badgeText}>
+                  {a.badge > 99 ? '99+' : a.badge}
+                </Txt>
+              </View>
+            ) : null}
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
-

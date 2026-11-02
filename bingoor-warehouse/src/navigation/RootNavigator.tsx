@@ -40,6 +40,7 @@ function Shell() {
   const [newOrders, setNewOrders] = useState(0);
   const { me } = useAuth();
 
+
   let body: React.ReactNode;
   if (tab === 'dashboard') body = <DashboardScreen />;
   else if (tab === 'orders') body = <OrdersScreen onChanged={setNewOrders} />;
@@ -86,6 +87,7 @@ function Shell() {
           {newOrders > 0 ? <View style={styles.dot}><Text style={styles.badgeText}>{newOrders}</Text></View> : null}
         </Pressable>
       </View>
+
 
       <CrossFade dep={`${tab}:${more ?? ''}`} style={{ flex: 1 }}>{body}</CrossFade>
 
@@ -142,5 +144,8 @@ const styles = StyleSheet.create({
   sub: { color: colors.muted, marginBottom: 16, marginTop: 2 },
   item: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, padding: 16, borderRadius: 14, marginBottom: 10 },
   itemText: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text },
+  planBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginBottom: 6, padding: 12, borderRadius: 12, backgroundColor: colors.dangerSoft },
+  planBarText: { flex: 1, color: colors.danger, fontWeight: '600', fontSize: 13 },
+  planBarCta: { color: colors.danger, fontWeight: '800' },
   back: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10 },
 });

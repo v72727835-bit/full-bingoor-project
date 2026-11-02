@@ -94,6 +94,18 @@ app.get('/uploads/products/:name', async (req, res, next) => {
   }
 });
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads'), { maxAge: '30d', immutable: true }));
+// The latest app APKs (bingoor-customer/rider/warehouse.apk), replaced in place by
+// deploy/docker-deploy.sh after every app build, so the download links never change.
+app.use(
+  '/downloads',
+  express.static(path.resolve(process.cwd(), 'downloads'), {
+    maxAge: '10m',
+    setHeaders: (res, file) => {
+      res.setHeader('Content-Disposition', 'attachment');
+      if (file.endsWith('.apk')) res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    },
+  }),
+);
 if (env.NODE_ENV !== 'test') app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 app.use(

@@ -768,14 +768,6 @@ export const publicSettings = asyncHandler(async (_req, res) => {
       // Only when the secret is saved too, so the button never leads to a login that cannot finish.
       instagramAppId: live.instagramAppId && live.instagramAppSecret ? live.instagramAppId : null,
     },
-    // Public Firebase web config (it is meant to be public); the service account never leaves the server.
-    firebase: {
-      configured: !!(live.firebase.webConfig.apiKey && live.firebase.webConfig.projectId),
-      config: live.firebase.webConfig.apiKey ? live.firebase.webConfig : null,
-      otpOnSignup: live.firebase.otpOnSignup,
-      otpOnLogin: live.firebase.otpOnLogin,
-      pushEnabled: live.firebase.pushEnabled && !!live.firebase.serviceAccount,
-    },
   });
 });
 

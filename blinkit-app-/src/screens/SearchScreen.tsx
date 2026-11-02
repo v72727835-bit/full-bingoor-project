@@ -15,11 +15,10 @@ import { ProductCardSkeleton } from '../ui/Skeleton';
 import { SmartImage } from '../ui/SmartImage';
 import { Txt } from '../ui/Text';
 import { productGridPerf, useGrid } from '../utils/layout';
+import { loadPopularTerms } from '../utils/popularTerms';
 
 /** Survives navigation within a session; deliberately not persisted to disk. */
 const recentSearches: string[] = [];
-
-const POPULAR = ['Milk', 'Atta', 'Rice', 'Eggs', 'Bread', 'Cooking oil', 'Sugar', 'Tea'];
 
 export function SearchScreen() {
   const navigation = useNavigation<AppNav>();
@@ -33,6 +32,13 @@ export function SearchScreen() {
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
+  const [popular, setPopular] = useState<string[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    loadPopularTerms().then((list) => { if (alive) setPopular(list); });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 250);
@@ -156,25 +162,27 @@ export function SearchScreen() {
                 </View>
               ) : null}
 
-              <View style={styles.block}>
-                <Txt variant="overline" tone="muted" style={styles.blockTitle}>
-                  Popular right now
-                </Txt>
-                <View style={styles.tagWrap}>
-                  {POPULAR.map((term) => (
-                    <Pressable
-                      key={term}
-                      onPress={() => runSearch(term)}
-                      accessibilityRole="button"
-                      style={({ pressed }) => [styles.tag, pressed && styles.tagPressed]}
-                    >
-                      <Txt variant="labelSm" tone="body">
-                        {term}
-                      </Txt>
-                    </Pressable>
-                  ))}
+              {popular.length ? (
+                <View style={styles.block}>
+                  <Txt variant="overline" tone="muted" style={styles.blockTitle}>
+                    Popular right now
+                  </Txt>
+                  <View style={styles.tagWrap}>
+                    {popular.map((term) => (
+                      <Pressable
+                        key={term}
+                        onPress={() => runSearch(term)}
+                        accessibilityRole="button"
+                        style={({ pressed }) => [styles.tag, pressed && styles.tagPressed]}
+                      >
+                        <Txt variant="labelSm" tone="body">
+                          {term}
+                        </Txt>
+                      </Pressable>
+                    ))}
+                  </View>
                 </View>
-              </View>
+              ) : null}
           </>
         </ScrollView>
       ) : null}
