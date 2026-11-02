@@ -163,10 +163,10 @@ export function HomeScreen({ active }: TabScreenProps) {
       >
         <Icon name="location-sharp" size={ms(13)} color={c.priceMark} />
         <Txt variant="labelSm" tone="onHeader" numberOfLines={1}>
-          {address ? address.label.charAt(0).toUpperCase() + address.label.slice(1) : 'Add address'}
+          {address ? address.label.charAt(0).toUpperCase() + address.label.slice(1) : area ? 'Current location' : 'Add address'}
         </Txt>
         <Txt variant="caption" numberOfLines={1} style={styles.addressText}>
-          {address ? `${address.line1}, ${address.city}` : 'to see what delivers to you'}
+          {address ? `${address.line1}, ${address.city}` : area ? 'Showing shops that deliver here' : 'to see what delivers to you'}
         </Txt>
         <Icon name="chevron-down" size={ms(13)} color={c.onHeader} />
       </Pressable>

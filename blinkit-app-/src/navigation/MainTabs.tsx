@@ -12,6 +12,7 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { usePublicSettingsQuery } from '../store/catalogApi';
 import { themed } from '../theme';
 import { TabBar, TabDef } from './TabBar';
+import { useAutoLocation } from '../utils/useAutoLocation';
 import { useTabs } from './TabsContext';
 
 /**
@@ -27,6 +28,8 @@ export function MainTabs() {
   const [barHeight, setBarHeight] = useState(0);
   const { data: settings } = usePublicSettingsQuery();
   const festival = settings?.festival.enabled ? settings.festival.name : null;
+  // No pinned address yet: use where the phone is, so the right shops show up.
+  useAutoLocation();
 
   // The festival tab takes the second slot while the admin has it switched on,
   // and Orders steps aside rather than crowding a sixth tab onto the bar.

@@ -10,6 +10,7 @@ import { errorHandler, notFound } from './middleware/error';
 import { parseRange } from './utils/range';
 import { findImage } from './utils/imageStore';
 import routes from './routes';
+import { upgradeOwnLinks } from './utils/publicUrl';
 import { ensureSettings } from './services/settings.service';
 
 const app = express();
@@ -120,6 +121,13 @@ app.use(
 
 app.get('/health', (_req, res) => {
   res.json({ success: true, service: 'bingoor-backend', uptime: process.uptime() });
+});
+
+// Images saved as http://api.bingoor.com/... (see utils/publicUrl) go out as https, so the Android apps load them.
+app.use('/api', (_req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body?: unknown) => json(upgradeOwnLinks(body));
+  next();
 });
 
 app.use('/api/v1', ensureSettings, routes);

@@ -1,11 +1,9 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Geolocation from '@react-native-community/geolocation';
 import React, { useRef, useState } from 'react';
 import {
   Clipboard,
   KeyboardAvoidingView,
-  PermissionsAndroid,
   Platform,
   Pressable,
   ScrollView,
@@ -29,6 +27,7 @@ import { Txt } from '../ui/Text';
 import { TextField, TextInputRef } from '../ui/TextField';
 import { useToast } from '../ui/Toast';
 import { isValidPhone, isValidPincode, normalizePhone } from '../utils/validation';
+import { getPhoneLocation, locationMessage, problemFromError } from '../utils/location';
 
 const LABELS: { key: AddressLabel; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
   { key: 'home', label: 'Home', icon: 'home-outline' },
@@ -75,26 +74,15 @@ export function AddressFormScreen() {
   /** Pins the address to where the phone is now, so the rider can navigate to the door. */
   const locate = async () => {
     setFormError(null);
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        setFormError('Allow location access so the rider can find your door.');
-        return;
-      }
-    }
     setLocating(true);
-    Geolocation.getCurrentPosition(
-      (pos) => {
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setErrors((e) => ({ ...e, location: '' }));
-        setLocating(false);
-      },
-      () => {
-        setFormError('Could not get your location. Turn on GPS and try again.');
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
-    );
+    try {
+      setLocation(await getPhoneLocation());
+      setErrors((e) => ({ ...e, location: '' }));
+    } catch (err) {
+      setFormError(locationMessage(problemFromError(err)));
+    } finally {
+      setLocating(false);
+    }
   };
 
   const set = (key: keyof typeof form) => (value: string) => {
