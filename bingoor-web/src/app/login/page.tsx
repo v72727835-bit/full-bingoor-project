@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { OrDivider, SocialSignIn } from '../../components/SocialSignIn';
 import { getErrorMessage } from '../../lib/client';
 import { AuthShell } from '../../components/AuthShell';
 import { Alert, Button, Field, Input, PageLoader } from '../../components/ui';
@@ -48,8 +47,6 @@ function LoginInner() {
       }
     >
       {error ? <Alert tone="bad">{error}</Alert> : null}
-      <SocialSignIn next={next} onError={setError} />
-      <OrDivider label="or sign in with phone" />
       {/* The phone / password form is always open (the client asked for it). */}
       <form onSubmit={submit}>
         <Field label="Your phone number" required>

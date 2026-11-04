@@ -2,7 +2,6 @@ import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import { useTabs } from '../navigation/TabsContext';
@@ -166,7 +165,9 @@ export function CartScreen({ active }: TabScreenProps) {
       </ScrollView>
 
       {/* ------------------------------------------------ checkout bar -- */}
-      <SafeAreaView edges={['bottom']} style={styles.bar}>
+      {/* A plain View: the tab bar below already keeps clear of the phone's bottom edge, so a
+          safe-area inset here only left an empty strip under the button. */}
+      <View style={styles.bar}>
         <View style={styles.barInner}>
           <View style={styles.barPrice}>
             <Txt variant="caption" tone="muted">
@@ -185,7 +186,7 @@ export function CartScreen({ active }: TabScreenProps) {
             style={styles.barBtn}
           />
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }

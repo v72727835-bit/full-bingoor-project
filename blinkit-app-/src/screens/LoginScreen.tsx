@@ -27,8 +27,7 @@ export function LoginScreen() {
   const navigation = useNavigation<AuthNav>();
   const { signIn, signInSocial } = useAuth();
   const { data: publicSettings } = usePublicSettingsQuery();
-  const [usePhone, setUsePhone] = useState(false);
-  const [social, setSocial] = useState<'google' | 'facebook' | null>(null);
+  const [usePhone] = useState(true);
   const passwordRef = useRef<TextInputRef>(null);
 
   const [identifier, setIdentifier] = useState('');
@@ -64,23 +63,6 @@ export function LoginScreen() {
     }
   };
 
-  const continueWith = async (provider: 'google' | 'facebook') => {
-    setFormError(null);
-    const id = provider === 'google' ? publicSettings?.social?.googleClientId : publicSettings?.social?.facebookAppId;
-    if (!id) {
-      setFormError(`Login with ${provider === 'google' ? 'Google' : 'Facebook'} is coming soon. Please continue with your phone number for now.`);
-      return;
-    }
-    setSocial(provider);
-    try {
-      const token = provider === 'google' ? await googleAccessToken(id) : await facebookAccessToken();
-      await signInSocial(provider, token);
-    } catch (err) {
-      setFormError(err instanceof Error && err.message === NOT_IN_BUILD ? NOT_IN_BUILD : getErrorMessage(err));
-    } finally {
-      setSocial(null);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -106,18 +88,7 @@ export function LoginScreen() {
 
           {formError ? <Banner tone="danger" message={formError} style={styles.banner} /> : null}
 
-          <View style={styles.methods}>
-            <Button label="Continue with phone number" icon="call-outline" variant={usePhone ? 'primary' : 'secondary'} onPress={() => setUsePhone((v) => !v)} size="lg" block />
-            <View style={styles.or}>
-              <View style={styles.orLine} />
-              <Txt variant="caption" tone="faint">
-                or
-              </Txt>
-              <View style={styles.orLine} />
-            </View>
-            <Button label="Continue with Google" icon="logo-google" variant="secondary" onPress={() => continueWith('google')} loading={social === 'google'} size="lg" block />
-            <Button label="Continue with Facebook" icon="logo-facebook" variant="secondary" onPress={() => continueWith('facebook')} loading={social === 'facebook'} size="lg" block />
-          </View>
+          {/* Phone / email and password only: no Google, Facebook or Instagram sign-in. */}
 
           {usePhone ? (
             <View>

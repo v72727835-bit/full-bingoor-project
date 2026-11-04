@@ -94,7 +94,7 @@ export function ShopDetailScreen() {
                 <SmartImage uri={shop.logo} icon="shopping-cart" style={styles.logo} radius={radius.md} />
                 <View style={styles.cardTitles}>
                   <Txt variant="h2" center numberOfLines={2}>
-                    {shop.name}
+                    bingoor.com
                   </Txt>
                   <View style={styles.badgeRow}>
                     <Pill label={shop.isOpen ? 'Open now' : 'Closed'} tone={shop.isOpen ? 'success' : 'neutral'} />
@@ -118,7 +118,7 @@ export function ShopDetailScreen() {
                 <View style={styles.statDivider} />
                 <Stat icon="basket-outline" label="Min order" value={currency(shop.minOrderAmount)} />
                 <View style={styles.statDivider} />
-                <Stat icon="navigate-outline" label="Serves" value={`${shop.deliveryRadiusKm ?? 5} km`} />
+                <Stat icon="navigate-outline" label="Serves" value="India" />
               </View>
 
               {addressLine ? (

@@ -107,7 +107,8 @@ export function AddressFormScreen() {
     const next: Record<string, string> = {};
     if (form.name.trim().length < 2) next.name = 'Enter the name of whoever receives the order';
     if (!isValidPhone(form.phone)) next.phone = 'Enter a valid 10-digit mobile number';
-    if (form.line1.trim().length < 3) next.line1 = 'Enter the house or flat number and street';
+    if (form.line1.trim().length < 1) next.line1 = 'Enter the flat, house or building number';
+    if (form.line2.trim().length < 3) next.line2 = 'Enter the street and area / colony';
     if (form.city.trim().length < 2) next.city = 'Enter your city or town';
     if (form.state.trim().length < 2) next.state = 'Enter your state';
     if (!isValidPincode(form.pincode)) next.pincode = 'Pincode must be 6 digits';
@@ -125,7 +126,7 @@ export function AddressFormScreen() {
       name: form.name.trim(),
       phone: normalizePhone(form.phone),
       line1: form.line1.trim(),
-      line2: form.line2.trim() || undefined,
+      line2: form.line2.trim(),
       landmark: form.landmark.trim() || undefined,
       city: form.city.trim(),
       state: form.state.trim(),
@@ -250,8 +251,8 @@ export function AddressFormScreen() {
           />
 
           <TextField
-            label="House / flat and street"
-            placeholder="12A, Gandhi Nagar Road"
+            label="Flat / house / building number"
+            placeholder="Flat 12A, Shanti Apartment"
             icon="home-outline"
             autoCapitalize="words"
             returnKeyType="next"
@@ -263,14 +264,16 @@ export function AddressFormScreen() {
           />
 
           <TextField
-            label="Area / colony (optional)"
-            placeholder="Near Civil Lines"
+            label="Street, area / colony"
+            placeholder="Gandhi Nagar Road, Civil Lines"
+            icon="map-outline"
             autoCapitalize="words"
             returnKeyType="next"
             inputRef={line2Ref}
             value={form.line2}
             onChangeText={set('line2')}
             onSubmitEditing={() => landmarkRef.current?.focus()}
+            error={errors.line2}
           />
 
           <TextField

@@ -299,7 +299,7 @@ export function SeeAll({ href, previews, label = 'See all' }: { href: string; pr
 export function Price({ price, mrp, size = 15 }: { price: number; mrp?: number; size?: number }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-      <span className="num" style={{ fontSize: size, fontWeight: 750, letterSpacing: '-0.02em' }}>
+      <span className="num" style={{ fontSize: size, fontWeight: 800, letterSpacing: '-0.02em' }}>
         ₹{price}
       </span>
       {mrp && mrp > price ? (

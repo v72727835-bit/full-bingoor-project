@@ -18,7 +18,8 @@ import { Banner, EmptyState } from '../ui/Feedback';
 import { ProductCardSkeleton, SkeletonBlock } from '../ui/Skeleton';
 import { Txt } from '../ui/Text';
 import { shortDelivery } from '../utils/delivery';
-import { tapConfirm } from '../utils/haptics';
+import { tapConfirm, tapTab } from '../utils/haptics';
+import { usePublicSettingsQuery } from '../store/catalogApi';
 import { useGrid, useRailCardWidth } from '../utils/layout';
 import { loadPopularTerms } from '../utils/popularTerms';
 
@@ -74,6 +75,8 @@ export function HomeScreen({ active }: TabScreenProps) {
   }, [data, prefetchTree]);
 
   const address = user?.addresses?.find((a) => a.isDefault) ?? user?.addresses?.[0];
+  const { data: publicSettings } = usePublicSettingsQuery();
+  const festival = publicSettings?.festival?.enabled && publicSettings.festival.name ? publicSettings.festival : null;
   const firstName = (user?.name ?? '').split(' ')[0];
 
   // Never two tabs with the same label, whatever the data says.
@@ -128,10 +131,10 @@ export function HomeScreen({ active }: TabScreenProps) {
           style={styles.heroTitle}
         >
           <Txt variant="overline" center style={styles.kicker}>
-            Delivery in
+            bingoor.com
           </Txt>
           <View style={styles.timeRow}>
-            <Icon name="flash" size={ms(20)} color={c.priceMark} />
+            <Icon name="flash" size={ms(20)} color={c.headerAccent} />
             <Txt variant="h1" tone="onHeader" numberOfLines={1}>
               {shortDelivery(data)}
             </Txt>
@@ -161,7 +164,7 @@ export function HomeScreen({ active }: TabScreenProps) {
         accessibilityLabel="Change delivery address"
         style={({ pressed }) => [styles.addressRow, pressed && { opacity: 0.75 }]}
       >
-        <Icon name="location-sharp" size={ms(13)} color={c.priceMark} />
+        <Icon name="location-sharp" size={ms(13)} color={c.headerAccent} />
         <Txt variant="labelSm" tone="onHeader" numberOfLines={1}>
           {address ? address.label.charAt(0).toUpperCase() + address.label.slice(1) : area ? 'Current location' : 'Add address'}
         </Txt>
@@ -188,12 +191,35 @@ export function HomeScreen({ active }: TabScreenProps) {
       </Pressable>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsPad}>
+        {/* The festival (while the admin has it on) comes first, then every aisle. */}
+        {festival ? (
+          <Pressable
+            onPress={() => {
+              tapTab();
+              goToTab('festival');
+            }}
+            accessibilityRole="tab"
+            accessibilityLabel={festival.name}
+            style={styles.tab}
+          >
+            <View style={[styles.tabArt, styles.festivalArt]}>
+              <Icon name="gift" size={ms(22)} color="#B91C1C" />
+            </View>
+            <Txt variant="caption" numberOfLines={1} weight="800" style={{ color: c.onHeader }}>
+              {festival.name}
+            </Txt>
+            <View style={styles.tabLine} />
+          </Pressable>
+        ) : null}
         {tabs.map((t) => {
           const on = t.slug === tab;
           return (
             <Pressable
               key={t._id}
-              onPress={() => setTab(t.slug)}
+              onPress={() => {
+                tapTab();
+                setTab(t.slug);
+              }}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={t.name}
@@ -410,11 +436,12 @@ const styles = themed(({ c }) => ({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden', // the photo fills the tile edge to edge
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
   tabArtOn: { backgroundColor: 'rgba(255,255,255,0.95)' },
+  festivalArt: { backgroundColor: '#FFF3C4' },
   tabLine: { height: ms(3), width: '70%', borderTopLeftRadius: ms(3), borderTopRightRadius: ms(3), marginTop: ms(4) },
-  tabLineOn: { backgroundColor: c.priceMark },
+  tabLineOn: { backgroundColor: c.headerAccent },
 
   sectionWrap: { marginBottom: space.sm },
 

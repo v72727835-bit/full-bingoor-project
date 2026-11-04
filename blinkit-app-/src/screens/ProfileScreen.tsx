@@ -358,7 +358,7 @@ const styles = themed(({ c }) => ({
   content: { paddingBottom: space.xxxl },
 
   header: {
-    backgroundColor: c.headerFrom,
+    backgroundColor: c.brand,
     paddingHorizontal: gutter,
     paddingBottom: space.xl,
     borderBottomLeftRadius: radius.xl,

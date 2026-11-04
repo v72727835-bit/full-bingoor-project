@@ -38,6 +38,8 @@ import { TextField } from '../ui/TextField';
 import { useToast } from '../ui/Toast';
 import { shareLink } from '../utils/share';
 import { timeAgo } from '../utils/validation';
+import { RichDescription } from '../components/RichDescription';
+import { LogoMark } from '../ui/Logo';
 import { useRailCardWidth } from '../utils/layout';
 
 export function ProductDetailScreen() {
@@ -53,6 +55,7 @@ export function ProductDetailScreen() {
 
   const [reviews, setReviews] = useState<ReviewPage | null>(null);
   const [slide, setSlide] = useState(0);
+  const [descOpen, setDescOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [myRating, setMyRating] = useState(5);
   const [myComment, setMyComment] = useState('');
@@ -294,29 +297,24 @@ export function ProductDetailScreen() {
 
         {/* --------------------------------------------------- shop -- */}
         {product.shop ? (
-          <Pressable
-            onPress={() => navigation.navigate('ShopDetail', { id: product.shop!._id, name: product.shop!.name })}
-            accessibilityRole="button"
-            accessibilityLabel={`View shop ${product.shop.name}`}
-            style={({ pressed }) => [styles.shopRow, pressed && styles.pressed]}
-          >
-            <SmartImage uri={product.shop.logo} icon="shopping-cart" style={styles.shopLogo} radius={radius.md} />
+          // Customers see Bingoor as the seller; which warehouse packs it is not theirs to worry about.
+          <View style={styles.shopRow}>
+            <LogoMark size={40} style={styles.shopLogo} />
             <View style={styles.shopBody}>
               <Txt variant="caption" tone="muted">
                 Sold by
               </Txt>
               <Txt variant="h4" numberOfLines={1}>
-                {product.shop.name}
+                bingoor.com
               </Txt>
               <Txt variant="caption" tone="faint" numberOfLines={1} style={styles.shopMeta}>
-                {product.shop.isOpen ? 'Open now' : 'Currently closed'}
+                Delivers across India
                 {'  ·  '}
                 {product.shop.deliveryFee === 0 ? 'Free delivery' : `${currency(product.shop.deliveryFee)} delivery`}
                 {product.shop.minOrderAmount ? `  ·  Min ${currency(product.shop.minOrderAmount)}` : ''}
               </Txt>
             </View>
-            <Ionicons name="chevron-forward" size={ms(19)} color={colors.inkFaint} />
-          </Pressable>
+          </View>
         ) : null}
 
         <Divider />
@@ -356,12 +354,25 @@ export function ProductDetailScreen() {
           <>
             <Divider />
             <View style={styles.block}>
-              <Txt variant="h3" center style={styles.blockTitle}>
-                About this product
-              </Txt>
-              <Txt variant="body" tone="body" center>
-                {product.description}
-              </Txt>
+              {/* A closed box with an arrow: tap to read the description (formatted as in the admin panel). */}
+              <Pressable
+                onPress={() => setDescOpen((v) => !v)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: descOpen }}
+                style={({ pressed }) => [styles.descBox, pressed && styles.pressed]}
+              >
+                <View style={styles.descHead}>
+                  <Txt variant="h4" style={styles.flex}>
+                    Product description
+                  </Txt>
+                  <Ionicons name={descOpen ? 'chevron-up' : 'chevron-down'} size={ms(20)} color={colors.ink} />
+                </View>
+                {descOpen ? (
+                  <View style={styles.descBody}>
+                    <RichDescription text={product.description} />
+                  </View>
+                ) : null}
+              </Pressable>
               {product.category && typeof product.category === 'object' ? (
                 <Pressable
                   onPress={() =>
@@ -390,8 +401,16 @@ export function ProductDetailScreen() {
           <View style={styles.reviewHead}>
             <View style={styles.flex}>
               <Txt variant="h3" center>
-                Ratings and reviews
+                Reviews
               </Txt>
+              {product.ratingCount > 0 ? (
+                <View style={styles.starRow}>
+                  <Ionicons name="star" size={ms(22)} color="#F5B800" />
+                  <Txt variant="h2" style={styles.starValue}>
+                    {product.rating.toFixed(1)}
+                  </Txt>
+                </View>
+              ) : null}
               <Txt variant="bodySm" tone="muted" center style={styles.blockSub}>
                 {product.ratingCount > 0
                   ? `${product.rating.toFixed(1)} out of 5 from ${product.ratingCount} ${
@@ -628,7 +647,13 @@ const styles = themed(({ c, elevation }) => ({
     marginHorizontal: ms(3),
   },
   dotOn: { backgroundColor: c.brand, width: ms(18) },
-  galleryBadge: { position: 'absolute', top: ms(76), left: gutter },
+  // Below the top bar's buttons, so the badge is fully visible.
+  galleryBadge: { position: 'absolute', top: ms(116), left: gutter },
+  descBox: { borderWidth: 1, borderColor: c.border, borderRadius: radius.lg, padding: space.lg, backgroundColor: c.surface },
+  descHead: { flexDirection: 'row', alignItems: 'center' },
+  descBody: { marginTop: space.md },
+  starRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: space.xs, gap: ms(6) },
+  starValue: { fontWeight: '800' },
 
   block: { paddingHorizontal: gutter, paddingVertical: space.xl },
   blockTitle: { marginBottom: space.sm },

@@ -47,6 +47,6 @@ export default function App() {
  * which is dark in both themes - so its icons are light either way.
  */
 function ThemedStatusBar() {
-  useTheme();
-  return <StatusBar barStyle="light-content" />;
+  const { c } = useTheme();
+  return <StatusBar barStyle={c.mode === 'light' ? 'dark-content' : 'light-content'} />;
 }

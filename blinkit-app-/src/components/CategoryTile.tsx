@@ -61,7 +61,7 @@ export function CategoryTile({
       >
         <CategoryArt category={category} size={width * 0.5} />
       </View>
-      <Txt variant="caption" tone="ink" weight="600" center numberOfLines={2} style={styles.label}>
+      <Txt variant="caption" tone="ink" weight="800" center numberOfLines={2} style={styles.label}>
         {category.name}
       </Txt>
     </Pressable>
@@ -89,7 +89,7 @@ export function CategoryCircle({
       <View style={[styles.circle, { width: size, height: size, backgroundColor: tint(category.tint) }]}>
         <CategoryArt category={category} size={size * 0.52} />
       </View>
-      <Txt variant="caption" tone="body" center numberOfLines={2} style={styles.label}>
+      <Txt variant="caption" tone="body" weight="800" center numberOfLines={2} style={styles.label}>
         {category.name}
       </Txt>
     </Pressable>

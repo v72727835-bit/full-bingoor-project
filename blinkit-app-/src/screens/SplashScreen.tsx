@@ -38,6 +38,6 @@ export function SplashScreen() {
 }
 
 const styles = themed(({ c }) => ({
-  root: { flex: 1, backgroundColor: c.headerFrom, alignItems: 'center', justifyContent: 'center' },
+  root: { flex: 1, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center' },
   footer: { position: 'absolute', bottom: ms(48), paddingHorizontal: space.xl },
   footerText: { color: 'rgba(255,255,255,0.65)', textAlign: 'center' },}));

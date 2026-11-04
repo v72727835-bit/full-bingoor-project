@@ -16,8 +16,8 @@ function buzz(ms: number) {
   }
 }
 
-/** Switching tabs - the lightest tick there is. */
-export const tapTab = () => buzz(10);
+/** Switching tabs. Phones ignore pulses much under ~30 ms, so this is long enough to be felt. */
+export const tapTab = () => buzz(40);
 
 /** Confirming something the customer chose, e.g. the delivery time. */
-export const tapConfirm = () => buzz(20);
+export const tapConfirm = () => buzz(50);
