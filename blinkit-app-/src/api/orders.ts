@@ -5,8 +5,16 @@ export async function placeOrder(input: {
   addressId: string;
   paymentMethod: PaymentMethod;
   note?: string;
+  /** Which online way to pay (UPI, card, net banking...): its charge is added to the bill. */
+  payOption?: string;
 }): Promise<PlaceOrderResult | PaymentRequired> {
   const { data } = await api.post<ApiEnvelope<PlaceOrderResult | PaymentRequired>>('/orders', input);
+  return data.data;
+}
+
+/** The server's price for this basket to an address: the charge of each way to pay. */
+export async function fetchQuote(addressId: string): Promise<{ paymentFees?: Record<string, number> }> {
+  const { data } = await api.get<ApiEnvelope<{ paymentFees?: Record<string, number> }>>('/cart/quote', { params: { addressId, slot: 'instant' } });
   return data.data;
 }
 

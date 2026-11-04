@@ -441,6 +441,18 @@ export interface ReviewPage {
 /* ------------------------- festival, care, notices ------------------------ */
 
 /** Shop-wide switches the admin owns, fetched once at start-up. */
+/** The six ways to pay at checkout; the admin sets the names and the % charge. */
+export type PayKey = 'upi' | 'cod' | 'debit' | 'netbanking' | 'credit' | 'rupay';
+export interface PayOptionDef {
+  key: PayKey;
+  label: string;
+  note?: string;
+  enabled?: boolean;
+  pct: number;
+  highPct?: number;
+  highFrom?: number;
+}
+
 export interface PublicSettings {
   festival: { enabled: boolean; name: string; banner?: string | null };
   appLinks: { android?: string; ios?: string };
@@ -454,6 +466,7 @@ export interface PublicSettings {
   /** Public sign-in ids; null while that provider is not set up. */
   social?: { googleClientId: string | null; facebookAppId: string | null };
   deliverySlots?: { key: 'instant' | 'twoHour' | 'nextDay'; label: string }[];
+  paymentOptions?: PayOptionDef[];
 }
 
 export interface FestivalSection {

@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getErrorMessage } from '../api/client';
-import { fetchOrders, placeOrder } from '../api/orders';
+import { fetchOrders, fetchQuote, placeOrder } from '../api/orders';
 import { WEB_URL } from '../config';
 import { tokenStore } from '../storage/tokens';
 import { fetchAddresses } from '../api/user';
@@ -14,7 +14,7 @@ import { useTabs } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { usePublicSettingsQuery } from '../store/catalogApi';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
-import { Address, CheckoutProblem, PaymentMethod } from '../types';
+import { Address, CheckoutProblem, PayKey, PayOptionDef, PaymentMethod } from '../types';
 import { AppHeader } from '../ui/AppHeader';
 import { Button } from '../ui/Button';
 import { Banner, EmptyState, FullScreenLoader } from '../ui/Feedback';
@@ -47,6 +47,24 @@ function describeProblem(p: CheckoutProblem): string {
   return `${where}: ${p.reason.replace(/_/g, ' ')}`;
 }
 
+/* The six ways to pay (names, notes and % come from the admin panel; these are the defaults). */
+const PAY_ICON: Record<PayKey, React.ComponentProps<typeof Ionicons>['name']> = {
+  upi: 'flash-outline', cod: 'cash-outline', debit: 'card-outline', netbanking: 'business-outline', credit: 'card-outline', rupay: 'card-outline',
+};
+const FALLBACK_PAY: PayOptionDef[] = [
+  { key: 'upi', label: 'UPI ID / UPI scanner', note: 'PhonePe, Google Pay, Paytm, BHIM or any UPI app - free', pct: 0 },
+  { key: 'cod', label: 'Cash on delivery', note: 'Pay the delivery partner when your order arrives', pct: 0 },
+  { key: 'debit', label: 'Debit card', pct: 0.4, highPct: 0.9, highFrom: 2000 },
+  { key: 'netbanking', label: 'Net banking', pct: 1.8 },
+  { key: 'credit', label: 'Credit card', pct: 2 },
+  { key: 'rupay', label: 'RuPay debit card', note: 'Free', pct: 0 },
+];
+const pctOf = (o: PayOptionDef, amount: number) =>
+  o.highPct !== undefined && o.highPct !== null && o.highFrom && amount >= o.highFrom ? o.highPct : o.pct;
+/** The same sum the server makes, used until its quote arrives. */
+const localFee = (o: PayOptionDef, amount: number) => Math.round(amount * pctOf(o, amount)) / 100;
+const pctText = (o: PayOptionDef, amount: number) => `${pctOf(o, amount)}% of the bill`;
+
 export function CheckoutScreen() {
   const navigation = useNavigation<AppNav>();
   const { cart, refresh } = useCart();
@@ -57,6 +75,27 @@ export function CheckoutScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [payment, setPayment] = useState<PaymentMethod>('cod');
   const { data: settings } = usePublicSettingsQuery();
+  // Which of the six ways to pay; the online ones add their admin-set % charge to the bill.
+  const [opt, setOpt] = useState<PayKey>('cod');
+  const [fees, setFees] = useState<Record<string, number> | null>(null);
+  const options = (settings?.paymentOptions?.length ? settings.paymentOptions : FALLBACK_PAY).filter(
+    (o) => o.enabled !== false && (o.key === 'cod' || settings?.onlinePaymentOn),
+  );
+  const choose = (o: PayOptionDef) => {
+    if (o.key === 'cod') {
+      if (codBlocked.length) return;
+      setOpt('cod');
+      setPayment('cod');
+    } else {
+      if (onlineBlocked.length) return;
+      setOpt(o.key);
+      setPayment('online');
+    }
+  };
+  const feeFor = (o: PayOptionDef) => fees?.[o.key] ?? localFee(o, cart.total);
+  const chosen = options.find((o) => o.key === opt);
+  const payFee = chosen ? feeFor(chosen) : 0;
+  const payable = Math.round((cart.total + payFee) * 100) / 100;
 
   // Items from aisles where the admin turned cash on delivery off.
   const codBlocked = cart.groups
@@ -73,9 +112,23 @@ export function CheckoutScreen() {
     const items = cart.groups.flatMap((g) => g.items);
     const noCod = items.some((i) => i.codAvailable === false);
     const noOnline = items.some((i) => i.onlineAvailable === false);
-    if (noCod && !noOnline && settings?.onlinePaymentOn) setPayment('online');
-    else if (noOnline && !noCod) setPayment('cod');
+    if (noCod && !noOnline && settings?.onlinePaymentOn) {
+      setPayment('online');
+      setOpt('upi');
+    } else if (noOnline && !noCod) {
+      setPayment('cod');
+      setOpt('cod');
+    }
   }, [cart, settings?.onlinePaymentOn]);
+  // The server's charge for each way to pay, for this basket and address.
+  useEffect(() => {
+    if (!selectedId) return;
+    let live = true;
+    fetchQuote(selectedId)
+      .then((q) => { if (live) setFees(q.paymentFees ?? null); })
+      .catch(() => undefined);
+    return () => { live = false; };
+  }, [selectedId, cart.total]);
   const [note, setNote] = useState('');
   const [placing, setPlacing] = useState(false);
   const [awaiting, setAwaiting] = useState(false);
@@ -148,6 +201,7 @@ export function CheckoutScreen() {
         addressId: selected._id,
         paymentMethod: payment,
         note: note.trim() || undefined,
+        ...(payment === 'online' && opt !== 'cod' ? { payOption: opt } : {}),
       });
       if ('requiresPayment' in result) {
         // Razorpay's window runs on the website; the order appears once the payment is verified there.
@@ -344,22 +398,20 @@ export function CheckoutScreen() {
             <Banner tone="warning" message={`Online payment is not available for some items in this order (${onlineBlocked.join(', ')}). Please pay by cash on delivery.`} style={styles.codBanner} />
           ) : null}
 
-          <PaymentOption
-            selected={payment === 'cod'}
-            onPress={() => { if (codBlocked.length === 0) setPayment('cod'); }}
-            icon="cash-outline"
-            title="Cash on delivery"
-            subtitle="Pay the delivery partner when your order arrives"
-          />
-          {settings?.onlinePaymentOn ? (
-            <PaymentOption
-              selected={payment === 'online'}
-              onPress={() => { if (onlineBlocked.length === 0) setPayment('online'); }}
-              icon="card-outline"
-              title="Pay online"
-              subtitle="Debit or credit card, UPI, netbanking and wallets"
-            />
-          ) : null}
+          {options.map((o) => {
+            const fee = feeFor(o);
+            const blocked = o.key === 'cod' ? codBlocked.length > 0 : onlineBlocked.length > 0;
+            return (
+              <PaymentOption
+                key={o.key}
+                selected={opt === o.key}
+                onPress={() => choose(o)}
+                icon={PAY_ICON[o.key]}
+                title={o.label}
+                subtitle={blocked ? 'Not available for this order' : fee > 0 ? `${o.label} charges: ${currency(fee)} (${pctText(o, cart.total)})` : o.note || 'No extra charge'}
+              />
+            );
+          })}
           {awaiting ? (
             <Banner
               tone="info"
@@ -422,10 +474,11 @@ export function CheckoutScreen() {
           </Txt>
           <Row label="Item total" value={currency(cart.subtotal)} />
           <Row label="Delivery fee" value={cart.deliveryFee === 0 ? 'FREE' : currency(cart.deliveryFee)} highlight={cart.deliveryFee === 0} />
+          {payFee > 0 && chosen ? <Row label={`${chosen.label} charges`} value={currency(payFee)} /> : null}
           <View style={styles.billDivider} />
           <View style={styles.row}>
             <Txt variant="h3">Amount payable</Txt>
-            <Txt variant="h2">{currency(cart.total)}</Txt>
+            <Txt variant="h2">{currency(payable)}</Txt>
           </View>
           {payment === 'cod' ? (
             <Txt variant="caption" tone="faint" style={styles.codNote}>
@@ -447,7 +500,7 @@ export function CheckoutScreen() {
               Payable
             </Txt>
             <Txt variant="h2" numberOfLines={1}>
-              {currency(cart.total)}
+              {currency(payable)}
             </Txt>
           </View>
           <Button
