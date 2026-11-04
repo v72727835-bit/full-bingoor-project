@@ -40,6 +40,7 @@ import { shareLink } from '../utils/share';
 import { timeAgo } from '../utils/validation';
 import { RichDescription } from '../components/RichDescription';
 import { LogoMark } from '../ui/Logo';
+import { useLocalName } from '../store/language';
 import { useRailCardWidth } from '../utils/layout';
 
 export function ProductDetailScreen() {
@@ -56,6 +57,7 @@ export function ProductDetailScreen() {
   const [reviews, setReviews] = useState<ReviewPage | null>(null);
   const [slide, setSlide] = useState(0);
   const [descOpen, setDescOpen] = useState(false);
+  const localName = useLocalName();
   const [reviewOpen, setReviewOpen] = useState(false);
   const [myRating, setMyRating] = useState(5);
   const [myComment, setMyComment] = useState('');
@@ -192,7 +194,7 @@ export function ProductDetailScreen() {
           ) : null}
 
           <Txt variant="h1" center style={styles.name}>
-            {product.name}
+            {localName(product)}
           </Txt>
 
           <View style={styles.metaRow}>

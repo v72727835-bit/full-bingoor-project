@@ -21,6 +21,7 @@ import { shortDelivery } from '../utils/delivery';
 import { tapConfirm, tapTab } from '../utils/haptics';
 import { usePublicSettingsQuery } from '../store/catalogApi';
 import { useGrid, useRailCardWidth } from '../utils/layout';
+import { setLang, useLang } from '../store/language';
 import { loadPopularTerms } from '../utils/popularTerms';
 
 const ALL: Category = { _id: 'all', name: 'All', slug: 'all', icon: 'shopping-bags', short: 'All' };
@@ -76,6 +77,7 @@ export function HomeScreen({ active }: TabScreenProps) {
 
   const address = user?.addresses?.find((a) => a.isDefault) ?? user?.addresses?.[0];
   const { data: publicSettings } = usePublicSettingsQuery();
+  const lang = useLang();
   const festival = publicSettings?.festival?.enabled && publicSettings.festival.name ? publicSettings.festival : null;
   const firstName = (user?.name ?? '').split(' ')[0];
 
@@ -117,6 +119,22 @@ export function HomeScreen({ active }: TabScreenProps) {
   const hero = (
     <View style={[styles.hero, { paddingTop: insets.top + space.md }]}>
       <View style={styles.heroTop}>
+        {/* English / Hindi names, like the website's language menu. */}
+        <Pressable
+          onPress={() => {
+            tapConfirm();
+            setLang(lang === 'hi' ? 'en' : 'hi');
+          }}
+          hitSlop={hitSlop}
+          accessibilityRole="button"
+          accessibilityLabel={lang === 'hi' ? 'Switch to English' : 'हिंदी में देखें'}
+          style={({ pressed }) => [styles.langChip, pressed && { opacity: 0.8 }]}
+        >
+          <Txt variant="labelSm" tone="onHeader">
+            {lang === 'hi' ? 'EN' : 'हिं'}
+          </Txt>
+        </Pressable>
+
         <NoticeBell onDark />
 
         {/* The delivery promise answers "how soon?", so a tap buzzes back and
@@ -235,7 +253,7 @@ export function HomeScreen({ active }: TabScreenProps) {
                 weight={on ? '800' : '600'}
                 style={{ color: on ? c.onHeader : c.onHeaderMuted }}
               >
-                {t.short ?? t.name}
+                {lang === 'hi' && t.nameHi ? t.nameHi : t.short ?? t.name}
               </Txt>
               <View style={[styles.tabLine, on && styles.tabLineOn]} />
             </Pressable>
@@ -440,6 +458,7 @@ const styles = themed(({ c }) => ({
   },
   tabArtOn: { backgroundColor: 'rgba(255,255,255,0.95)' },
   festivalArt: { backgroundColor: '#FFF3C4' },
+  langChip: { minWidth: ms(38), height: ms(32), paddingHorizontal: ms(8), borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: c.onHeader, marginRight: ms(6) },
   tabLine: { height: ms(3), width: '70%', borderTopLeftRadius: ms(3), borderTopRightRadius: ms(3), marginTop: ms(4) },
   tabLineOn: { backgroundColor: c.headerAccent },
 

@@ -9,6 +9,7 @@ import { ProductSummary } from '../types';
 import { StarLine } from '../ui/Rating';
 import { SmartImage } from '../ui/SmartImage';
 import { Stepper } from '../ui/Stepper';
+import { useLocalName } from '../store/language';
 import { Txt } from '../ui/Text';
 
 interface Props {
@@ -30,6 +31,7 @@ interface Props {
 export function ProductCard({ product, width, onPress, deliveryText = '19 min', style }: Props) {
   const { quantityOf, add, setQuantity, remove, pending } = useCart();
   const { isSaved, toggle } = useWishlist();
+  const localName = useLocalName();
   const [notifyOpen, setNotifyOpen] = useState(false);
 
   const qty = quantityOf(product._id);
@@ -91,7 +93,7 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
           {product.unit}
         </Txt>
         <Txt variant="bodySm" tone="ink" weight="700" numberOfLines={2} style={styles.name}>
-          {product.name}
+          {localName(product)}
         </Txt>
 
         {product.rating > 0 || product.ratingLabel ? (

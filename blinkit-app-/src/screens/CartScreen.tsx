@@ -17,6 +17,7 @@ import { Banner, EmptyState } from '../ui/Feedback';
 import { SmartImage } from '../ui/SmartImage';
 import { Stepper } from '../ui/Stepper';
 import { Pill } from '../ui/Surface';
+import { CartPoints } from '../components/CartPoints';
 import { Txt } from '../ui/Text';
 
 const ISSUE_TEXT: Record<string, string> = {
@@ -29,6 +30,8 @@ export function CartScreen({ active }: TabScreenProps) {
   const navigation = useNavigation<AppNav>();
   const { goToTab } = useTabs();
   const { cart, loading, refresh, setQuantity, remove, clear, pending } = useCart();
+  // Checkout stays grey until the cart-points rule is met.
+  const pointsShort = !!cart.points?.enabled && !cart.points.met;
   const area = useDeliveryPointKey();
   const { data: home } = useHomeQuery(area);
 
@@ -156,6 +159,9 @@ export function CartScreen({ active }: TabScreenProps) {
           ) : null}
         </View>
 
+        {/* The cart-points rule (admin panel): a top-up product before checkout. */}
+        <CartPoints ready={cart.groups.every((g) => g.meetsMinOrder)} />
+
         <Pressable onPress={() => goToTab('home')} accessibilityRole="button" style={styles.keepShopping} hitSlop={8}>
           <Ionicons name="add-circle-outline" size={ms(17)} color={colors.brand} />
           <Txt variant="label" tone="brand" style={styles.keepShoppingText}>
@@ -178,10 +184,10 @@ export function CartScreen({ active }: TabScreenProps) {
             </Txt>
           </View>
           <Button
-            label={cart.hasIssues ? 'Fix items to continue' : 'Proceed to checkout'}
-            iconRight={cart.hasIssues ? undefined : 'arrow-forward'}
+            label={cart.hasIssues ? 'Fix items to continue' : pointsShort ? 'Add 1 product above' : 'Proceed to checkout'}
+            iconRight={cart.hasIssues || pointsShort ? undefined : 'arrow-forward'}
             size="lg"
-            disabled={cart.hasIssues}
+            disabled={cart.hasIssues || pointsShort}
             onPress={() => navigation.navigate('Checkout')}
             style={styles.barBtn}
           />

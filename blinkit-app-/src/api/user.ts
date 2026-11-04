@@ -26,6 +26,11 @@ export async function changePassword(currentPassword: string, newPassword: strin
   await api.post('/auth/change-password', { currentPassword, newPassword });
 }
 
+/** Deletes the signed-in customer's account for good (password confirms it). */
+export async function deleteMyAccount(password: string): Promise<void> {
+  await api.delete('/me', { data: { password } });
+}
+
 /* ------------------------------------------------------------- addresses -- */
 
 export async function fetchAddresses(): Promise<Address[]> {

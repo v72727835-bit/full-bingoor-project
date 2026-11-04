@@ -42,6 +42,8 @@ export const loginBody = z.object({
 
 export const refreshBody = z.object({ refreshToken: z.string().min(10) });
 
+export const deleteMeBody = z.object({ password: z.string().min(1, 'Enter your password to confirm') });
+
 export const changePasswordBody = z.object({
   currentPassword: z.string().min(1),
   newPassword: password,

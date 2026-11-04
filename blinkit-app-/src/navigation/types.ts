@@ -31,6 +31,7 @@ export type AppStackParamList = {
   Support: undefined;
   EditProfile: undefined;
   ChangePassword: undefined;
+  DeleteAccount: undefined;
 };
 
 export type AppNav = NativeStackNavigationProp<AppStackParamList>;

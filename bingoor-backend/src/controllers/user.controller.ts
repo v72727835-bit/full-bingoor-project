@@ -1,3 +1,6 @@
+import crypto from 'crypto';
+import { Cart } from '../models/Cart';
+import { Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { User } from '../models/User';
 import { ApiError } from '../utils/ApiError';
@@ -102,4 +105,41 @@ export const removeFromWishlist = asyncHandler(async (req, res) => {
   const { productId } = req.params;
   await User.updateOne({ _id: req.user!.id }, { $pull: { wishlist: productId } });
   ok(res, { productId, wishlisted: false });
+});
+
+/* ---------------- delete my account (Play Store requirement) ---------------- */
+const OPEN_ORDER: string[] = ['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery'];
+
+/**
+ * The customer deletes their own account after confirming the password. Their
+ * name, phone, email, addresses and sign-in are removed for good; past orders
+ * stay (without personal details beyond what the bill needs) for the shop's
+ * accounts. Not while an order is still on its way.
+ */
+export const deleteMe = asyncHandler(async (req, res) => {
+  const { password } = req.body as { password: string };
+  const user = await User.findById(req.user!.id).select('+password');
+  if (!user) throw new ApiError(404, 'User not found');
+  if (!(await user.comparePassword(password))) throw new ApiError(401, 'The password is not correct.');
+  if (await Order.exists({ user: user._id, status: { $in: OPEN_ORDER } })) {
+    throw new ApiError(409, 'You have an order on its way. Delete your account once it is delivered or cancelled.');
+  }
+  await Cart.deleteMany({ user: user._id });
+  await User.updateOne(
+    { _id: user._id },
+    {
+      $set: {
+        name: 'Deleted user',
+        phone: `deleted-${user._id}`,
+        password: crypto.randomBytes(24).toString('hex'),
+        isActive: false,
+        deletedAt: new Date(),
+        addresses: [],
+        wishlist: [],
+        refreshTokens: [],
+      },
+      $unset: { email: 1, avatar: 1 },
+    },
+  );
+  ok(res, { deleted: true });
 });

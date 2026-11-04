@@ -95,6 +95,12 @@ export function ProfileScreen(_props: TabScreenProps) {
       onPress: () => navigation.navigate('Support'),
     },
     {
+      icon: 'trash-outline',
+      title: 'Delete account',
+      subtitle: 'Remove your account and data for good',
+      onPress: () => navigation.navigate('DeleteAccount'),
+    },
+    {
       icon: 'shield-checkmark-outline',
       title: 'Privacy and terms',
       subtitle: 'How your data is used',

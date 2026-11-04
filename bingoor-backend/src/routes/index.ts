@@ -122,6 +122,7 @@ router.delete('/reviews/:id', ...customerOnly, invalidateOnWrite, validate({ par
 
 /* ============ Profile, addresses, wishlist (login) ============ */
 router.get('/me', ...customerOnly, me.getMe);
+router.delete('/me', ...customerOnly, validate({ body: v.deleteMeBody }), me.deleteMe);
 router.patch('/me', ...customerOnly, validate({ body: v.updateProfileBody }), me.updateMe);
 
 router.get('/me/addresses', ...customerOnly, me.listAddresses);

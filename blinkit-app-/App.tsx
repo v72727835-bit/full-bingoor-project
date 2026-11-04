@@ -3,6 +3,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { AuthProvider } from './src/context/AuthContext';
+import { loadLang } from './src/store/language';
 import { CartProvider } from './src/context/CartContext';
 import { WishlistProvider } from './src/context/WishlistContext';
 import RootNavigator from './src/navigation/RootNavigator';
@@ -19,6 +20,9 @@ import { ToastProvider } from './src/ui/Toast';
  * because the cart and wishlist raise toasts, and both of those need the
  * signed-in user to know whose data to load.
  */
+// The customer's English / Hindi choice from last time.
+loadLang();
+
 export default function App() {
   return (
     <StoreProvider store={store}>

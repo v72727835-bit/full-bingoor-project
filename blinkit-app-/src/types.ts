@@ -60,6 +60,8 @@ export interface AuthResult {
 export interface Category {
   _id: string;
   name: string;
+  /** Hindi name the admin typed (shown when the customer picks Hindi). */
+  nameHi?: string;
   slug: string;
   /** Key into the app's bundled artwork, e.g. 'carrot'. */
   icon?: string;
@@ -85,6 +87,7 @@ export interface CategoryPage extends Category {
 export interface ProductSummary {
   _id: string;
   name: string;
+  nameHi?: string;
   slug: string;
   brand?: string;
   images: string[];
@@ -170,6 +173,7 @@ export interface ShopDetail extends ShopSummary {
 export interface SectionBase {
   id: string;
   title?: string;
+  titleHi?: string;
   subtitle?: string;
   tint?: string;
   /** Which top tab this strip belongs to; missing means "whole shop". */
@@ -317,6 +321,13 @@ export interface CartView {
   freeDeliveryAbove: number;
   /** Set when the server trimmed a quantity, e.g. only 3 left in stock. */
   notice?: string;
+  /** Hidden cart-points rule: checkout opens once `met`; the rows offer products that close the gap. */
+  points?: {
+    enabled: boolean;
+    met: boolean;
+    autoAddId: string | null;
+    suggestions: { productId: string; name: string; slug: string; image?: string | null; icon?: string; unit?: string; price: number; mrp?: number }[];
+  };
 }
 
 /* ---------------------------------------------------------------- orders -- */
