@@ -1,7 +1,7 @@
 import Icon from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { Image, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Image, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from 'react-native';
 import { ProductCard } from '../components/ProductCard';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
@@ -26,6 +26,9 @@ export function FestivalScreen({ active }: TabScreenProps) {
   const nav = useNavigation<AppNav>();
   const { c } = useTheme();
   const grid = useGrid(158, space.md);
+  const { width } = useWindowDimensions();
+  // Three cards across, the same size as on Home.
+  const railWidth = Math.floor((width - gutter * 2 - space.sm * 2) / 3);
   const area = useDeliveryPointKey();
   const { data, error: queryError, isLoading, refetch } = useFestivalQuery(area, { skip: !active });
   const [refreshing, setRefreshing] = useState(false);
@@ -85,16 +88,17 @@ export function FestivalScreen({ active }: TabScreenProps) {
           <View key={section.category._id} style={styles.section}>
             <SectionHeader title={section.title || section.category.name} padded={false} style={styles.sectionTitle} />
 
-            <View style={styles.grid}>
+            {/* Like Home's aisles: a sideways row, three cards on screen at a time. */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rail}>
               {section.items.map((p) => (
                 <ProductCard
                   key={p._id}
                   product={p}
-                  width={grid.cardWidth}
+                  width={railWidth}
                   onPress={() => nav.navigate('ProductDetail', { id: p._id, name: p.name })}
                 />
               ))}
-            </View>
+            </ScrollView>
 
             {/* Straight into the aisle, where every child aisle is listed. */}
             <Pressable
@@ -132,6 +136,7 @@ const styles = themed(({ c }) => ({
   section: { marginBottom: space.xl },
   sectionTitle: { marginBottom: space.lg },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: space.md },
+  rail: { gap: space.sm, paddingRight: space.sm },
   seeAll: {
     flexDirection: 'row',
     alignItems: 'center',
