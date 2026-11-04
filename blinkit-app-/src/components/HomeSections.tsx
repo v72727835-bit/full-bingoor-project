@@ -17,6 +17,7 @@ import { Illustration } from '../ui/Illustration';
 import { SectionHeader } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { CategoryCircle, CategoryTile } from './CategoryTile';
+import { useLang } from '../store/language';
 import { ProductCard } from './ProductCard';
 
 export interface SectionHandlers {
@@ -32,6 +33,7 @@ export interface SectionHandlers {
 
 function Heading({
   title,
+  titleHi,
   subtitle,
   onDark,
   actionLabel,
@@ -39,16 +41,18 @@ function Heading({
   right,
 }: {
   title?: string;
+  titleHi?: string;
   subtitle?: string;
   onDark?: boolean;
   actionLabel?: string;
   onAction?: () => void;
   right?: React.ReactNode;
 }) {
+  const lang = useLang();
   if (!title) return null;
   return (
     <SectionHeader
-      title={title}
+      title={lang === 'hi' && titleHi ? titleHi : title}
       subtitle={subtitle}
       onDark={onDark}
       right={right}
@@ -275,7 +279,7 @@ export function HomeSectionView({
       const w = Math.floor((gridWidth - tileGap * (cols - 1)) / cols);
       return (
         <View style={styles.strip}>
-          <Heading title={section.title} subtitle={section.subtitle} />
+          <Heading title={section.title} titleHi={section.titleHi} subtitle={section.subtitle} />
           <View style={[styles.grid, styles.gridCentered, { gap: tileGap }]}>
             {section.items.map((c) => (
               <CategoryTile key={c._id} category={c} width={w} onPress={() => handlers.onCategory(c)} />
@@ -297,6 +301,7 @@ export function HomeSectionView({
         >
           <Heading
             title={section.title}
+            titleHi={section.titleHi}
             subtitle={section.subtitle}
             onDark={deals}
             right={deals ? <MidnightCountdown /> : undefined}
@@ -348,7 +353,7 @@ export function HomeSectionView({
       const warm = section.style === 'trending';
       return (
         <View style={[styles.strip, warm && { backgroundColor: colors.surfaceTint }]}>
-          <Heading title={section.title} subtitle={section.subtitle} />
+          <Heading title={section.title} titleHi={section.titleHi} subtitle={section.subtitle} />
           <View style={[styles.grid, { gap, rowGap: space.lg }]}>
             {section.items.map((p) => (
               <ProductCard

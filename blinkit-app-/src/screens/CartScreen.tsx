@@ -2,7 +2,6 @@ import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import { useTabs } from '../navigation/TabsContext';
@@ -18,6 +17,7 @@ import { Banner, EmptyState } from '../ui/Feedback';
 import { SmartImage } from '../ui/SmartImage';
 import { Stepper } from '../ui/Stepper';
 import { Pill } from '../ui/Surface';
+import { CartPoints } from '../components/CartPoints';
 import { Txt } from '../ui/Text';
 
 const ISSUE_TEXT: Record<string, string> = {
@@ -30,6 +30,8 @@ export function CartScreen({ active }: TabScreenProps) {
   const navigation = useNavigation<AppNav>();
   const { goToTab } = useTabs();
   const { cart, loading, refresh, setQuantity, remove, clear, pending } = useCart();
+  // Checkout stays grey until the cart-points rule is met.
+  const pointsShort = !!cart.points?.enabled && !cart.points.met;
   const area = useDeliveryPointKey();
   const { data: home } = useHomeQuery(area);
 
@@ -157,6 +159,9 @@ export function CartScreen({ active }: TabScreenProps) {
           ) : null}
         </View>
 
+        {/* The cart-points rule (admin panel): a top-up product before checkout. */}
+        <CartPoints ready={cart.groups.every((g) => g.meetsMinOrder)} />
+
         <Pressable onPress={() => goToTab('home')} accessibilityRole="button" style={styles.keepShopping} hitSlop={8}>
           <Ionicons name="add-circle-outline" size={ms(17)} color={colors.brand} />
           <Txt variant="label" tone="brand" style={styles.keepShoppingText}>
@@ -166,7 +171,9 @@ export function CartScreen({ active }: TabScreenProps) {
       </ScrollView>
 
       {/* ------------------------------------------------ checkout bar -- */}
-      <SafeAreaView edges={['bottom']} style={styles.bar}>
+      {/* A plain View: the tab bar below already keeps clear of the phone's bottom edge, so a
+          safe-area inset here only left an empty strip under the button. */}
+      <View style={styles.bar}>
         <View style={styles.barInner}>
           <View style={styles.barPrice}>
             <Txt variant="caption" tone="muted">
@@ -177,15 +184,15 @@ export function CartScreen({ active }: TabScreenProps) {
             </Txt>
           </View>
           <Button
-            label={cart.hasIssues ? 'Fix items to continue' : 'Proceed to checkout'}
-            iconRight={cart.hasIssues ? undefined : 'arrow-forward'}
+            label={cart.hasIssues ? 'Fix items to continue' : pointsShort ? 'Add 1 product above' : 'Proceed to checkout'}
+            iconRight={cart.hasIssues || pointsShort ? undefined : 'arrow-forward'}
             size="lg"
-            disabled={cart.hasIssues}
+            disabled={cart.hasIssues || pointsShort}
             onPress={() => navigation.navigate('Checkout')}
             style={styles.barBtn}
           />
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }

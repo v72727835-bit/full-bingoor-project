@@ -58,6 +58,7 @@ export default function RiderProfilePage({ riderId }: { riderId: string }) {
         <div className="card card-pad"><div className="stat-label">Total earned</div><div className="stat-value">{money(finance.lifetimeEarned)}</div><div className="cell-muted">{analytics.delivered} deliveries · avg {money(analytics.avgPerDelivery)}</div></div>
         <div className="card card-pad"><div className="stat-label">Pending withdrawal</div><div className="stat-value">{money(finance.pendingWithdraw)}</div><div className="cell-muted">Paid out {money(finance.withdrawnTotal)} all time</div></div>
         <div className="card card-pad"><div className="stat-label">Cash to collect</div><div className="stat-value">{money(finance.codPending)}</div><div className="cell-muted">Collected {money(finance.codCollected)} total</div></div>
+        <div className="card card-pad"><div className="stat-label">COD collected today</div><div className="stat-value">{money(finance.codToday ?? 0)}</div><div className="cell-muted">Cancelled orders {rider.cancelledCount ?? analytics.cancelled ?? 0}</div></div>
       </div>
 
       {/* Report */}

@@ -217,13 +217,13 @@ export default function ProductPage() {
           <div className={s.facts}>
             <FoodMark type={p.foodType} size={16} />
             {p.unit ? <span className={s.unit}>{p.unit}</span> : null}
-            {/* Blinkit-style: "4.2 ★ | 20,187 ratings". */}
+            {/* Blinkit-style: "4.2 ★ | 20,187" (no "ratings" word, as asked). */}
             {p.rating ? (
               <span className={`num ${s.ratingBox}`} title={`${p.rating} out of 5`}>
                 {p.rating.toFixed(1)}
                 <Icon name="star-fill" size={13} />
                 {p.ratingCount ? (
-                  <span className={s.ratingCount}>| {p.ratingCount.toLocaleString('en-IN')} ratings</span>
+                  <span className={s.ratingCount}>| {p.ratingCount.toLocaleString('en-IN')}</span>
                 ) : null}
               </span>
             ) : null}

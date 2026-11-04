@@ -83,6 +83,9 @@ export interface RiderProfile {
   warehouses?: { _id: string; name: string }[];
   codPending: number;
   codCollected: number;
+  /** COD cash collected today (India time) and how many cash deliveries that was. */
+  codToday?: number;
+  codTodayDeliveries?: number;
   codLimit: number;
   deliveredCount: number;
   cancelledCount: number;
@@ -114,7 +117,8 @@ export interface RiderOrder {
   /** 9-15 km: shown in red so the rider knows it is a longer run. */
   redOrder?: boolean;
   longDistance?: boolean;
-  items: { name: string; quantity: number; lineTotal: number }[];
+  items: { name: string; quantity: number; price?: number; lineTotal: number }[];
+  deliveredAt?: string;
   address: { name: string; phone: string; line1: string; line2?: string; landmark?: string; city: string; state: string; pincode: string; location?: { lat: number; lng: number } };
   shop?: { name: string; phone?: string };
   user?: { name: string; phone: string };

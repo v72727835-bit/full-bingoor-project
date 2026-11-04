@@ -204,11 +204,11 @@ export interface WalletTxnRow {
 export interface RiderProfileFull {
   rider: {
     _id: string; name: string; phone: string; email: string | null; isActive: boolean; paused: boolean;
-    pausedAt: string | null; longDistance: boolean; online: boolean; lastSeenAt: string | null; createdAt: string;
+    pausedAt: string | null; longDistance: boolean; online: boolean; cancelledCount?: number; lastSeenAt: string | null; createdAt: string;
     warehouses: { _id: string; name: string }[];
     payout: { upi?: string; bankHolder?: string; bankNumber?: string; bankIfsc?: string } | null;
   };
-  finance: { balance: number; lifetimeEarned: number; pendingWithdraw: number; withdrawnTotal: number; codPending: number; codCollected: number };
+  finance: { balance: number; lifetimeEarned: number; pendingWithdraw: number; withdrawnTotal: number; codPending: number; codCollected: number; codToday?: number };
   analytics: { series: { date: string; amount: number; deliveries: number }[]; today: number; week: number; month: number; deliveries: number; delivered: number; cancelled: number; avgPerDelivery: number };
   recentTxns: WalletTxnRow[];
   withdrawals: WalletTxnRow[];

@@ -9,6 +9,7 @@ import { ProductSummary } from '../types';
 import { StarLine } from '../ui/Rating';
 import { SmartImage } from '../ui/SmartImage';
 import { Stepper } from '../ui/Stepper';
+import { useLocalName } from '../store/language';
 import { Txt } from '../ui/Text';
 
 interface Props {
@@ -30,6 +31,7 @@ interface Props {
 export function ProductCard({ product, width, onPress, deliveryText = '19 min', style }: Props) {
   const { quantityOf, add, setQuantity, remove, pending } = useCart();
   const { isSaved, toggle } = useWishlist();
+  const localName = useLocalName();
   const [notifyOpen, setNotifyOpen] = useState(false);
 
   const qty = quantityOf(product._id);
@@ -65,7 +67,7 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
           accessibilityLabel={saved ? `Remove ${product.name} from wishlist` : `Save ${product.name}`}
           style={styles.heart}
         >
-          <Icon name={saved ? 'heart' : 'heart-outline'} size={ms(15)} color={saved ? colors.brand : colors.inkFaint} />
+          <Icon name={saved ? 'heart' : 'heart-outline'} size={ms(16)} color={saved ? colors.danger : colors.inkMuted} />
         </Pressable>
 
         {product.foodType ? (
@@ -82,72 +84,17 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
           </View>
         ) : null}
 
-        {/* Pack size and the add control share the bottom strip of the photo,
-            which keeps the text column below completely uninterrupted. */}
-        <View style={styles.actionRow} pointerEvents="box-none">
-          <View style={styles.unitChip}>
-            <Txt variant="caption" tone="body" numberOfLines={1}>
-              {product.unit}
-            </Txt>
-          </View>
-
-          {soldOut ? (
-            <Pressable
-              onPress={() => setNotifyOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`Notify me when ${product.name} is back`}
-              style={({ pressed }) => [styles.addBtn, styles.notifyBtn, pressed && styles.addBtnPressed]}
-            >
-              <Txt variant="labelSm" style={styles.notifyLabel}>
-                Notify me
-              </Txt>
-            </Pressable>
-          ) : qty > 0 ? (
-            <Stepper
-              value={qty}
-              size="sm"
-              solid
-              max={Math.min(20, product.stock)}
-              busy={busy}
-              onChange={(next) => setQuantity(product._id, next)}
-              onRemove={() => remove(product._id)}
-            />
-          ) : (
-            <Pressable
-              onPress={() => add(product._id, 1, product.name)}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityLabel={`Add ${product.name} to cart`}
-              style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
-            >
-              {busy ? (
-                <ActivityIndicator size="small" color={colors.brand} />
-              ) : (
-                <Txt variant="labelSm" tone="brand" style={styles.addLabel}>
-                  ADD
-                </Txt>
-              )}
-            </Pressable>
-          )}
-        </View>
       </View>
 
       {/* ----------------------------------------------------------- text -- */}
+      {/* Laid out like the website's card: pack size, name, rating, then price on the left and ADD on the right. */}
       <View style={styles.body}>
-        <Txt variant="bodySm" tone="ink" weight="600" center numberOfLines={2} style={styles.name}>
-          {product.name}
+        <Txt variant="caption" numberOfLines={1} style={styles.unit}>
+          {product.unit}
         </Txt>
-
-        <View style={styles.priceRow}>
-          <Txt variant="priceSm" numberOfLines={1}>
-            {currency(product.price)}
-          </Txt>
-          {product.mrp > product.price ? (
-            <Txt variant="caption" tone="faint" numberOfLines={1} style={styles.mrp}>
-              {currency(product.mrp)}
-            </Txt>
-          ) : null}
-        </View>
+        <Txt variant="bodySm" tone="ink" weight="700" numberOfLines={2} style={styles.name}>
+          {localName(product)}
+        </Txt>
 
         {product.rating > 0 || product.ratingLabel ? (
           <View style={styles.rateRow}>
@@ -170,6 +117,57 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
             {product.deliveryDays && product.deliveryDays > 1 ? `${product.deliveryDays} days` : deliveryText}
           </Txt>
         </View>
+
+        <View style={styles.buyRow}>
+          <View style={styles.priceCol}>
+            <Txt variant="priceSm" weight="800" numberOfLines={1}>
+              {currency(product.price)}
+            </Txt>
+            {product.mrp > product.price ? (
+              <Txt variant="caption" tone="faint" numberOfLines={1} style={styles.mrp}>
+                {currency(product.mrp)}
+              </Txt>
+            ) : null}
+          </View>
+            {soldOut ? (
+              <Pressable
+                onPress={() => setNotifyOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Notify me when ${product.name} is back`}
+                style={({ pressed }) => [styles.addBtn, styles.notifyBtn, pressed && styles.addBtnPressed]}
+              >
+                <Txt variant="labelSm" style={styles.notifyLabel}>
+                  Notify me
+                </Txt>
+              </Pressable>
+            ) : qty > 0 ? (
+              <Stepper
+                value={qty}
+                size="sm"
+                solid
+                max={Math.min(20, product.stock)}
+                busy={busy}
+                onChange={(next) => setQuantity(product._id, next)}
+                onRemove={() => remove(product._id)}
+              />
+            ) : (
+              <Pressable
+                onPress={() => add(product._id, 1, product.name)}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel={`Add ${product.name} to cart`}
+                style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
+              >
+                {busy ? (
+                  <ActivityIndicator size="small" color={colors.brand} />
+                ) : (
+                  <Txt variant="labelSm" tone="brand" style={styles.addLabel}>
+                    ADD
+                  </Txt>
+                )}
+              </Pressable>
+            )}
+        </View>
       </View>
       <NotifyMeSheet visible={notifyOpen} onClose={() => setNotifyOpen(false)} productId={product._id} productName={product.name} />
     </Pressable>
@@ -178,15 +176,16 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
 
 const styles = themed(({ c }) => ({
   card: { backgroundColor: 'transparent' },
-  rateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: ms(5), flexWrap: 'wrap' },
+  rateRow: { flexDirection: 'row', alignItems: 'center', gap: ms(5), flexWrap: 'wrap' },
   pressed: { opacity: 0.7 },
 
   imageWrap: {
     width: '100%',
     backgroundColor: c.surface,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: c.border,
+    // A crisp frame round every photo so each product stands apart (Blinkit-style).
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: c.borderStrong,
     overflow: 'hidden',
   },
   image: { width: '100%', height: '100%', backgroundColor: c.surface },
@@ -277,7 +276,10 @@ const styles = themed(({ c }) => ({
   notifyLabel: { color: c.danger, fontWeight: '800' },
   addLabel: { fontWeight: '800', letterSpacing: 0.7 },
 
-  body: { paddingTop: space.sm, gap: ms(4), alignItems: 'center' },
+  body: { paddingTop: space.sm, gap: ms(4), alignItems: 'stretch' },
+  unit: { fontWeight: '800', color: c.inkBody },
+  buyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: ms(4), gap: ms(6) },
+  priceCol: { flexShrink: 1 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: ms(5), flexWrap: 'wrap' },
   mrp: { textDecorationLine: 'line-through' },
   name: { minHeight: ms(38) },
@@ -289,5 +291,5 @@ const styles = themed(({ c }) => ({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: c.border,
   },
-  eta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: ms(3) },
+  eta: { flexDirection: 'row', alignItems: 'center', gap: ms(3) },
 }));

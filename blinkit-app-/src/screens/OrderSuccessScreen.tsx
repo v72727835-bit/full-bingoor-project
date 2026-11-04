@@ -118,7 +118,7 @@ export function OrderSuccessScreen() {
 }
 
 const styles = themed(({ c }) => ({
-  root: { flex: 1, backgroundColor: c.headerFrom },
+  root: { flex: 1, backgroundColor: c.brand },
   flex: { flex: 1 },
   content: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: gutter, paddingVertical: space.xxl },
 

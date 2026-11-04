@@ -4,6 +4,7 @@ import { ms, radius, space, themed, useTheme } from '../theme';
 import { Category } from '../types';
 import { Illustration } from '../ui/Illustration';
 import { Txt } from '../ui/Text';
+import { useLocalName } from '../store/language';
 import { smallPhoto } from '../ui/SmartImage';
 
 /**
@@ -46,6 +47,7 @@ export function CategoryTile({
   style?: ViewStyle;
 }) {
   const { tint } = useTheme();
+  const localName = useLocalName();
   return (
     <Pressable
       onPress={onPress}
@@ -61,8 +63,8 @@ export function CategoryTile({
       >
         <CategoryArt category={category} size={width * 0.5} />
       </View>
-      <Txt variant="caption" tone="ink" weight="600" center numberOfLines={2} style={styles.label}>
-        {category.name}
+      <Txt variant="caption" tone="ink" weight="800" center numberOfLines={2} style={styles.label}>
+        {localName(category)}
       </Txt>
     </Pressable>
   );
@@ -79,6 +81,7 @@ export function CategoryCircle({
   onPress: () => void;
 }) {
   const { tint } = useTheme();
+  const localName = useLocalName();
   return (
     <Pressable
       onPress={onPress}
@@ -89,8 +92,8 @@ export function CategoryCircle({
       <View style={[styles.circle, { width: size, height: size, backgroundColor: tint(category.tint) }]}>
         <CategoryArt category={category} size={size * 0.52} />
       </View>
-      <Txt variant="caption" tone="body" center numberOfLines={2} style={styles.label}>
-        {category.name}
+      <Txt variant="caption" tone="body" weight="800" center numberOfLines={2} style={styles.label}>
+        {localName(category)}
       </Txt>
     </Pressable>
   );

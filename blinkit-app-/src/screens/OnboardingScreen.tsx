@@ -75,7 +75,7 @@ export function OnboardingScreen() {
 }
 
 const styles = themed(({ c }) => ({
-  root: { flex: 1, backgroundColor: c.headerFrom },
+  root: { flex: 1, backgroundColor: c.brand },
   hero: { flex: 1, justifyContent: 'center' },
   heroInner: { alignItems: 'center', paddingHorizontal: gutter + space.sm, paddingVertical: space.xxxl },
   heroTitle: { marginTop: space.xxl },

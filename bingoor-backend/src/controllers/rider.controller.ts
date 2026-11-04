@@ -40,6 +40,8 @@ export const getProfile = asyncHandler(async (req, res) => {
     ...rider,
     codPending: pending,
     codCollected: cod?.total ?? 0,
+    codToday: cod?.today ?? 0,
+    codTodayDeliveries: cod?.todayDeliveries ?? 0,
     codLimit: limit,
     deliveredCount: cod?.deliveries ?? 0,
     cancelledCount: rider.riderCancelCount ?? 0,
@@ -92,6 +94,7 @@ export const listOrders = asyncHandler(async (req, res) => {
   ok(res, orders, pageMeta(page, limit, total));
 });
 
+/** A rider can take an order as soon as the warehouse accepts it (as the admin can assign one), not only once it is packed. */
 export const acceptOrder = asyncHandler(async (req, res) => {
   const rider = await User.findById(req.user!.id).select('warehouse warehouses riderPaused riderLongDistance').lean();
   const shops = rider ? riderWarehouseIds(rider) : [];
@@ -100,7 +103,7 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     throw new ApiError(403, 'Your delivery service has been stopped for a short time. Submit your COD payment to the cash department.');
   }
   const order = await Order.findOneAndUpdate(
-    { _id: req.params.id, shop: { $in: shops }, status: 'ready_for_pickup', rider: { $exists: false }, ...(rider.riderLongDistance ? { longDistance: true } : { longDistance: { $ne: true } }) },
+    { _id: req.params.id, shop: { $in: shops }, status: { $in: UPCOMING }, rider: { $exists: false }, ...(rider.riderLongDistance ? { longDistance: true } : { longDistance: { $ne: true } }) },
     { $set: { rider: req.user!.id, status: 'out_for_delivery' }, $push: { statusHistory: { status: 'out_for_delivery', at: new Date(), note: 'Accepted by rider' } } },
     { new: true },
   ).select('-statusHistory -deliveryOtp').populate('shop', 'name address phone location').populate('user', 'name phone').lean();

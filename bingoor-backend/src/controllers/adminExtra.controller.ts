@@ -201,6 +201,7 @@ export const listRidersAdmin = asyncHandler(async (req, res) => {
       online: !!r.lastSeenAt && r.lastSeenAt >= since,
       codPending: c?.pending ?? 0,
       codCollected: c?.total ?? 0,
+      codToday: c?.today ?? 0,
       deliveredCount: c?.deliveries ?? 0,
       cancelledCount: r.riderCancelCount ?? 0,
       paused: !!r.riderPaused,
@@ -208,8 +209,8 @@ export const listRidersAdmin = asyncHandler(async (req, res) => {
     };
   });
   const totals = rows.reduce(
-    (t, r) => ({ codPending: t.codPending + r.codPending, codCollected: t.codCollected + r.codCollected, online: t.online + (r.online ? 1 : 0) }),
-    { codPending: 0, codCollected: 0, online: 0 },
+    (t, r) => ({ codPending: t.codPending + r.codPending, codCollected: t.codCollected + r.codCollected, codToday: t.codToday + r.codToday, online: t.online + (r.online ? 1 : 0) }),
+    { codPending: 0, codCollected: 0, codToday: 0, online: 0 },
   );
   const { riderCodLimit } = await getSettingsDoc();
   ok(res, rows, { totals, codLimit: riderCodLimit ?? 2000 });
@@ -273,6 +274,8 @@ export const getRiderProfileAdmin = asyncHandler(async (req, res) => {
       pausedAt: rider.riderPausedAt ?? null,
       longDistance: !!rider.riderLongDistance,
       online,
+      /** Deliveries this rider accepted and then dropped. */
+      cancelledCount: rider.riderCancelCount ?? 0,
       lastSeenAt: rider.lastSeenAt ?? null,
       createdAt: rider.createdAt,
       warehouses: rider.warehouses?.length ? rider.warehouses : rider.warehouse ? [rider.warehouse] : [],
@@ -285,6 +288,7 @@ export const getRiderProfileAdmin = asyncHandler(async (req, res) => {
       withdrawnTotal: wallet.withdrawnTotal,
       codPending: c?.pending ?? 0,
       codCollected: c?.total ?? 0,
+      codToday: c?.today ?? 0,
     },
     analytics: { ...analytics, delivered, cancelled, avgPerDelivery },
     recentTxns,

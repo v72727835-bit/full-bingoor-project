@@ -25,6 +25,15 @@ async function remove(service: string): Promise<void> {
   }
 }
 
+const LANG_SERVICE = 'com.bingoor.app.lang';
+
+/** Small values that must survive a restart (they ride in the keychain too). */
+export const localStore = {
+  /** "hi" when the customer picked Hindi names; missing means English. */
+  getLang: () => get(LANG_SERVICE),
+  setLang: (lang: string) => (lang === 'hi' ? set(LANG_SERVICE, 'hi') : remove(LANG_SERVICE)),
+};
+
 export const tokenStore = {
   getAccess: () => get(ACCESS_SERVICE),
   getRefresh: () => get(REFRESH_SERVICE),

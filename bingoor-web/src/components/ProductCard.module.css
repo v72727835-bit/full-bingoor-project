@@ -93,13 +93,13 @@
 
 .unit {
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--ink-4);
 }
 
 .name {
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.008em;
   color: var(--ink);

@@ -6,6 +6,7 @@ import { AddressFormScreen } from '../screens/AddressFormScreen';
 import { AddressListScreen } from '../screens/AddressListScreen';
 import { CategoryBrowseScreen } from '../screens/CategoryBrowseScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -88,6 +89,7 @@ function AppFlow() {
       <AppStack.Screen name="Support" component={SupportScreen} />
       <AppStack.Screen name="EditProfile" component={EditProfileScreen} />
       <AppStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+      <AppStack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
     </AppStack.Navigator>
   );
 }

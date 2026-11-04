@@ -437,13 +437,15 @@ export interface RiderRow {
   lastSeenAt?: string | null;
   codPending: number;
   codCollected: number;
+  /** COD cash collected today (India time). */
+  codToday?: number;
   deliveredCount: number;
   cancelledCount: number;
   longDistance?: boolean;
 }
 
 export interface RiderTotals {
-  totals: { codPending: number; codCollected: number; online: number };
+  totals: { codPending: number; codCollected: number; codToday?: number; online: number };
   codLimit: number;
 }
 

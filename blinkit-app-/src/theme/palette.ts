@@ -65,6 +65,8 @@ export interface Palette {
   dealsTo: string;
   /** Highlighter-pen swipe behind a deal price, and the ink that sits on it. */
   priceMark: string;
+  /** Icons and the active-tab line on the header band (navy on the yellow header). */
+  headerAccent: string;
   onPriceMark: string;
   /** Colour of the soft light under primary buttons. */
   glow: string;
@@ -83,13 +85,13 @@ export interface Palette {
 export const light: Palette = {
   mode: 'light',
 
-  brand: '#0E8A3E',
-  brandPressed: '#0B7534',
-  brandDeep: '#0A5C2C',
-  brandText: '#0A6B2F',
-  brandSurface: '#E8F6ED',
-  brandSurfaceStrong: '#D0EDDA',
-  brandBorder: '#A3D9B5',
+  brand: '#0B2E6B',
+  brandPressed: '#082459',
+  brandDeep: '#061B45',
+  brandText: '#0B2E6B',
+  brandSurface: '#EAF0FA',
+  brandSurfaceStrong: '#D5E0F4',
+  brandBorder: '#A9BCE3',
   onBrand: '#FFFFFF',
 
   accent: '#A15C00',
@@ -106,7 +108,7 @@ export const light: Palette = {
   surface: '#FFFFFF',
   surfaceSunken: '#F4F6F5',
   surfaceRaised: '#FFFFFF',
-  surfaceTint: '#EEF8F1',
+  surfaceTint: '#FFF8DB',
   overlay: 'rgba(17, 26, 20, 0.55)',
   skeleton: '#E6ECE8',
 
@@ -126,35 +128,36 @@ export const light: Palette = {
   veg: '#1E8E3E',
   nonveg: '#A3341F',
 
-  headerFrom: '#0B5C2D',
-  headerTo: '#0B5C2D',
-  onHeader: '#FFFFFF',
-  onHeaderMuted: 'rgba(255,255,255,0.88)',
+  headerFrom: '#FFD21F',
+  headerTo: '#FFD21F',
+  onHeader: '#0B2E6B',
+  onHeaderMuted: 'rgba(11,46,107,0.80)',
 
-  shadow: '#0A2E19',
+  shadow: '#0B1A3A',
   headerGlow: 'rgba(255, 255, 255, 0)',
-  dealsFrom: '#0B5C2D',
-  dealsTo: '#0B5C2D',
+  dealsFrom: '#0B2E6B',
+  dealsTo: '#0B2E6B',
   priceMark: '#FFD23F',
+  headerAccent: '#0B2E6B',
   onPriceMark: '#15101A',
-  glow: 'rgba(10, 46, 25, 0.10)',
+  glow: 'rgba(11, 46, 107, 0.10)',
 
-  brandStrong: '#0A5C2C',
-  brandInk: '#0A6B2F',
-  brandLight: '#0E8A3E',
+  brandStrong: '#061B45',
+  brandInk: '#0B2E6B',
+  brandLight: '#1F4FA3',
 };
 
 export const dark: Palette = {
   mode: 'dark',
 
-  brand: '#178F47',
-  brandPressed: '#2FBF6A',
-  brandDeep: '#6FE09C',
-  brandText: '#6FE09C',
-  brandSurface: '#10261A',
-  brandSurfaceStrong: '#163824',
-  brandBorder: '#245C3C',
-  onBrand: '#FFFFFF',
+  brand: '#FFD21F',
+  brandPressed: '#FFE066',
+  brandDeep: '#FFE680',
+  brandText: '#FFD95A',
+  brandSurface: '#1E2433',
+  brandSurfaceStrong: '#262E42',
+  brandBorder: '#3C4A6B',
+  onBrand: '#0B1A33',
 
   accent: '#FFC93C',
   accentSurface: '#2E2710',
@@ -167,15 +170,15 @@ export const dark: Palette = {
   inkMuted: '#9CA9A1',
   inkFaint: '#7F8C84',
 
-  surface: '#121A15',
-  surfaceSunken: '#0A100C',
-  surfaceRaised: '#1A241E',
-  surfaceTint: '#14211A',
+  surface: '#111723',
+  surfaceSunken: '#0A0F18',
+  surfaceRaised: '#192131',
+  surfaceTint: '#171F2E',
   overlay: 'rgba(0, 0, 0, 0.68)',
-  skeleton: '#1F2A23',
+  skeleton: '#1F2737',
 
-  border: '#25322A',
-  borderStrong: '#3A4A40',
+  border: '#283247',
+  borderStrong: '#3B4760',
 
   success: '#52D18E',
   successSurface: '#16301F',
@@ -190,22 +193,23 @@ export const dark: Palette = {
   veg: '#52D18E',
   nonveg: '#FF8A7A',
 
-  headerFrom: '#0B1F14',
-  headerTo: '#0B1F14',
+  headerFrom: '#0B1A33',
+  headerTo: '#0B1A33',
   onHeader: '#FFFFFF',
   onHeaderMuted: 'rgba(255,255,255,0.80)',
 
   shadow: '#000000',
   headerGlow: 'rgba(255, 255, 255, 0)',
-  dealsFrom: '#0B1F14',
-  dealsTo: '#0B1F14',
+  dealsFrom: '#0B1A33',
+  dealsTo: '#0B1A33',
   priceMark: '#FFD23F',
+  headerAccent: '#FFD23F',
   onPriceMark: '#1A1400',
   glow: 'rgba(0, 0, 0, 0.30)',
 
-  brandStrong: '#2FBF6A',
-  brandInk: '#6FE09C',
-  brandLight: '#178F47',
+  brandStrong: '#FFE066',
+  brandInk: '#FFD95A',
+  brandLight: '#FFD21F',
 };
 
 /**
