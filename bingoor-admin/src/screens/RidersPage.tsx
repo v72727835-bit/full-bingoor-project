@@ -81,6 +81,11 @@ export default function RidersPage() {
             <div className="cell-muted">Across all riders, not yet submitted</div>
           </div>
           <div className="card card-pad">
+            <div className="stat-label">COD collected today</div>
+            <div className="stat-value">{money(meta.totals.codToday ?? 0)}</div>
+            <div className="cell-muted">All riders, since midnight</div>
+          </div>
+          <div className="card card-pad">
             <div className="stat-label">Collected all time</div>
             <div className="stat-value">{money(meta.totals.codCollected)}</div>
           </div>
@@ -117,6 +122,7 @@ export default function RidersPage() {
                   <th>Rider</th>
                   <th>Warehouses</th>
                   <th>Cash to collect</th>
+                  <th>COD today</th>
                   <th>Delivered</th>
                   <th>Cancelled</th>
                   <th>Last seen</th>
@@ -139,6 +145,7 @@ export default function RidersPage() {
                     </td>
                     <td className="cell-muted">{warehouseName(r)}</td>
                     <td className="cell-name">{money(r.codPending)}</td>
+                    <td className="cell-name">{money(r.codToday ?? 0)}</td>
                     <td className="cell-muted">{r.deliveredCount}</td>
                     <td className="cell-muted">{r.cancelledCount}</td>
                     <td className="cell-muted">{r.lastSeenAt ? timeAgo(r.lastSeenAt) : 'Logged out'}</td>

@@ -8,10 +8,18 @@ import { loadSettings } from './settings.service';
 export const ONLINE_WINDOW_MS = 2 * 60_000;
 
 /** COD cash each rider has collected and not yet handed in, plus lifetime totals. */
+/** Midnight today in India (IST, UTC+5:30), as a UTC Date: the start of a rider's "today". */
+export function startOfTodayIST(now = new Date()): Date {
+  const IST = 330 * 60_000;
+  const local = new Date(now.getTime() + IST);
+  return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - IST);
+}
+
 export async function codSummary(riderIds?: Types.ObjectId[]) {
+  const today = startOfTodayIST();
   const match: Record<string, unknown> = { status: 'delivered', paymentMethod: 'cod', rider: { $exists: true } };
   if (riderIds) match.rider = { $in: riderIds };
-  const rows = await Order.aggregate<{ _id: Types.ObjectId; pending: number; total: number; deliveries: number }>([
+  const rows = await Order.aggregate<{ _id: Types.ObjectId; pending: number; total: number; deliveries: number; today: number; todayDeliveries: number }>([
     { $match: match },
     {
       $group: {
@@ -19,6 +27,9 @@ export async function codSummary(riderIds?: Types.ObjectId[]) {
         total: { $sum: '$total' },
         pending: { $sum: { $cond: [{ $eq: ['$codSettled', true] }, 0, '$total'] } },
         deliveries: { $sum: 1 },
+        // Cash collected today (IST): delivered since midnight.
+        today: { $sum: { $cond: [{ $gte: ['$deliveredAt', today] }, '$total', 0] } },
+        todayDeliveries: { $sum: { $cond: [{ $gte: ['$deliveredAt', today] }, 1, 0] } },
       },
     },
   ]);
