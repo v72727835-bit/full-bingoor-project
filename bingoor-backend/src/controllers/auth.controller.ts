@@ -152,14 +152,14 @@ async function signInWithSocial(p: SocialProfile) {
 export const googleLogin = asyncHandler(async (req, res) => {
   const { googleClientId } = await getIntegrations();
   if (!googleClientId) throw new ApiError(503, 'Login with Google is not switched on yet.');
-  const { accessToken } = req.body as { accessToken: string };
+  const { accessToken, idToken } = req.body as { accessToken?: string; idToken?: string };
   // The token must have been issued to OUR Google client, or anyone could sign in with another app's token.
   const info = await getJson<{ aud?: string; azp?: string; email?: string; email_verified?: string | boolean; sub?: string; name?: string }>(
-    `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`,
+    `https://oauth2.googleapis.com/tokeninfo?${idToken ? 'id_token' : 'access_token'}=${encodeURIComponent(idToken ?? accessToken!)}`,
   );
   if ((info.aud ?? info.azp) !== googleClientId || !info.sub) throw new ApiError(401, 'This Google login was not issued for Bingoor.');
-  const profile = await getJson<{ name?: string; email?: string }>(
-    `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${encodeURIComponent(accessToken)}`,
+  const profile = idToken ? info : await getJson<{ name?: string; email?: string }>(
+    `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${encodeURIComponent(accessToken!)}`,
   );
   const verified = info.email_verified === true || info.email_verified === 'true';
   ok(res, await signInWithSocial({ provider: 'google', id: info.sub, email: verified ? info.email ?? profile.email : undefined, name: profile.name ?? info.name ?? '' }));
@@ -168,7 +168,14 @@ export const googleLogin = asyncHandler(async (req, res) => {
 export const facebookLogin = asyncHandler(async (req, res) => {
   const { facebookAppId, facebookAppSecret } = await getIntegrations();
   if (!facebookAppId || !facebookAppSecret) throw new ApiError(503, 'Login with Facebook is not switched on yet.');
-  const { accessToken } = req.body as { accessToken: string };
+  let accessToken = req.body.accessToken as string | undefined;
+  if (!accessToken) {
+    const params = new URLSearchParams({ client_id: facebookAppId, client_secret: facebookAppSecret,
+      redirect_uri: 'https://bingoor.com/auth/mobile/facebook', code: req.body.code });
+    const exchanged = await getJson<{ access_token?: string }>(`https://graph.facebook.com/v23.0/oauth/access_token?${params}`);
+    accessToken = exchanged.access_token;
+    if (!accessToken) throw new ApiError(401, 'Facebook sign-in could not be completed.');
+  }
   const appToken = `${facebookAppId}|${facebookAppSecret}`;
   const debug = await getJson<{ data?: { app_id?: string; is_valid?: boolean; user_id?: string } }>(
     `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appToken)}`,

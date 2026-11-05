@@ -51,7 +51,7 @@ function pctText(o: PaymentOption): string {
 
 function CheckoutInner() {
   const router = useRouter();
-  const { cart, refresh } = useCart();
+  const { cart, refresh, settle } = useCart();
   const { home } = useCatalog();
   const settings = useSettings();
   const { show } = useToast();
@@ -196,6 +196,7 @@ function CheckoutInner() {
       if (Object.keys(patch).length) await updateAddress(picked, patch).catch(() => undefined);
       const known = (user as { email?: string } | null)?.email ?? '';
       if (email.trim() && email.trim() !== known) await updateMe({ email: email.trim() }).catch(() => undefined);
+      await settle();
       let result: PlaceResult = await placeOrder(picked, pay, note.trim() || undefined, slot, opt, tip);
       if (result.kind === 'pay') {
         // The money is taken first; the orders are only created once the server has checked the payment.

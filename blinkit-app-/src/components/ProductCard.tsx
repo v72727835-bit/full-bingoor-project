@@ -35,7 +35,7 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
   const [notifyOpen, setNotifyOpen] = useState(false);
 
   const qty = quantityOf(product._id);
-  const busy = pending.has(product._id);
+  const busy = false; // Quantities render immediately; requests are serialized by CartProvider.
   const saved = isSaved(product._id);
   const soldOut = !product.inStock;
   const imageHeight = Math.round(width * 0.94);
@@ -152,7 +152,7 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
               />
             ) : (
               <Pressable
-                onPress={() => add(product._id, 1, product.name)}
+                onPress={() => add(product._id, 1, product.name, product)}
                 disabled={busy}
                 accessibilityRole="button"
                 accessibilityLabel={`Add ${product.name} to cart`}

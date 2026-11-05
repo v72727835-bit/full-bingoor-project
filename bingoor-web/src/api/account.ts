@@ -30,16 +30,22 @@ export type AddressInput = Omit<Address, 'id'>;
 
 export const addAddress = async (body: AddressInput): Promise<Address> => {
   const { data } = await api.post('/me/addresses', body);
-  return n.address(data.data);
+  const saved = n.address(data.data);
+  if (saved.isDefault && saved.location) setDeliveryPoint({ ...saved.location, label: [saved.line1, saved.city].filter(Boolean).join(', ') });
+  return saved;
 };
 
 export const updateAddress = async (id: string, body: Partial<AddressInput>): Promise<Address> => {
   const { data } = await api.patch(`/me/addresses/${id}`, body);
-  return n.address(data.data);
+  const saved = n.address(data.data);
+  if (saved.isDefault && saved.location) setDeliveryPoint({ ...saved.location, label: [saved.line1, saved.city].filter(Boolean).join(', ') });
+  return saved;
 };
 
 export const setDefaultAddress = async (id: string): Promise<void> => {
-  await api.patch(`/me/addresses/${id}/default`);
+  const { data } = await api.patch(`/me/addresses/${id}/default`);
+  const saved = (data.data as Record<string, unknown>[]).map(n.address).find((address) => address.id === id);
+  if (saved?.location) setDeliveryPoint({ ...saved.location, label: [saved.line1, saved.city].filter(Boolean).join(', ') });
 };
 
 export const deleteAddress = async (id: string): Promise<void> => {

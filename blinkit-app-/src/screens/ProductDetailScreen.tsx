@@ -126,7 +126,7 @@ export function ProductDetailScreen() {
   }
 
   const qty = quantityOf(product._id);
-  const busy = pending.has(product._id);
+  const busy = false; // Quantities render immediately; requests are serialized by CartProvider.
   const saved = isSaved(product._id);
   const soldOut = !product.inStock;
   const savings = product.mrp - product.price;
@@ -561,7 +561,7 @@ export function ProductDetailScreen() {
               size="lg"
               block={false}
               loading={busy}
-              onPress={() => add(product._id, 1, product.name)}
+              onPress={() => add(product._id, 1, product.name, product)}
               style={styles.buyBtn}
             />
           )}

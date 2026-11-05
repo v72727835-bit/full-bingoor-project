@@ -363,7 +363,13 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
       })
       .catch((err) => setError(getErrorMessage(err)));
   };
-  useEffect(load, [id]);
+  useEffect(() => {
+    let live = true;
+    const poll = () => fetchOrder(id).then((next) => { if (live) setOrder(next); }).catch(() => undefined);
+    load();
+    const timer = setInterval(poll, 10000);
+    return () => { live = false; clearInterval(timer); };
+  }, [id]);
 
   const apply = async (target?: OrderStatus) => {
     const to = target ?? nextStatus;
@@ -456,6 +462,11 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
         </div>
       </div>
 
+      {order.address.location ? <>
+        <iframe title="Pickup, delivery and live rider map" style={{ width: '100%', height: 360, border: 0, borderRadius: 12, marginBottom: 16 }}
+          src={`https://bingoor.com/mobile-map.html?destination=${encodeURIComponent(JSON.stringify(order.address.location))}${order.riderLocation ? `&rider=${encodeURIComponent(JSON.stringify(order.riderLocation))}` : ''}${shop?.location?.coordinates ? `&pickup=${encodeURIComponent(JSON.stringify({ lat: shop.location.coordinates[1], lng: shop.location.coordinates[0] }))}` : ''}`} />
+        {order.riderLocation?.at ? <p>Rider last updated: {formatDate(order.riderLocation.at)}</p> : null}
+      </> : null}
       <div className="stat-label" style={{ marginBottom: 6 }}>
         Deliver to
       </div>

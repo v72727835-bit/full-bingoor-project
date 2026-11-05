@@ -2,7 +2,9 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { fetchAddresses } from '../api/account';
+import Link from 'next/link';
+import { LocationPicker, PickedPlace } from './LocationPicker';
+import { fetchAddresses, setDefaultAddress } from '../api/account';
 import { fetchCoverage } from '../api/catalog';
 import { useAuth } from '../context/AuthContext';
 import { DeliveryPoint, POINT_EVENT, getDeliveryPoint, setDeliveryPoint } from '../lib/deliveryPoint';
@@ -15,7 +17,7 @@ import s from './LocationGate.module.css';
 export const OPEN_LOCATION_EVENT = 'bingoor:open-location';
 
 /** Pages that work without a delivery area (sign-in, sign-up, partner forms, help). */
-const SKIP = ['/login', '/signup', '/forgot-password', '/warehouse-register', '/seller-partner', '/delivery-partner', '/pay', '/help', '/contact', '/blog'];
+const SKIP = ['/login', '/signup', '/forgot-password', '/warehouse-register', '/seller-partner', '/delivery-partner', '/auth', '/pay', '/help', '/contact', '/blog'];
 
 interface Hit {
   display_name: string;
@@ -37,6 +39,8 @@ export function LocationGate() {
   const [msg, setMsg] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [q, setQ] = useState('');
+  const [pin, setPin] = useState<PickedPlace | undefined>();
+  const [showMap, setShowMap] = useState(false);
   const [hits, setHits] = useState<Hit[]>([]);
 
   useEffect(() => {
@@ -61,7 +65,7 @@ export function LocationGate() {
   }, [open, user]);
 
   /** Checks a warehouse delivers here, then remembers the place; otherwise says so and stays open. */
-  const choose = useCallback(async (lat: number, lng: number, label?: string, here?: { place: PlaceParts; accuracy: number }) => {
+  const choose = useCallback(async (lat: number, lng: number, label?: string, here?: { place: PlaceParts; accuracy: number }, addressId?: string) => {
     // Anything the customer picks by hand wins over a GPS reading still on its way.
     if (!here) gpsTurn.current++;
     setBusy('check');
@@ -72,6 +76,7 @@ export function LocationGate() {
         setMsg({ tone: 'bad', text: `Sorry, no Bingoor warehouse delivers to ${label || 'this place'} yet. Please choose another address or area.` });
         return;
       }
+      if (addressId) await setDefaultAddress(addressId);
       // A GPS fix keeps the full address it found, so the address form can fill itself (Blinkit-style).
       setDeliveryPoint(here ? { lat, lng, label, address: here.place, accuracy: Math.round(here.accuracy), at: Date.now() } : { lat, lng, label, at: Date.now() });
       setForced(false);
@@ -202,7 +207,7 @@ export function LocationGate() {
                   key={a.id}
                   className={s.addr}
                   disabled={!!busy || !a.location}
-                  onClick={() => a.location && choose(a.location.lat, a.location.lng, a.city)}
+                  onClick={() => a.location && choose(a.location.lat, a.location.lng, a.city, undefined, a.id)}
                 >
                   <span className={s.addrTitle}>
                     {a.label.charAt(0).toUpperCase() + a.label.slice(1)} · {a.name}
@@ -217,6 +222,14 @@ export function LocationGate() {
           </>
         ) : null}
 
+        <div style={{ margin: '16px 0', display: 'grid', gap: 10 }}>
+          <Button variant="outline" onClick={() => { gpsTurn.current++; setShowMap((value) => !value); }}>Set an exact pin on map</Button>
+          {showMap ? <>
+            <LocationPicker value={pin ?? point ?? undefined} onPick={setPin} />
+            <Button disabled={!pin || !!busy} onClick={() => pin && choose(pin.lat, pin.lng, shortPlace(pin), { place: pin, accuracy: 0 })}>Use this delivery pin</Button>
+          </> : null}
+          <Link href="/addresses" onClick={() => setForced(false)}>Save or edit a delivery address</Link>
+        </div>
         <div className={s.or}>Or enter your PIN code / area</div>
         <form className={s.search} onSubmit={search}>
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Enter PIN code, e.g. 302015, or your area" aria-label="Search area" />

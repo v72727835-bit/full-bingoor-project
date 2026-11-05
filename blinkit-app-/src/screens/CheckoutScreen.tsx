@@ -67,7 +67,7 @@ const pctText = (o: PayOptionDef, amount: number) => `${pctOf(o, amount)}% of th
 
 export function CheckoutScreen() {
   const navigation = useNavigation<AppNav>();
-  const { cart, refresh } = useCart();
+  const { settle, cart, refresh } = useCart();
   const { goToTab } = useTabs();
   const toast = useToast();
 
@@ -143,7 +143,7 @@ export function CheckoutScreen() {
     try {
       const list = await fetchAddresses();
       setAddresses(list);
-      setSelectedId((current) => current ?? list.find((a) => a.isDefault)?._id ?? list[0]?._id ?? null);
+      setSelectedId(list.find((a) => a.isDefault)?._id ?? list[0]?._id ?? null);
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -197,6 +197,7 @@ export function CheckoutScreen() {
     setProblems([]);
     setPlaceError(null);
     try {
+      await settle();
       const result = await placeOrder({
         addressId: selected._id,
         paymentMethod: payment,

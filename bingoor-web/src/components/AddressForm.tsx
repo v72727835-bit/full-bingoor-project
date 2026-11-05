@@ -48,7 +48,7 @@ export function AddressForm({
     state: initial?.state ?? '',
     pincode: initial?.pincode ?? '',
     location: initial?.location,
-    isDefault: initial?.isDefault ?? false,
+    isDefault: initial?.isDefault ?? true,
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);

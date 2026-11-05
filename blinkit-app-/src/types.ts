@@ -464,7 +464,7 @@ export interface PublicSettings {
   /** True once the admin saved Razorpay keys. */
   onlinePaymentOn?: boolean;
   /** Public sign-in ids; null while that provider is not set up. */
-  social?: { googleClientId: string | null; facebookAppId: string | null };
+  social?: { googleClientId: string | null; facebookAppId: string | null; instagramAppId?: string | null };
   deliverySlots?: { key: 'instant' | 'twoHour' | 'nextDay'; label: string }[];
   paymentOptions?: PayOptionDef[];
 }

@@ -3,6 +3,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/client';
 import { deleteAddress, fetchAddresses, setDefaultAddress } from '../api/user';
 import type { AppNav } from '../navigation/types';
@@ -21,6 +22,7 @@ const LABEL_ICON = { home: 'home-outline', work: 'briefcase-outline', other: 'lo
 export function AddressListScreen() {
   const navigation = useNavigation<AppNav>();
   const toast = useToast();
+  const { refreshUser } = useAuth();
 
   const [addresses, setAddresses] = useState<Address[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,8 @@ export function AddressListScreen() {
     setBusyId(id);
     try {
       setAddresses(await setDefaultAddress(id));
-      toast.success('Default address updated');
+      await refreshUser();
+      toast.success('Delivery address selected');
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -64,6 +67,7 @@ export function AddressListScreen() {
           setBusyId(address._id);
           try {
             setAddresses(await deleteAddress(address._id));
+            await refreshUser();
             toast.success('Address deleted');
           } catch (err) {
             toast.error(getErrorMessage(err));
@@ -152,7 +156,7 @@ export function AddressListScreen() {
 
             {!item.isDefault ? (
               <Button
-                label="Set as default"
+                label="Deliver here"
                 variant="ghost"
                 size="sm"
                 block={false}

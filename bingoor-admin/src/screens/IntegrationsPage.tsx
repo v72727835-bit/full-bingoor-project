@@ -342,15 +342,15 @@ export default function IntegrationsPage() {
           Google Maps {status(data.live.googleMaps)}
         </h2>
         <div className="page-subtitle" style={{ marginBottom: 12 }}>
-          console.cloud.google.com → APIs &amp; Services → enable <b>Maps JavaScript API</b> and <b>Geocoding API</b> (Geocoding turns the customer&apos;s exact pin into the right street, area and PIN code; without it the free OpenStreetMap address lookup is used) → Credentials → create an API key, and restrict it to your website domains (HTTP referrers). Paste it here and every map on the website, the customer app and the rider app switches to Google Maps. <b>Leave it blank to use the free OpenStreetMap maps</b> everywhere instead.
+          console.cloud.google.com → APIs &amp; Services → enable <b>Maps JavaScript API</b> and <b>Geocoding API</b> (Geocoding turns the customer&apos;s exact pin into the right street, area and PIN code) → Credentials → create an API key, and restrict it to your website domains (HTTP referrers). Paste it here and every map on the website, the customer app and the rider app switches to Google Maps. <b>Google Maps is required everywhere.</b> If the key is missing or unavailable, maps show an error and retry option.
         </div>
         <Field label="Google Maps API key">
-          <input value={mapsKey} onChange={(e) => setMapsKey(e.target.value)} placeholder="AIza… (blank = use OpenStreetMap)" autoComplete="off" />
+          <input value={mapsKey} onChange={(e) => setMapsKey(e.target.value)} placeholder="AIza… (required for Google Maps)" autoComplete="off" />
         </Field>
         <div className="modal-actions">
           <Button
             disabled={busy === 'maps'}
-            onClick={() => save('maps', { googleMapsApiKey: mapsKey }, mapsKey.trim() ? 'Google Maps key saved. Maps now use Google.' : 'Cleared — maps now use OpenStreetMap.')}
+            onClick={() => save('maps', { googleMapsApiKey: mapsKey }, mapsKey.trim() ? 'Google Maps key saved. Maps now use Google.' : 'Cleared — Google Maps needs a valid key before maps can load.')}
           >
             {busy === 'maps' ? 'Saving…' : 'Save Google Maps'}
           </Button>

@@ -29,8 +29,8 @@ const read = (highAccuracy: boolean, timeout: number) =>
     Geolocation.getCurrentPosition(resolve, reject, {
       enableHighAccuracy: highAccuracy,
       timeout,
-      // A fix from the last few minutes is good enough for a delivery pin.
-      maximumAge: highAccuracy ? 30_000 : 5 * 60_000,
+      // Delivery pins use a recent fix; the customer can adjust it on the map.
+      maximumAge: highAccuracy ? 10_000 : 30_000,
     }),
   );
 
@@ -40,22 +40,21 @@ const problemOf = (e: unknown): LocationProblem => {
 };
 
 /**
- * The phone's position. Indoors a GPS-only fix often never arrives, which is
- * what made "Use my current location" fail: so the quick network/Wi-Fi fix is
- * tried first, then GPS with more time.
+ * Try a recent precise GPS fix first, then the network/Wi-Fi fallback indoors.
+ * The map lets the customer confirm or adjust either result before saving.
  */
 export async function getPhoneLocation(): Promise<{ lat: number; lng: number }> {
   if (!(await askLocationPermission())) throw new Error('denied' satisfies LocationProblem);
   let first: LocationProblem;
   try {
-    const pos = await read(false, 10_000);
+    const pos = await read(true, 15_000);
     return { lat: pos.coords.latitude, lng: pos.coords.longitude };
   } catch (e) {
     first = problemOf(e);
     if (first === 'denied') throw new Error(first);
   }
   try {
-    const pos = await read(true, 25_000);
+    const pos = await read(false, 10_000);
     return { lat: pos.coords.latitude, lng: pos.coords.longitude };
   } catch (e) {
     const second = problemOf(e);

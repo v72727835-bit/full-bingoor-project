@@ -755,8 +755,8 @@ export const publicSettings = asyncHandler(async (_req, res) => {
     priceSortEnabled: settings.priceSortEnabled ?? true,
     googleReviewUrl: settings.googleReviewUrl ?? '',
     // Maps: clients use Google Maps when a key is set in the admin panel, else
-    // they fall back to OpenStreetMap. The key is a client-side (referrer-restricted) key.
-    maps: { provider: live.googleMapsApiKey ? 'google' : 'osm', googleMapsApiKey: live.googleMapsApiKey ?? null },
+    // they show a Google Maps configuration error. The key is a client-side (referrer-restricted) key.
+    maps: { provider: 'google', googleMapsApiKey: live.googleMapsApiKey ?? null },
     cartPointsOn: !!settings.cartPoints?.enabled,
     // #36: the ways to pay at checkout, with the admin's charges (percent of the bill).
     paymentOptions: paymentOptions(settings).filter((o) => o.enabled),

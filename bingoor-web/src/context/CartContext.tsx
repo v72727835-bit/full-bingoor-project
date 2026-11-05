@@ -3,7 +3,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as cartApi from '../api/cart';
 import { getDeliveryPoint, POINT_EVENT } from '../lib/deliveryPoint';
-import { CartView } from '../lib/types';
+import { optimisticQuantity } from '../lib/optimisticCart';
+import { CartView, Product } from '../lib/types';
 import { useAuth } from './AuthContext';
 import { useSlot } from './SlotContext';
 
@@ -15,7 +16,8 @@ interface CartApi {
   /** Quantity of one product across every shop group, for card steppers. */
   quantityOf: (productId: string) => number;
   refresh: () => Promise<void>;
-  addItem: (productId: string, quantity?: number) => Promise<void>;
+  settle: () => Promise<void>;
+  addItem: (productId: string, quantity?: number, product?: Product) => Promise<void>;
   updateItem: (productId: string, quantity: number) => Promise<void>;
   removeItem: (productId: string) => Promise<void>;
   clear: () => Promise<void>;
@@ -57,11 +59,41 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartView | null>(null);
   const [loading, setLoading] = useState(false);
   const guestItems = useRef<GuestItem[]>([]);
+  const confirmed = useRef<CartView | null>(null);
+  const serial = useRef(Promise.resolve());
+  const operations = useRef<{ id: number; apply: (view: CartView) => CartView }[]>([]);
+  const epoch = useRef(0);
+  const counter = useRef(0);
+  const empty: CartView = { groups: [], itemCount: 0, subtotal: 0, deliveryFee: 0, total: 0,
+    hasIssues: false, freeDeliveryAbove: 499, points: { enabled: false, met: true, suggestions: [], autoAddId: null } };
+  const publish = () => setCart(operations.current.reduce((view, op) => op.apply(view), confirmed.current ?? empty));
+  const commit = (view: CartView | null, session = epoch.current) => {
+    if (session !== epoch.current) return;
+    confirmed.current = view; publish();
+  };
+  const enqueue = (apply: (view: CartView) => CartView, request: (session: number) => Promise<void>) => {
+    const op = { id: ++counter.current, apply };
+    const session = epoch.current;
+    operations.current.push(op); publish();
+    const task = serial.current.then(async () => {
+      if (session !== epoch.current) return;
+      try { await request(session); }
+      finally {
+        if (session === epoch.current) {
+          operations.current = operations.current.filter((item) => item.id !== op.id);
+          publish();
+        }
+      }
+    });
+    serial.current = task.catch(() => undefined);
+    return task;
+  };
 
   const priceGuest = useCallback(async () => {
+    const session = epoch.current;
     const items = guestItems.current;
     if (items.length === 0) {
-      setCart(null);
+      commit(null);
       return;
     }
     const point = getDeliveryPoint();
@@ -73,11 +105,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       guestItems.current = kept;
       writeGuest(kept);
     }
-    setCart(view);
+    commit(view, session);
   }, [slot]);
 
   const refresh = useCallback(async () => {
     if (authLoading) return;
+    const session = epoch.current;
+    await serial.current;
+    if (session !== epoch.current) return;
     setLoading(true);
     try {
       if (!user) {
@@ -92,22 +127,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         writeGuest([]);
         guestItems.current = [];
       }
-      setCart(await cartApi.fetchCart());
+      const revision = counter.current;
+      const next = await cartApi.fetchCart();
+      if (revision === counter.current) commit(next, session);
     } catch {
       /* a failed read shouldn't blank a cart the user can still see */
     } finally {
       setLoading(false);
     }
-  }, [user, authLoading, priceGuest]);
+  }, [user?.id, authLoading, priceGuest]);
 
   useEffect(() => {
-    refresh();
+    epoch.current++;
+    operations.current = [];
+    confirmed.current = null;
+    setCart(null);
+    serial.current = refresh();
   }, [refresh]);
 
   // A visitor's delivery fee depends on where they are, so re-price when the location changes.
   useEffect(() => {
     if (user) return;
-    const onPoint = () => priceGuest().catch(() => undefined);
+    const onPoint = () => { serial.current = serial.current.then(() => priceGuest()).catch(() => undefined); };
     window.addEventListener(POINT_EVENT, onPoint);
     return () => window.removeEventListener(POINT_EVENT, onPoint);
   }, [user, priceGuest]);
@@ -135,40 +176,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addItem = async (productId: string, quantity = 1) => {
-    if (!user) {
-      const items = guestItems.current.map((i) => ({ ...i }));
-      const found = items.find((i) => i.productId === productId);
-      if (found) found.quantity = Math.min(MAX_QTY, found.quantity + quantity);
-      else items.push({ productId, quantity: Math.min(MAX_QTY, quantity) });
-      return setGuest(items);
-    }
-    setCart(await cartApi.addCartItem(productId, quantity));
-  };
-
-  const updateItem = async (productId: string, quantity: number) => {
-    if (!user) {
-      const items = guestItems.current
-        .map((i) => (i.productId === productId ? { ...i, quantity: Math.min(MAX_QTY, quantity) } : i))
-        .filter((i) => i.quantity > 0);
-      return setGuest(items);
-    }
-    if (quantity <= 0) setCart(await cartApi.removeCartItem(productId));
-    else setCart(await cartApi.updateCartItem(productId, quantity));
-  };
-
-  const removeItem = async (productId: string) => {
-    if (!user) return setGuest(guestItems.current.filter((i) => i.productId !== productId));
-    setCart(await cartApi.removeCartItem(productId));
-  };
-
-  const clear = async () => {
-    if (!user) return setGuest([]);
-    setCart(await cartApi.clearCart());
-  };
+  const addItem = (productId: string, quantity = 1, product?: Product) => enqueue((view) => {
+    const current = view.groups.flatMap((g) => g.items).find((i) => i.productId === productId)?.quantity ?? 0;
+    return optimisticQuantity(view, productId, current + quantity, product);
+  }, async (session) => {
+    if (user) { commit(await cartApi.addCartItem(productId, quantity), session); return; }
+    const items = guestItems.current.map((i) => ({ ...i }));
+    const found = items.find((i) => i.productId === productId);
+    if (found) found.quantity = Math.min(MAX_QTY, found.quantity + quantity);
+    else items.push({ productId, quantity: Math.min(MAX_QTY, quantity) });
+    await setGuest(items);
+  });
+  const updateItem = (productId: string, quantity: number) => enqueue(
+    (view) => optimisticQuantity(view, productId, quantity), async (session) => {
+      if (user) {
+        commit(await (quantity <= 0 ? cartApi.removeCartItem(productId) : cartApi.updateCartItem(productId, quantity)), session);
+        return;
+      }
+      await setGuest(guestItems.current.map((i) => i.productId === productId ? { ...i, quantity: Math.min(MAX_QTY, quantity) } : i).filter((i) => i.quantity > 0));
+    });
+  const removeItem = (productId: string) => updateItem(productId, 0);
+  const clear = () => enqueue(() => empty, async (session) => {
+    if (user) commit(await cartApi.clearCart(), session);
+    else await setGuest([]);
+  });
 
   return (
-    <CartContext.Provider value={{ cart, loading, guest: !user, quantityOf, refresh, addItem, updateItem, removeItem, clear }}>
+    <CartContext.Provider value={{ cart, loading, guest: !user, quantityOf, refresh, settle: async () => { await serial.current; }, addItem, updateItem, removeItem, clear }}>
       {children}
     </CartContext.Provider>
   );

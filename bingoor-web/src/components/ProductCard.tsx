@@ -104,8 +104,8 @@ export function ProductCard({
             <QuantityStepper
               size="sm"
               quantity={qty}
-              busy={busy}
-              onAdd={() => act(() => addItem(product.id, 1))}
+              busy={false}
+              onAdd={() => act(() => addItem(product.id, 1, product))}
               onIncrement={() => act(() => updateItem(product.id, qty + 1))}
               onDecrement={() => act(() => updateItem(product.id, qty - 1))}
             />
@@ -186,9 +186,9 @@ export function ProductCard({
           <QuantityStepper
             size="sm"
             quantity={qty}
-            busy={busy}
+            busy={false}
             disabled={!product.inStock}
-            onAdd={() => act(() => addItem(product.id, 1))}
+            onAdd={() => act(() => addItem(product.id, 1, product))}
             onIncrement={() => act(() => updateItem(product.id, qty + 1))}
             onDecrement={() => act(() => updateItem(product.id, qty - 1))}
           />

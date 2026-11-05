@@ -375,7 +375,7 @@ export const listOrdersAdmin = asyncHandler(async (req, res) => {
 export const getOrderAdmin = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
     .populate('user', 'name phone email')
-    .populate('shop', 'name phone')
+    .populate('shop', 'name phone address location')
     .populate('rider', 'name phone')
     .lean();
   if (!order) throw new ApiError(404, 'Order not found');

@@ -1,17 +1,21 @@
 import { api } from '../api/client';
 
-/**
- * Picks the Leaflet base layer for admin maps: Google tiles (via GoogleMutant)
- * when a Google Maps API key is configured under Login & Payments → Google Maps,
- * otherwise OpenStreetMap. Falls back to OpenStreetMap if Google fails to load,
- * so a map is never left blank.
- */
 type LeafletNS = typeof import('leaflet');
 type LeafletMap = import('leaflet').Map;
 
+function mapError(map: LeafletMap) {
+  const box = document.createElement('div');
+  box.setAttribute('role', 'alert');
+  box.style.cssText = 'position:absolute;inset:0;z-index:1100;background:var(--surface,#fff);display:grid;place-content:center;text-align:center;padding:20px;gap:12px';
+  const text = document.createElement('p');
+  text.textContent = 'Google Maps could not load. Check your connection and the Google Maps configuration.';
+  const retry = document.createElement('button');
+  retry.type = 'button'; retry.textContent = 'Retry Google Maps'; retry.onclick = () => window.location.reload();
+  box.append(text, retry); map.getContainer().append(box);
+}
 let cfgPromise: Promise<{ provider?: string; googleMapsApiKey?: string | null } | null> | null = null;
 
-function mapsConfig() {
+export function mapsConfig() {
   if (!cfgPromise) {
     cfgPromise = api
       .get('/settings/public')
@@ -22,7 +26,7 @@ function mapsConfig() {
 }
 
 let googleLoader: Promise<boolean> | null = null;
-function loadGoogleMaps(key: string): Promise<boolean> {
+export function loadGoogleMaps(key: string): Promise<boolean> {
   if (typeof window === 'undefined') return Promise.resolve(false);
   const w = window as unknown as { google?: { maps?: unknown } };
   if (w.google?.maps) return Promise.resolve(true);
@@ -39,30 +43,14 @@ function loadGoogleMaps(key: string): Promise<boolean> {
   return googleLoader;
 }
 
-function osm(L: LeafletNS, map: LeafletMap) {
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 19,
-  }).addTo(map);
-}
-
 export async function addBaseLayer(L: LeafletNS, map: LeafletMap): Promise<void> {
-  const cfg = await mapsConfig();
-  const key = cfg?.provider === 'google' ? cfg?.googleMapsApiKey : null;
-  if (!key) {
-    osm(L, map);
-    return;
-  }
   try {
-    if (!(await loadGoogleMaps(key))) {
-      osm(L, map);
-      return;
-    }
+    const cfg = await mapsConfig();
+    const key = cfg?.googleMapsApiKey;
+    if (!key || !(await loadGoogleMaps(key))) throw new Error('Google Maps is unavailable');
     await import('leaflet.gridlayer.googlemutant');
-    const gridLayer = (L as unknown as { gridLayer: { googleMutant?: (o: unknown) => { addTo: (m: LeafletMap) => void } } }).gridLayer;
-    if (gridLayer.googleMutant) gridLayer.googleMutant({ type: 'roadmap' }).addTo(map);
-    else osm(L, map);
-  } catch {
-    osm(L, map);
-  }
+    const grid = (L as unknown as { gridLayer: { googleMutant?: (options: unknown) => { addTo: (map: LeafletMap) => void } } }).gridLayer;
+    if (!grid.googleMutant) throw new Error('Google Maps layer is unavailable');
+    grid.googleMutant({ type: 'roadmap' }).addTo(map);
+  } catch { mapError(map); }
 }

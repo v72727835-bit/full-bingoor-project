@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bingoor delivery map</title>
+<style>html,body,#map{height:100%;margin:0;font:14px system-ui}#tools{position:absolute;z-index:1000;left:12px;right:12px;bottom:12px;background:white;padding:12px;border-radius:14px;box-shadow:0 2px 12px #0003}button{padding:10px;border:0;border-radius:8px;background:#14863d;color:white;margin:3px}#status{margin:4px;color:#333}#pano{display:none;position:absolute;inset:0;z-index:1100}#close{display:none;position:absolute;top:12px;right:12px;z-index:1200}input{padding:10px;max-width:60%;border:1px solid #bbb;border-radius:8px}</style></head>
+<body><div id="map"></div><div id="pano"></div><button id="close">Close Street View</button><div id="tools"><div id="search"><input id="query" placeholder="Search area or PIN code" aria-label="Search location"><button id="find">Search</button></div><div id="status" role="status">Loading map…</div><button id="retry" hidden>Retry Google Maps</button><button id="save">Confirm this pin</button><button id="street">Delivery Street View</button><button id="pickup-street">Pickup Street View</button></div>
+<script>
+/* Shared, public map surface for both phone apps and the admin. No account tokens enter this page. */
+const q=new URLSearchParams(location.search), edit=q.get('mode')==='pick';
+const valid=p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180;
+const read=k=>{try{const p=JSON.parse(q.get(k));return valid(p)?p:null}catch{return null}};
+let destination=read('destination')||{lat:25.3,lng:82.99},pickup=read('pickup'),rider=read('rider');
+let gmap,pin,riderPin,route,googleReady=false,routeTurn=0,lastRoute=0,glide;
+const status=document.getElementById('status');
+function notify(p){if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(p));if(window.parent!==window)window.parent.postMessage(p,'*')}
+function say(s){status.textContent=s}
+document.getElementById('save').hidden=!edit;document.getElementById('search').hidden=!edit;document.getElementById('pickup-street').hidden=!pickup;
+function move(p){destination={lat:p.lat,lng:p.lng};pin.setPosition(destination);say('Selected pin: '+p.lat.toFixed(5)+', '+p.lng.toFixed(5))}
+function fail(){googleReady=false;say('Google Maps could not load. Check your connection or the configured Google Maps key, then retry.');document.getElementById('retry').hidden=false;for(const id of ['save','find','street','pickup-street'])document.getElementById(id).disabled=true}
+window.gm_authFailure=fail;
+document.getElementById('retry').onclick=()=>location.reload();
+for(const id of ['save','find','street','pickup-street'])document.getElementById(id).disabled=true;
+function drawGoogle(){
+ gmap=new google.maps.Map(document.getElementById('map'),{center:destination,zoom:16,mapTypeControl:false,streetViewControl:true});
+ pin=new google.maps.Marker({map:gmap,position:destination,draggable:edit,title:edit?'Delivery pin':'Delivery address'});
+ if(edit){gmap.addListener('click',e=>move(e.latLng.toJSON()));pin.addListener('dragend',e=>move(e.latLng.toJSON()))}
+ if(pickup)new google.maps.Marker({map:gmap,position:pickup,label:'P',title:'Pickup warehouse'});
+ if(rider)riderPin=new google.maps.Marker({map:gmap,position:rider,label:'R',title:'Live rider'});
+ const bounds=new google.maps.LatLngBounds();[destination,pickup,rider].filter(Boolean).forEach(p=>bounds.extend(p));if(pickup||rider)gmap.fitBounds(bounds,70);
+ googleReady=true;for(const id of ['save','find','street','pickup-street'])document.getElementById(id).disabled=false;say(edit?'Move the pin to your delivery entrance.':'Live delivery map');drawRoute();
+}
+function drawRoute(){
+ if(!googleReady||edit||!(rider||pickup))return;
+ const turn=++routeTurn;lastRoute=Date.now();
+ new google.maps.DirectionsService().route({origin:rider||pickup,destination,travelMode:google.maps.TravelMode.DRIVING},(result,code)=>{
+  if(turn!==routeTurn)return;
+  if(code!=='OK'){say('Road route unavailable. Pins show the latest reported positions.');return}
+  if(!route)route=new google.maps.DirectionsRenderer({map:gmap,suppressMarkers:true,preserveViewport:true});route.setDirections(result);
+  const leg=result.routes[0].legs[0];say('Road distance '+leg.distance.text+' · Estimated '+leg.duration.text);notify({type:'eta',seconds:leg.duration.value,meters:leg.distance.value});
+ });
+}
+function update(data){
+ if(data.type!=='positions'||!valid(data.rider))return;rider=data.rider;
+ if(gmap){
+  if(riderPin){
+   if(glide)cancelAnimationFrame(glide);const start=riderPin.getPosition().toJSON(),end={lat:rider.lat,lng:rider.lng},at=performance.now();
+   const step=now=>{const t=Math.min(1,(now-at)/1400),ease=1-(1-t)*(1-t);riderPin.setPosition({lat:start.lat+(end.lat-start.lat)*ease,lng:start.lng+(end.lng-start.lng)*ease});if(t<1)glide=requestAnimationFrame(step)};
+   glide=requestAnimationFrame(step);
+  }else riderPin=new google.maps.Marker({map:gmap,position:rider,label:'R',title:'Live rider'});
+  if(Date.now()-lastRoute>30000)drawRoute();
+ }
+
+}
+window.bingoorMapUpdate=update;
+window.addEventListener('message',event=>{
+ const trusted=event.origin===location.origin||event.origin==='https://admin.bingoor.com';
+ if(trusted&&event.source===window.parent)update(event.data||{});
+});
+document.getElementById('save').onclick=async()=>{
+ const selected={...destination};let address={};
+ if(googleReady){try{const result=await new google.maps.Geocoder().geocode({location:selected});const a=result.results[0];if(a){const part=t=>a.address_components.find(c=>c.types.includes(t))?.long_name||'';address={line2:[part('route'),part('sublocality_level_1')].filter(Boolean).join(', '),city:part('locality')||part('administrative_area_level_2'),state:part('administrative_area_level_1'),pincode:part('postal_code')}}}catch{}}
+ notify({type:'pin',...selected,address});say('Pin confirmed. Complete your address and tap Save address.');
+};
+document.getElementById('find').onclick=async()=>{
+ const text=document.getElementById('query').value.trim();if(!text)return;say('Searching…');
+ if(!googleReady){say('Google Maps is not ready. Please retry.');return}
+ try{const r=await new google.maps.Geocoder().geocode({address:text,componentRestrictions:{country:'IN'}});const p=r.results[0]?.geometry.location.toJSON();if(!valid(p))throw Error();move(p);gmap.panTo(p)}catch{say('Google Maps could not find this location. Try a nearby landmark or move the pin.')}
+};
+function streetView(at){
+ if(!googleReady){say('Street View requires the Google Maps key in Admin → Login & Payments.');return}
+ new google.maps.StreetViewService().getPanorama({location:at,radius:100},(data,code)=>{
+  if(code!=='OK'){say('Street View is not available at this location.');return}
+  document.getElementById('pano').style.display='block';document.getElementById('close').style.display='block';new google.maps.StreetViewPanorama(document.getElementById('pano'),{pano:data.location.pano});
+ });
+}
+document.getElementById('street').onclick=()=>streetView(destination);
+document.getElementById('pickup-street').onclick=()=>streetView(pickup);
+document.getElementById('close').onclick=()=>{document.getElementById('pano').style.display='none';document.getElementById('close').style.display='none'};
+(async()=>{try{const response=await fetch('https://api.bingoor.com/api/v1/settings/public',{signal:AbortSignal.timeout(15000)});const config=(await response.json()).data?.maps;if(!config?.googleMapsApiKey)throw Error();await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Google Maps timed out')),15000);const s=document.createElement('script');s.src='https://maps.googleapis.com/maps/api/js?v=quarterly&key='+encodeURIComponent(config.googleMapsApiKey);s.onload=()=>{clearTimeout(timer);resolve()};s.onerror=()=>{clearTimeout(timer);reject(Error())};document.head.appendChild(s)});drawGoogle()}catch{fail()}})();
+</script></body></html>

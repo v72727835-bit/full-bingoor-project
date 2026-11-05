@@ -152,9 +152,10 @@ export interface Order {
   _id: string;
   orderNumber: string;
   user: { _id: string; name: string; phone: string; email?: string } | string;
-  shop: { _id: string; name: string; phone?: string } | string;
+  shop: { _id: string; name: string; phone?: string; address?: { line1?: string; city?: string }; location?: { coordinates: [number, number] } } | string;
   rider?: { _id: string; name: string; phone?: string } | string;
   /** Orders still waiting for a rider: riders linked to the warehouse, those who see it in the app, and those online. */
+  riderLocation?: { lat: number; lng: number; at?: string };
   riderPool?: { linked: number; canSee: number; online: number };
   longDistance?: boolean;
   fulfillment?: 'rider' | 'shiprocket';
@@ -165,6 +166,7 @@ export interface Order {
     phone: string;
     line1: string;
     line2?: string;
+    location?: { lat: number; lng: number };
     city: string;
     state: string;
     pincode: string;

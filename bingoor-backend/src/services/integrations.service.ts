@@ -14,7 +14,7 @@ export interface LiveIntegrations {
   razorpayKeySecret?: string;
   razorpayWebhookSecret?: string;
   razorpayEnabled: boolean;
-  /** Google Maps JS API key (client-side). Empty when maps should fall back to OpenStreetMap. */
+  /** Google Maps JS API key (client-side). Required for maps; no alternative provider is used. */
   googleMapsApiKey?: string;
   shiprocket: {
     email?: string;

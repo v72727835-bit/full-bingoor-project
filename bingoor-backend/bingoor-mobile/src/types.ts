@@ -120,7 +120,7 @@ export interface RiderOrder {
   items: { name: string; quantity: number; price?: number; lineTotal: number }[];
   deliveredAt?: string;
   address: { name: string; phone: string; line1: string; line2?: string; landmark?: string; city: string; state: string; pincode: string; location?: { lat: number; lng: number } };
-  shop?: { name: string; phone?: string };
+  shop?: { name: string; phone?: string; address?: { line1?: string; city?: string; state?: string; pincode?: string }; location?: { coordinates: [number, number] } };
   user?: { name: string; phone: string };
 }
 

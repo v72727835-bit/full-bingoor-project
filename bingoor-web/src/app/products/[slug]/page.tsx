@@ -270,8 +270,8 @@ export default function ProductPage() {
                           <QuantityStepper
                             size="sm"
                             quantity={vqty}
-                            busy={busy}
-                            onAdd={() => act(() => addItem(v.id, 1))}
+                            busy={false}
+                            onAdd={() => act(() => addItem(v.id, 1, { ...p, id: v.id, slug: v.slug, unit: v.label, price: v.price, mrp: v.mrp, inStock: v.inStock }))}
                             onIncrement={() => act(() => updateItem(v.id, vqty + 1))}
                             onDecrement={() => act(() => updateItem(v.id, vqty - 1))}
                           />
@@ -289,9 +289,9 @@ export default function ProductPage() {
           <div className={s.actions}>
             <QuantityStepper
               quantity={qty}
-              busy={busy}
+              busy={false}
               disabled={!p.inStock}
-              onAdd={() => act(() => addItem(p.id, 1))}
+              onAdd={() => act(() => addItem(p.id, 1, p))}
               onIncrement={() => act(() => updateItem(p.id, qty + 1))}
               onDecrement={() => act(() => updateItem(p.id, qty - 1))}
             />

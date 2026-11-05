@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { fetchMe, loginRequest, logoutRequest, registerRequest, RegisterInput, socialLoginRequest } from '../api/auth';
+import { fetchMe, loginRequest, logoutRequest, registerRequest, RegisterInput, socialLoginRequest, socialCodeLoginRequest } from '../api/auth';
 import { setAccessToken, setSessionExpiredHandler } from '../api/client';
 import { setDeliveryPoint, syncPointFromAddresses } from '../store/deliveryPoint';
 import { tokenStore } from '../storage/tokens';
@@ -15,6 +15,7 @@ interface AuthContextValue {
   welcome: { phone: string; password: string } | null;
   dismissWelcome: () => void;
   signInSocial: (provider: 'google' | 'facebook', accessToken: string) => Promise<void>;
+  signInCode: (provider: 'facebook' | 'instagram', input: { code: string; redirectUri: string }) => Promise<void>;
   signOut: () => Promise<void>;
   /** Push a freshly-saved profile into context without a round trip. */
   applyUser: (user: User) => void;
@@ -79,6 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(result.user);
   }, []);
 
+  const signInCode = useCallback(async (provider: 'facebook' | 'instagram', input: { code: string; redirectUri: string }) => {
+    const result = await socialCodeLoginRequest(provider, input);
+    await tokenStore.save(result.accessToken, result.refreshToken);
+    setAccessToken(result.accessToken);
+    setUser(result.user);
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       await logoutRequest(await tokenStore.getRefresh());
@@ -107,8 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signOut, applyUser, refreshUser }),
-    [user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signOut, applyUser, refreshUser],
+    () => ({ user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signInCode, signOut, applyUser, refreshUser }),
+    [user, initializing, signIn, signUp, welcome, dismissWelcome, signInSocial, signInCode, signOut, applyUser, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

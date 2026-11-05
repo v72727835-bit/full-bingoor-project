@@ -1,25 +1,20 @@
-/**
- * Chooses the Leaflet base layer for every map on the website.
- *
- * When the admin has set a Google Maps API key (Login & Payments → Google Maps),
- * maps render with Google tiles via the GoogleMutant layer; otherwise they use
- * the free OpenStreetMap tiles. All marker / drag / click / routing code stays
- * the same &ndash; only the base layer changes. If Google fails to load for any
- * reason, we fall back to OpenStreetMap so a map is never left blank.
- */
+import { API_URL } from './config';
+
 type LeafletNS = typeof import('leaflet');
 type LeafletMap = import('leaflet').Map;
 
-export interface MapsConfig {
-  provider?: 'google' | 'osm';
-  googleMapsApiKey?: string | null;
+function mapError(map: LeafletMap) {
+  const box = document.createElement('div');
+  box.setAttribute('role', 'alert');
+  box.style.cssText = 'position:absolute;inset:0;z-index:1100;background:var(--surface,#fff);display:grid;place-content:center;text-align:center;padding:20px;gap:12px';
+  const text = document.createElement('p');
+  text.textContent = 'Google Maps could not load. Check your connection and the Google Maps configuration.';
+  const retry = document.createElement('button');
+  retry.type = 'button'; retry.textContent = 'Retry Google Maps'; retry.onclick = () => window.location.reload();
+  box.append(text, retry); map.getContainer().append(box);
 }
 
-/**
- * One Google Maps script per page. The promise lives on `window`, not in this
- * module, because the map and the address lookup can end up in separate code
- * chunks with their own copy of the module - which loaded the script twice.
- */
+export interface MapsConfig { provider?: 'google'; googleMapsApiKey?: string | null }
 export function loadGoogleMaps(key: string): Promise<boolean> {
   if (typeof window === 'undefined') return Promise.resolve(false);
   const w = window as unknown as { google?: { maps?: unknown }; __bingoorGmaps?: Promise<boolean> };
@@ -30,7 +25,7 @@ export function loadGoogleMaps(key: string): Promise<boolean> {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=quarterly`;
     script.async = true;
     script.defer = true;
-    script.onload = () => resolve(true);
+    script.onload = () => resolve(!!w.google?.maps);
     script.onerror = () => {
       w.__bingoorGmaps = undefined;
       resolve(false);
@@ -40,32 +35,15 @@ export function loadGoogleMaps(key: string): Promise<boolean> {
   return w.__bingoorGmaps;
 }
 
-function osm(L: LeafletNS, map: LeafletMap) {
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-}
-
-/** Adds the Google (when a key is configured) or OpenStreetMap base layer to `map`. */
+/** Google tiles only. A missing key or provider error never switches map services. */
 export async function addBaseLayer(L: LeafletNS, map: LeafletMap, cfg?: MapsConfig | null): Promise<void> {
-  const key = cfg?.provider === 'google' ? cfg?.googleMapsApiKey : null;
-  if (!key) {
-    osm(L, map);
-    return;
-  }
   try {
-    const ok = await loadGoogleMaps(key);
-    if (!ok) {
-      osm(L, map);
-      return;
-    }
-    // GoogleMutant renders Google tiles inside the existing Leaflet map.
+    const config = cfg?.googleMapsApiKey ? cfg : (await (await fetch(`${API_URL}/settings/public`)).json()).data?.maps;
+    const key = config?.googleMapsApiKey;
+    if (!key || !(await loadGoogleMaps(key))) throw new Error('Google Maps is unavailable');
     await import('leaflet.gridlayer.googlemutant');
-    const gridLayer = (L as unknown as { gridLayer: { googleMutant?: (o: unknown) => { addTo: (m: LeafletMap) => void } } }).gridLayer;
-    if (gridLayer.googleMutant) {
-      gridLayer.googleMutant({ type: 'roadmap' }).addTo(map);
-    } else {
-      osm(L, map);
-    }
-  } catch {
-    osm(L, map);
-  }
+    const grid = (L as unknown as { gridLayer: { googleMutant?: (options: unknown) => { addTo: (map: LeafletMap) => void } } }).gridLayer;
+    if (!grid.googleMutant) throw new Error('Google Maps layer is unavailable');
+    grid.googleMutant({ type: 'roadmap' }).addTo(map);
+  } catch { mapError(map); }
 }

@@ -14,6 +14,7 @@ import { gutter, hitSlop, ms, radius, space, themed, useTheme } from '../theme';
 import { catalogApi, useHomeQuery } from '../store/catalogApi';
 import { useDeliveryPointKey } from '../store/deliveryPoint';
 import type { Category } from '../types';
+import { Button } from '../ui/Button';
 import { Banner, EmptyState } from '../ui/Feedback';
 import { ProductCardSkeleton, SkeletonBlock } from '../ui/Skeleton';
 import { Txt } from '../ui/Text';
@@ -292,6 +293,11 @@ export function HomeScreen({ active }: TabScreenProps) {
   } else {
     body = (
       <>
+        {!address ? <View style={{ padding: gutter, gap: space.sm }}>
+          <Txt variant="h4">{area ? 'Deliver to your current location' : 'Choose your delivery location'}</Txt>
+          <Txt variant="bodySm" tone="muted">Confirm your map pin and save your address for doorstep delivery.</Txt>
+          <Button label="Set pin and save address" onPress={() => nav.navigate('AddressForm')} />
+        </View> : null}
         {data?.serviceable === false ? (
           <Banner
             tone="warning"

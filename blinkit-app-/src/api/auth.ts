@@ -27,9 +27,14 @@ export async function logoutRequest(refreshToken: string | null): Promise<void> 
   await api.post('/auth/logout', refreshToken ? { refreshToken } : {});
 }
 
+export async function socialCodeLoginRequest(provider: 'facebook' | 'instagram', input: { code: string; redirectUri: string }): Promise<AuthResult> {
+  const { data } = await api.post<ApiEnvelope<AuthResult>>(`/auth/${provider}`, input);
+  return data.data;
+}
+
 /** Continue with Google / Facebook: the server checks the token with the provider and signs the customer in. */
 export async function socialLoginRequest(provider: 'google' | 'facebook', accessToken: string): Promise<AuthResult> {
-  const { data } = await api.post<ApiEnvelope<AuthResult>>(`/auth/${provider}`, { accessToken });
+  const { data } = await api.post<ApiEnvelope<AuthResult>>(`/auth/${provider}`, provider === 'google' ? { idToken: accessToken } : { accessToken });
   return data.data;
 }
 

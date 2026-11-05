@@ -68,7 +68,7 @@ export const instagramRedirectUri = () => `${window.location.origin}/auth/instag
  * Instagram's own login and comes back to /auth/instagram with a code.
  */
 export function startInstagramLogin(appId: string, next: string) {
-  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const state = Array.from(crypto.getRandomValues(new Uint8Array(32)), (n) => n.toString(16).padStart(2, '0')).join('');
   try {
     sessionStorage.setItem(IG_STATE, state);
     sessionStorage.setItem(IG_NEXT, next);

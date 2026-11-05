@@ -20,8 +20,8 @@ const round = (n: number) => Math.round(n * 1000) / 1000;
 
 export function setDeliveryPoint(next: Point | null) {
   const nextKey = next ? `${round(next.lat)},${round(next.lng)}` : '';
-  if (nextKey === key) return;
-  point = next ? { lat: round(next.lat), lng: round(next.lng) } : null;
+  if (point?.lat === next?.lat && point?.lng === next?.lng) return;
+  point = next ? { ...next } : null;
   key = nextKey;
   listeners.forEach((l) => l());
 }

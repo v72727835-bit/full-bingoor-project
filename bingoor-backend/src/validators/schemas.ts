@@ -165,6 +165,11 @@ export const placeOrderBody = z.object({
 
 export const socialLoginBody = z.object({ accessToken: z.string().min(10).max(4000) });
 /** Instagram hands the website a one-time code; the server swaps it (with the app secret) for the customer's id. */
+export const googleLoginBody = z.union([socialLoginBody, z.object({ idToken: z.string().min(10).max(8000) })]);
+export const facebookLoginBody = z.union([socialLoginBody, z.object({
+  code: z.string().min(10).max(2000),
+  redirectUri: z.literal('https://bingoor.com/auth/mobile/facebook'),
+})]);
 export const instagramLoginBody = z.object({ code: z.string().min(10).max(2000), redirectUri: z.string().url().max(500) });
 
 export const confirmPaymentBody = z.object({

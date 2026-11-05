@@ -13,6 +13,7 @@ import { useCart } from '../../../context/CartContext';
 import { useToast } from '../../../context/ToastContext';
 import { Crumbs } from '../../../components/Crumbs';
 import { Icon } from '../../../components/Icon';
+import { GoogleDeliveryMap } from '../../../components/GoogleDeliveryMap';
 import { LiveTrackMap } from '../../../components/LiveTrackMap';
 import { RequireAuth } from '../../../components/RequireAuth';
 import { Alert, Badge, Button, PageLoader } from '../../../components/ui';
@@ -220,14 +221,7 @@ function OrderInner() {
                 .join(', ')}
             </p>
             {loc ? (
-              <iframe
-                title="Delivery location"
-                className={s.map}
-                loading="lazy"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng - 0.006}%2C${
-                  loc.lat - 0.004
-                }%2C${loc.lng + 0.006}%2C${loc.lat + 0.004}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`}
-              />
+              <GoogleDeliveryMap destination={loc} />
             ) : null}
             {o.note ? (
               <p className={s.note}>
@@ -333,7 +327,7 @@ function km(a: { lat: number; lng: number }, b: { lat: number; lng: number }): n
 /**
  * Where the rider is right now. The rider app reports its position every few
  * seconds and this page polls, so the pin moves as the parcel comes closer.
- * OpenStreetMap's embed needs no API key.
+ * The shared Google map displays the latest rider position.
  */
 function RiderTracking({ order }: { order: Order }) {
   const at = order.riderLocation;
@@ -350,8 +344,6 @@ function RiderTracking({ order }: { order: Order }) {
     );
   }
   const away = home ? km(at, home) : null;
-  const pad = 0.01;
-  const bbox = [at.lng - pad, at.lat - pad, at.lng + pad, at.lat + pad].join(',');
   return (
     <section className={`card ${s.track}`}>
       <div className={s.trackHead}>
@@ -367,12 +359,7 @@ function RiderTracking({ order }: { order: Order }) {
           </a>
         ) : null}
       </div>
-      <iframe
-        title="Rider location"
-        className={s.trackMap}
-        loading="lazy"
-        src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${at.lat},${at.lng}`}
-      />
+      <GoogleDeliveryMap destination={home ?? at} rider={at} />
       <a className={s.trackLink} href={`https://www.google.com/maps?q=${at.lat},${at.lng}`} target="_blank" rel="noreferrer">
         Open in Google Maps
       </a>

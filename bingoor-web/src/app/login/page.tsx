@@ -3,21 +3,40 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useState } from 'react';
+import { useSettings } from '../../context/SettingsContext';
+import { googleAccessToken, facebookAccessToken, startInstagramLogin } from '../../lib/social';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../lib/client';
 import { AuthShell } from '../../components/AuthShell';
 import { Alert, Button, Field, Input, PageLoader } from '../../components/ui';
 
 function LoginInner() {
-  const { login } = useAuth();
+  const { login, loginWithSocial } = useAuth();
+  const settings = useSettings();
   const router = useRouter();
-  const next = useSearchParams().get('next') || '/';
+  const requestedNext = useSearchParams().get('next') || '/';
+  const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') ? requestedNext : '/';
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   // The server asks for an OTP on this number before it lets the customer in.
+
+  const social = async (provider: 'google' | 'facebook' | 'instagram') => {
+    setError('');
+    const ids = settings?.social;
+    const id = provider === 'google' ? ids?.googleClientId : provider === 'facebook' ? ids?.facebookAppId : ids?.instagramAppId;
+    if (!id) { setError(`${provider} login is not configured yet. Please use your phone or email.`); return; }
+    setLoading(true);
+    try {
+      if (provider === 'instagram') { startInstagramLogin(id, next); return; }
+      const token = provider === 'google' ? await googleAccessToken(id) : await facebookAccessToken(id);
+      await loginWithSocial(provider, token);
+      router.replace(next);
+    } catch (err) { setError(getErrorMessage(err)); }
+    finally { setLoading(false); }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +66,12 @@ function LoginInner() {
       }
     >
       {error ? <Alert tone="bad">{error}</Alert> : null}
-      {/* The phone / password form is always open (the client asked for it). */}
+      <div style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
+        <Button full variant="outline" disabled={loading} onClick={() => void social('google')}>Continue with Google</Button>
+        <Button full variant="outline" disabled={loading} onClick={() => void social('facebook')}>Continue with Facebook</Button>
+        <Button full variant="outline" disabled={loading} onClick={() => void social('instagram')}>Continue with Instagram</Button>
+        <small>Instagram login supports Business and Creator accounts.</small>
+      </div>
       <form onSubmit={submit}>
         <Field label="Your phone number" required>
           <Input

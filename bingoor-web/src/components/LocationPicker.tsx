@@ -31,7 +31,7 @@ interface Hit {
 
 const START = { lat: 24.7, lng: 83.07 }; // Robertsganj, until the customer moves the pin
 
-/** City, state and PIN for a pin (Google when a Maps key is set, else OpenStreetMap). Failure just leaves the form as it was. */
+/** City, state and PIN for a pin (Google Geocoding). Failure just leaves the form as it was. */
 export async function reverse(lat: number, lng: number): Promise<Partial<PickedPlace>> {
   return reverseGeocode(lat, lng);
 }

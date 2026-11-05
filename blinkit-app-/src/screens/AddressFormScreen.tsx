@@ -16,6 +16,8 @@ import { AddressInput, createAddress, updateAddress } from '../api/user';
 import { useAuth } from '../context/AuthContext';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, gutter, ms, radius, space, themed } from '../theme';
+import { DeliveryMap } from '../components/DeliveryMap';
+import { deliveryPointParams } from '../store/deliveryPoint';
 import { AddressLabel } from '../types';
 import { AppHeader } from '../ui/AppHeader';
 import { Button } from '../ui/Button';
@@ -38,7 +40,7 @@ const LABELS: { key: AddressLabel; label: string; icon: React.ComponentProps<typ
 export function AddressFormScreen() {
   const navigation = useNavigation<AppNav>();
   const { params } = useRoute<AppRoute<'AddressForm'>>();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const toast = useToast();
 
   const existing = params?.address;
@@ -62,12 +64,13 @@ export function AddressFormScreen() {
     city: existing?.city ?? '',
     state: existing?.state || 'Rajasthan',
     pincode: existing?.pincode ?? '',
-    isDefault: existing?.isDefault ?? false,
+    isDefault: existing?.isDefault ?? true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | undefined>(existing?.location);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | undefined>(existing?.location ?? deliveryPointParams() ?? undefined);
+  const locationTurn = useRef(0);
   const [locating, setLocating] = useState(false);
   const [stateOpen, setStateOpen] = useState(false);
 
@@ -75,13 +78,16 @@ export function AddressFormScreen() {
   const locate = async () => {
     setFormError(null);
     setLocating(true);
+    const turn = ++locationTurn.current;
     try {
-      setLocation(await getPhoneLocation());
+      const point = await getPhoneLocation();
+      if (turn !== locationTurn.current) return;
+      setLocation(point);
       setErrors((e) => ({ ...e, location: '' }));
     } catch (err) {
-      setFormError(locationMessage(problemFromError(err)));
+      if (turn === locationTurn.current) setFormError(locationMessage(problemFromError(err)));
     } finally {
-      setLocating(false);
+      if (turn === locationTurn.current) setLocating(false);
     }
   };
 
@@ -98,6 +104,8 @@ export function AddressFormScreen() {
       toast.error('That does not look like a location. Copy it as "lat,lng".');
       return;
     }
+    locationTurn.current++;
+    setLocating(false);
     setLocation({ lat, lng });
     setErrors((e) => ({ ...e, location: '' }));
     toast.success('Location pasted');
@@ -139,6 +147,7 @@ export function AddressFormScreen() {
     try {
       if (editing && existing) await updateAddress(existing._id, payload);
       else await createAddress(payload);
+      await refreshUser();
       toast.success(editing ? 'Address updated' : 'Address saved');
       navigation.goBack();
     } catch (err) {
@@ -175,6 +184,17 @@ export function AddressFormScreen() {
               {`Pinned at ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}
             </Txt>
           ) : null}
+
+          <DeliveryMap destination={location} onPick={(pin) => {
+            locationTurn.current++;
+            setLocating(false);
+            setLocation({ lat: pin.lat, lng: pin.lng });
+            setErrors((e) => ({ ...e, location: '' }));
+            const a = pin.address;
+            if (a) setForm((f) => ({ ...f, line2: a.line2 || f.line2, city: a.city || f.city,
+              state: a.state || f.state, pincode: a.pincode || f.pincode }));
+          }} />
+          <Txt variant="caption" tone="muted">Move the map pin to your entrance, confirm it, then save this address.</Txt>
 
           {/* Someone else in the house usually has the pin already - sending
               it over on WhatsApp beats walking to the gate to fetch GPS. */}

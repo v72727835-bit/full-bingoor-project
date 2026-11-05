@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { getErrorMessage } from '../api/client';
 import { cancelOrder, fetchOrder } from '../api/orders';
+import { DeliveryMap } from '../components/DeliveryMap';
 import { ORDER_META, TRACK_STEPS } from '../components/OrderStatusChip';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
@@ -514,6 +515,9 @@ function LiveTracking({ order }: { order: Order }) {
     ? `https://www.google.com/maps/dir/?api=1&origin=${at.lat},${at.lng}&destination=${home.lat},${home.lng}&travelmode=driving`
     : `https://www.google.com/maps?q=${at.lat},${at.lng}`;
   return (
+    <View>
+      <DeliveryMap destination={home} rider={at} />
+      <Txt variant="caption" tone="muted">{at.at ? `Last location update: ${formatDateTime(at.at)}` : 'Latest reported rider location'}</Txt>
     <View style={styles.track}>
       <View style={styles.trackText}>
         <Txt variant="label" tone="brand">
@@ -526,6 +530,7 @@ function LiveTracking({ order }: { order: Order }) {
         ) : null}
       </View>
       <Button label="Track on map" icon="navigate-outline" variant="secondary" size="sm" onPress={() => void Linking.openURL(mapUrl)} />
+    </View>
     </View>
   );
 }

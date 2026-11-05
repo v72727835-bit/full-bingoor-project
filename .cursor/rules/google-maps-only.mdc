@@ -1,0 +1,13 @@
+---
+description: Use Google Maps services exclusively throughout Bingoor
+alwaysApply: true
+---
+
+# Google Maps everywhere
+
+- User requirement: all maps across the customer website, customer app, rider app, warehouse panels and super admin must use Google Maps.
+- Use Google services for map tiles, place search, geocoding, road routes and Street View. Device GPS can supply coordinates.
+- Do not introduce alternative map providers or automatically switch providers on errors.
+- Use the Google Maps API key managed in Admin > Login & Payments; never hardcode a key.
+- If Google is unavailable or the key is missing, show an actionable error and retry option. Preserve saved coordinates and allow manual address text.
+- Reuse `/mobile-map.html` for app and embedded delivery maps. Keep every delivery pin at its saved coordinate precision.

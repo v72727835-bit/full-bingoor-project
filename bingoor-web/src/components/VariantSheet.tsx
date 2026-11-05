@@ -80,8 +80,8 @@ export function VariantSheet({ product, onClose }: { product: Product; onClose: 
                   <QuantityStepper
                     size="sm"
                     quantity={qty}
-                    busy={busy === v.id}
-                    onAdd={() => act(v.id, () => addItem(v.id, 1))}
+                    busy={false}
+                    onAdd={() => act(v.id, () => addItem(v.id, 1, { ...product, id: v.id, slug: v.slug, unit: v.label, price: v.price, mrp: v.mrp, inStock: v.inStock }))}
                     onIncrement={() => act(v.id, () => updateItem(v.id, qty + 1))}
                     onDecrement={() => act(v.id, () => updateItem(v.id, qty - 1))}
                   />

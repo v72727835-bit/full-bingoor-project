@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as cartApi from '../api/cart';
 import { getErrorMessage } from '../api/client';
-import { CartView } from '../types';
+import { CartView, ProductSummary } from '../types';
 import { useToast } from '../ui/Toast';
 import { useAuth } from './AuthContext';
 
@@ -18,11 +18,12 @@ const EMPTY: CartView = {
 interface CartApi {
   cart: CartView;
   loading: boolean;
-  /** Product ids currently mid-request, so each row can show its own spinner. */
+  /** Product ids awaiting server confirmation; quantity controls stay interactive. */
   pending: Set<string>;
   refresh: () => Promise<void>;
+  settle: () => Promise<void>;
   quantityOf: (productId: string) => number;
-  add: (productId: string, quantity?: number, productName?: string) => Promise<void>;
+  add: (productId: string, quantity?: number, productName?: string, product?: ProductSummary) => Promise<void>;
   setQuantity: (productId: string, quantity: number) => Promise<void>;
   remove: (productId: string) => Promise<void>;
   clear: () => Promise<void>;
@@ -46,6 +47,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const mounted = useRef(true);
+  const confirmed = useRef<CartView>(EMPTY);
+  const operations = useRef<{ id: number; productId: string; apply: (cart: CartView) => CartView; request: () => Promise<CartView> }[]>([]);
+  const serial = useRef(Promise.resolve());
+  const epoch = useRef(0);
+  const counter = useRef(0);
+  const publish = () => {
+    if (!mounted.current) return;
+    setCart(operations.current.reduce((view, op) => op.apply(view), confirmed.current));
+    setPending(new Set(operations.current.map((op) => op.productId)));
+  };
 
   useEffect(() => {
     mounted.current = true;
@@ -54,52 +65,59 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const mark = useCallback((productId: string, on: boolean) => {
-    setPending((prev) => {
-      const next = new Set(prev);
-      if (on) next.add(productId);
-      else next.delete(productId);
-      return next;
-    });
-  }, []);
-
   const refresh = useCallback(async () => {
     if (!user) {
       setCart(EMPTY);
       return;
     }
+    const session = epoch.current;
+    const revision = counter.current;
     setLoading(true);
     try {
       const next = await cartApi.fetchCart();
-      if (mounted.current) setCart(next);
+      if (mounted.current && session === epoch.current && revision === counter.current && !operations.current.length) { confirmed.current = next; setCart(next); }
     } catch {
       // A failed refresh should not wipe a cart the user can still see
     } finally {
       if (mounted.current) setLoading(false);
     }
-  }, [user]);
+  }, [user?._id]);
 
   // Load on sign-in, drop on sign-out
   useEffect(() => {
+    epoch.current++;
+    operations.current = [];
+    confirmed.current = EMPTY;
+    setPending(new Set());
+    setCart(EMPTY);
     if (user) void refresh();
-    else setCart(EMPTY);
-  }, [user, refresh]);
+  }, [user?._id, refresh]);
 
   const run = useCallback(
-    async (productId: string, fn: () => Promise<CartView>, successMessage?: string) => {
-      mark(productId, true);
-      try {
-        const next = await fn();
-        if (mounted.current) setCart(next);
-        if (next.notice) toast.show(next.notice);
-        else if (successMessage) toast.success(successMessage);
-      } catch (err) {
-        toast.error(getErrorMessage(err));
-      } finally {
-        if (mounted.current) mark(productId, false);
-      }
-    },
-    [mark, toast],
+    (productId: string, fn: () => Promise<CartView>, apply: (view: CartView) => CartView) => {
+      const op = { id: ++counter.current, productId, apply, request: fn };
+      const session = epoch.current;
+      operations.current.push(op);
+      publish();
+      const task = serial.current.then(async () => {
+        if (session !== epoch.current) return;
+        try {
+          const next = await fn();
+          if (session !== epoch.current) return;
+          confirmed.current = next;
+          if (next.notice) toast.show(next.notice);
+        } catch (err) {
+          if (session === epoch.current) toast.error(getErrorMessage(err));
+        } finally {
+          if (session === epoch.current) {
+            operations.current = operations.current.filter((item) => item.id !== op.id);
+            publish();
+          }
+        }
+      });
+      serial.current = task.catch(() => undefined);
+      return task;
+    }, [toast],
   );
 
   const quantityOf = useCallback(
@@ -114,31 +132,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const add = useCallback(
-    (productId: string, quantity = 1, productName?: string) =>
-      run(productId, () => cartApi.addCartItem(productId, quantity), productName ? `${productName} added to cart` : 'Added to cart'),
-    [run],
+    (productId: string, quantity = 1, _productName?: string, product?: ProductSummary) =>
+      run(productId, () => cartApi.addCartItem(productId, quantity), (view) => {
+        const current = view.groups.flatMap((g) => g.items).find((i) => i.productId === productId)?.quantity ?? 0;
+        return optimisticQuantity(view, productId, current + quantity, product);
+      }), [run],
   );
-
   const setQuantity = useCallback(
-    (productId: string, quantity: number) => run(productId, () => cartApi.setCartItemQuantity(productId, quantity)),
-    [run],
+    (productId: string, quantity: number) => run(productId,
+      () => quantity <= 0 ? cartApi.removeCartItem(productId) : cartApi.setCartItemQuantity(productId, quantity),
+      (view) => optimisticQuantity(view, productId, quantity)), [run],
   );
+  const remove = useCallback((productId: string) => setQuantity(productId, 0), [setQuantity]);
 
-  const remove = useCallback(
-    (productId: string) => run(productId, () => cartApi.removeCartItem(productId), 'Removed from cart'),
-    [run],
-  );
-
-  const clear = useCallback(async () => {
-    try {
-      setCart(await cartApi.clearCart());
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    }
-  }, [toast]);
+  const clear = useCallback(() => run('__all', () => cartApi.clearCart(), () => EMPTY), [run]);
 
   const value = useMemo<CartApi>(
-    () => ({ cart, loading, pending, refresh, quantityOf, add, setQuantity, remove, clear, applyCart: setCart }),
+    () => ({ cart, loading, pending, refresh, settle: async () => { await serial.current; }, quantityOf, add, setQuantity, remove, clear, applyCart: (next: CartView) => { confirmed.current = next; publish(); } }),
     [cart, loading, pending, refresh, quantityOf, add, setQuantity, remove, clear],
   );
 
@@ -149,4 +159,30 @@ export function useCart(): CartApi {
   const ctx = useContext(CartContext);
   if (!ctx) throw new Error('useCart must be used inside <CartProvider>');
   return ctx;
+}
+
+export function optimisticQuantity(view: CartView, id: string, requested: number, product?: ProductSummary): CartView {
+  const existing = view.groups.flatMap((g) => g.items).find((i) => i.productId === id);
+  const quantity = Math.max(0, Math.min(20, existing?.stock ?? product?.stock ?? 20, requested));
+  let groups = view.groups.map((g) => ({ ...g, items: g.items.map((i) => i.productId === id
+    ? { ...i, quantity, lineTotal: i.price * quantity } : i).filter((i) => i.quantity > 0) }));
+  if (!existing && quantity > 0 && product) {
+    const line = { productId: id, name: product.name, slug: product.slug, image: product.images[0] ?? null,
+      icon: product.icon, unit: product.unit, price: product.price, mrp: product.mrp, quantity,
+      lineTotal: product.price * quantity, stock: product.stock, issue: null,
+      codAvailable: product.codAvailable, onlineAvailable: product.onlineAvailable, deliveryDays: product.deliveryDays };
+    const group = groups.find((g) => g.shop.id === product.shop?._id);
+    if (group) group.items.push(line);
+    else groups.push({ shop: { id: product.shop?._id ?? id, name: product.shop?.name ?? 'Your warehouse',
+      slug: product.shop?.slug ?? '', logo: null, isOpen: product.shop?.isOpen ?? true, minOrderAmount: 0 },
+      items: [line], subtotal: 0, deliveryFee: 0, total: 0, meetsMinOrder: true });
+  }
+  groups = groups.filter((g) => g.items.length).map((g) => {
+    const subtotal = g.items.reduce((sum, i) => sum + i.lineTotal, 0);
+    return { ...g, subtotal, total: subtotal + g.deliveryFee, meetsMinOrder: subtotal >= g.shop.minOrderAmount };
+  });
+  const subtotal = groups.reduce((sum, g) => sum + g.subtotal, 0);
+  const deliveryFee = groups.reduce((sum, g) => sum + g.deliveryFee, 0);
+  return { ...view, groups, subtotal, deliveryFee, total: subtotal + deliveryFee,
+    itemCount: groups.reduce((sum, g) => sum + g.items.reduce((n, i) => n + i.quantity, 0), 0) };
 }

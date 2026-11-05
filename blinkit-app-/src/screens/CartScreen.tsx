@@ -251,7 +251,7 @@ function ShopGroup({
           {index > 0 ? <View style={styles.itemDivider} /> : null}
           <CartLine
             item={item}
-            busy={pending.has(item.productId)}
+            busy={false}
             onPress={() => onOpenProduct(item)}
             onChange={(q) => onChange(item.productId, q)}
             onRemove={() => onRemove(item.productId)}

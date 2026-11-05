@@ -36,3 +36,7 @@ bash ~/bingoor-project/deploy.sh
 It pulls `main`, rebuilds all three, restarts the cPanel Node.js apps and
 prints the status code of each live URL. A full log is kept in `~/deploy-logs/`.
 The `.env` files, MongoDB and the cPanel app settings are never touched.
+
+## Maps provider requirement
+
+Use Google Maps everywhere: customer website, customer app, rider app, warehouse views and super admin. Maps, place search, geocoding, routing and Street View must use Google services. Never introduce another map provider or an automatic provider fallback. A missing key, quota error or Google outage must show an actionable error with retry. The API key is managed in Admin > Login and Payments > Google Maps.

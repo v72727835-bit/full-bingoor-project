@@ -6,10 +6,7 @@
  * for a few seconds (no cached fixes) and the most accurate reading wins; it
  * stops early once a reading is within ~25 m.
  *
- * Address: when the admin has saved a Google Maps key (Login & Payments), the
- * pin is turned into an address by Google, whose Indian street and locality
- * data is far better than OpenStreetMap's; without a key, or if Google refuses
- * (Geocoding API not enabled on the key), the free OpenStreetMap lookup is used.
+ * Address lookups use Google Geocoding only. Unavailable lookups leave address details for manual entry.
  */
 import { matchState } from './india';
 import { MapsConfig, loadGoogleMaps } from './mapBase';
@@ -40,7 +37,7 @@ let maps: MapsConfig | null = null;
 let mapsKnown: () => void = () => undefined;
 // The location step can ask for an address before the public settings (and so
 // the Maps key) have arrived; lookups wait for them briefly instead of going
-// straight to the weaker free lookup.
+// starting a lookup without its configured key.
 const mapsReady = new Promise<void>((resolve) => {
   mapsKnown = resolve;
 });
@@ -149,27 +146,9 @@ export async function reverseGeocode(lat: number, lng: number): Promise<PlacePar
       }
     }
   } catch {
-    /* key without the Geocoding API, quota, network - fall back below */
+    /* Keep the GPS pin; address details can be entered manually. */
   }
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`, {
-      headers: { 'Accept-Language': 'en' },
-    });
-    const j = (await r.json()) as { address?: Record<string, string>; display_name?: string };
-    const a = j.address ?? {};
-    const street = a.road || a.pedestrian || a.footway || a.residential || '';
-    const line1 = [a.house_number, street].filter(Boolean).join(', ');
-    return {
-      city: a.city || a.town || a.village || a.municipality || a.county || a.state_district,
-      state: matchState(a.state) || a.state,
-      pincode: a.postcode?.replace(/\D/g, '').slice(0, 6),
-      line: j.display_name,
-      line1: line1 || a.amenity || a.building || undefined,
-      area: a.suburb || a.neighbourhood || a.city_district || a.hamlet || undefined,
-    };
-  } catch {
-    return {};
-  }
+  return {};
 }
 
 /** Places matching a PIN code, landmark or street, in India. */
@@ -186,10 +165,9 @@ export async function searchPlaces(q: string): Promise<PlaceHit[]> {
         }));
     }
   } catch {
-    /* fall back below */
+    throw new Error('Google Maps search is unavailable. Please retry.');
   }
-  const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&limit=5&q=${encodeURIComponent(q)}`);
-  return (await r.json()) as PlaceHit[];
+  throw new Error('Google Maps search is unavailable. Please retry.');
 }
 
 /** Straight-line distance in metres between two points. */

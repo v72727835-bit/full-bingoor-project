@@ -2,7 +2,7 @@ import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Modal, PermissionsAndroid, Platform, Pressable, RefreshControl, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
-import { OsmMap } from '../components/OsmMap';
+import { DeliveryMap as RouteMap } from '../components/DeliveryMap';
 import { AnimatedNumber, FadeSlide } from '../components/anim';
 import { cancelRiderOrder, deliverRiderOrder, fetchRiderOrders, fetchRiderProfile, acceptRiderOrder, sendRiderLocation } from '../api/rider';
 import { getErrorMessage } from '../api/client';
@@ -37,6 +37,7 @@ export default function OrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [routeId, setRouteId] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [delivery, setDelivery] = useState<RiderOrder | null>(null);
   const [otp, setOtp] = useState('');
@@ -79,7 +80,7 @@ export default function OrdersScreen() {
   }, []);
   useEffect(() => { void loadProfile(); const timer = setInterval(loadProfile, 30000); return () => clearInterval(timer); }, [loadProfile]);
 
-  const visible = useMemo(() => tab === 'history' ? history : orders.filter((o) => tab === 'available' ? isNew(o) : o.status === 'out_for_delivery'), [orders, history, tab]);  const activeOrder = orders.find((order) => order.status === 'out_for_delivery');
+  const visible = useMemo(() => tab === 'history' ? history : orders.filter((o) => tab === 'available' ? isNew(o) : o.status === 'out_for_delivery'), [orders, history, tab]);  const activeOrder = orders.find((order) => order._id === routeId && order.status === 'out_for_delivery') ?? orders.find((order) => order.status === 'out_for_delivery');
   const carrying = !!activeOrder;
   useEffect(() => {
     if (tab !== 'active' && !carrying) return;
@@ -123,7 +124,7 @@ export default function OrdersScreen() {
     lastSent.current = now;
     sendRiderLocation(riderLocation.latitude, riderLocation.longitude).catch(() => undefined);
   }, [carrying, riderLocation]);
-  const accept = async (order: RiderOrder) => { setSaving(order._id); try { const updated = await acceptRiderOrder(order._id); setOrders((items) => [updated, ...items.filter((item) => item._id !== order._id)]); setTab('active'); } catch (err) { setError(getErrorMessage(err)); } finally { setSaving(null); } };
+  const accept = async (order: RiderOrder) => { setSaving(order._id); try { const updated = await acceptRiderOrder(order._id); setOrders((items) => [updated, ...items.filter((item) => item._id !== order._id)]); setRouteId(updated._id); setTab('active'); } catch (err) { setError(getErrorMessage(err)); } finally { setSaving(null); } };
   const cancel = async (order: RiderOrder) => {
     setSaving(order._id);
     try { await cancelRiderOrder(order._id); await load(true); await loadProfile(); setTab('available'); }
@@ -183,7 +184,7 @@ export default function OrdersScreen() {
 
   // Everything scrolls together, so on a small phone the order card is never squeezed under the header.
   return <View style={{ flex: 1 }}>
-    <FlatList data={loading ? [] : visible} keyExtractor={(item) => item._id} ListHeaderComponent={header} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void load(true); void loadProfile(); if (tab === 'history') void loadHistory(); }} tintColor={colors.primary} />} contentContainerStyle={styles.list} ListEmptyComponent={loading ? undefined : <View style={styles.empty}><Ionicons name={tab === 'history' ? 'checkmark-done-circle-outline' : 'bicycle-outline'} size={50} color={colors.primary} /><Text style={styles.emptyTitle}>{tab === 'available' ? 'No new orders' : tab === 'active' ? 'No active deliveries' : 'No delivery history'}</Text><Text style={styles.emptyText}>New updates will appear here automatically.</Text></View>} renderItem={({ item, index }) => <FadeSlide delay={Math.min(index, 6) * 55}><View style={styles.cardWrap}><OrderCard order={item} saving={saving === item._id} riderLocation={riderLocation} onAccept={() => accept(item)} onDeliver={() => openDelivery(item)} onCancel={() => void cancel(item)} /></View></FadeSlide>} />
+    <FlatList data={loading ? [] : visible} keyExtractor={(item) => item._id} ListHeaderComponent={header} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void load(true); void loadProfile(); if (tab === 'history') void loadHistory(); }} tintColor={colors.primary} />} contentContainerStyle={styles.list} ListEmptyComponent={loading ? undefined : <View style={styles.empty}><Ionicons name={tab === 'history' ? 'checkmark-done-circle-outline' : 'bicycle-outline'} size={50} color={colors.primary} /><Text style={styles.emptyTitle}>{tab === 'available' ? 'No new orders' : tab === 'active' ? 'No active deliveries' : 'No delivery history'}</Text><Text style={styles.emptyText}>New updates will appear here automatically.</Text></View>} renderItem={({ item, index }) => <FadeSlide delay={Math.min(index, 6) * 55}><View style={styles.cardWrap}><OrderCard onShowRoute={() => { setRouteId(item._id); setTab('active'); }} order={item} saving={saving === item._id} riderLocation={riderLocation} onAccept={() => accept(item)} onDeliver={() => openDelivery(item)} onCancel={() => void cancel(item)} /></View></FadeSlide>} />
     {/* Always on screen while a parcel is out: the card's own button can sit below the map, out of sight on small phones. */}
     {activeOrder ? <View style={styles.deliverBar}><View style={{ flex: 1, marginRight: 10 }}><Text style={styles.deliverBarTitle} numberOfLines={1}>Delivering #{activeOrder.orderNumber}</Text><Text style={styles.muted} numberOfLines={1}>{activeOrder.paymentMethod === 'cod' ? `Collect ${money(activeOrder.total)} in cash` : 'Paid online'} · ask for the OTP</Text></View><Button title="Enter delivery OTP" onPress={() => openDelivery(activeOrder)} disabled={!!saving} style={{ paddingHorizontal: 16 }} /></View> : null}
     <Modal visible={!!delivery} transparent animationType="slide" onRequestClose={() => { if (!saving) setDelivery(null); }}><KeyboardAvoidingView style={styles.modalBackdrop} behavior="padding"><View style={styles.modal}><Text style={styles.modalTitle}>Confirm delivery</Text><Text style={styles.modalSub}>Order #{delivery?.orderNumber} · {delivery?.shop?.name ?? 'Warehouse'}{'\n'}Ask the customer to open this same order and share its 4-digit delivery OTP.</Text>{deliveryError ? <ErrorBanner message={deliveryError} /> : null}<TextInput value={otp} onChangeText={(value) => { setOtp(value.replace(/\D/g, '').slice(0, 4)); setDeliveryError(''); }} editable={!saving} keyboardType="number-pad" placeholder="••••" placeholderTextColor="#94A3B8" style={styles.otp} autoFocus /><Button title="Mark as delivered" onPress={() => void deliver()} loading={saving === delivery?._id} disabled={otp.length !== 4 || !!saving} /><Button title="Cancel" variant="outline" disabled={!!saving} onPress={() => setDelivery(null)} style={{ marginTop: 10 }} /></View></KeyboardAvoidingView></Modal>
@@ -194,7 +195,17 @@ function DeliveryMap({ order, riderLocation }: { order: RiderOrder; riderLocatio
   const destination = order.address.location ? { latitude: order.address.location.lat, longitude: order.address.location.lng } : null;
   if (!destination) return <View style={styles.mapUnavailable}><Ionicons name="map-outline" size={20} color={colors.primary} /><Text style={styles.mapUnavailableText}>Customer location is not available for this order.</Text></View>;
   return <View style={styles.mapWrap}>
-    <OsmMap rider={riderLocation} destination={destination} height={150} />
+    <RouteMap rider={riderLocation ? { lat: riderLocation.latitude, lng: riderLocation.longitude } : undefined}
+      destination={order.address.location}
+      pickup={order.shop?.location?.coordinates ? { lat: order.shop.location.coordinates[1], lng: order.shop.location.coordinates[0] } : undefined}
+      height={280} />
+    <Text style={styles.mapCaptionText}>Pickup: {order.shop?.name} · {[order.shop?.address?.line1, order.shop?.address?.city].filter(Boolean).join(', ')}</Text>
+    <Text style={styles.mapCaptionText}>Deliver to: {[order.address.line1, order.address.line2, order.address.city].filter(Boolean).join(', ')}</Text>
+    <Button title="Navigate to pickup" onPress={() => {
+      const c = order.shop?.location?.coordinates;
+      const dest = c ? `${c[1]},${c[0]}` : [order.shop?.name, order.shop?.address?.line1, order.shop?.address?.city].filter(Boolean).join(', ');
+      void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`);
+    }} />
     <View style={styles.mapCaption}><Ionicons name="navigate" size={16} color={colors.primary} /><Text style={styles.mapCaptionText}>Live delivery route</Text><Text style={styles.mapCaptionAddress}>{order.address.city}</Text></View>
   </View>;
 }
@@ -221,7 +232,7 @@ function callCustomer(order: RiderOrder) {
   if (phone) void Linking.openURL(`tel:${phone}`);
 }
 
-function OrderCard({ order, saving, riderLocation, onAccept, onDeliver, onCancel }: { order: RiderOrder; saving: boolean; riderLocation: { latitude: number; longitude: number } | null; onAccept: () => void; onDeliver: () => void; onCancel: () => void }) {
+function OrderCard({ order, saving, riderLocation, onAccept, onDeliver, onCancel, onShowRoute }: { order: RiderOrder; saving: boolean; riderLocation: { latitude: number; longitude: number } | null; onAccept: () => void; onDeliver: () => void; onCancel: () => void; onShowRoute: () => void }) {
   // The distance is not shown before the order is accepted: riders were
   // cherry-picking the short runs and leaving the far ones for nobody.
   const accepted = !isNew(order);
@@ -231,6 +242,8 @@ function OrderCard({ order, saving, riderLocation, onAccept, onDeliver, onCancel
   const placed = new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   return <View style={[styles.card, order.redOrder ? styles.redCard : null]}>
     <View style={styles.cardTop}><Text style={styles.orderNo}>#{order.orderNumber}</Text><View style={[styles.badge, order.status === 'delivered' ? styles.greenBadge : order.status === 'out_for_delivery' ? styles.blueBadge : styles.orangeBadge]}><Text style={styles.badgeText}>{statusLabel[order.status]}</Text></View></View>
+    {accepted && order.status !== 'delivered' ? <Button title="View pickup and delivery map" onPress={onShowRoute} variant="outline" /> : null}
+    <Text style={styles.address}>Pickup: {order.shop?.name} · {[order.shop?.address?.line1, order.shop?.address?.city].filter(Boolean).join(', ')}</Text>
     <View style={styles.customer}><Ionicons name="person-circle-outline" size={30} color={colors.primary} /><View style={{ flex: 1, marginLeft: 10 }}><Text style={styles.customerName}>{order.user?.name ?? order.address.name}</Text><Text style={styles.muted}>{order.user?.phone ?? order.address.phone}</Text></View><Text style={styles.total}>{money(order.total)}</Text></View>
     <View style={styles.route}><Ionicons name="storefront-outline" size={17} color={colors.primary} /><Text style={styles.routeText}>{order.shop?.name ?? 'Warehouse'}  →  {order.address.city}</Text></View>
     <Text style={styles.address}>{order.address.line1}{order.address.line2 ? `, ${order.address.line2}` : ''}, {order.address.pincode}</Text>
