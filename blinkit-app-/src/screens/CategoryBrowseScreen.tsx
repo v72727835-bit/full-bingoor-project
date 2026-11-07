@@ -7,10 +7,10 @@ import { CategoryArt } from '../components/CategoryTile';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import type { AppNav, AppRoute } from '../navigation/types';
-import { currency, gutter, hitSlop, ms, radius, space, themed, useTheme } from '../theme';
+import { colors, currency, gutter, hitSlop, ms, radius, space, themed, useTheme } from '../theme';
 import { useCategoryQuery, useProductsQuery } from '../store/catalogApi';
 import { useDeliveryPointKey } from '../store/deliveryPoint';
-import type { Category, ProductSummary } from '../types';
+import type { Category, ProductSort, ProductSummary } from '../types';
 import { EmptyState } from '../ui/Feedback';
 import { ProductCardSkeleton } from '../ui/Skeleton';
 import { Txt } from '../ui/Text';
@@ -25,6 +25,13 @@ import { shareLink } from '../utils/share';
  * labels to nothing. A vertical rail shows every option at a readable size and
  * keeps the customer's place while the grid on the right reloads.
  */
+const SORTS: { key: ProductSort; label: string }[] = [
+  { key: 'popular', label: 'Popular' },
+  { key: 'price_asc', label: 'Price: low to high' },
+  { key: 'price_desc', label: 'Price: high to low' },
+  { key: 'rating', label: 'Top rated' },
+];
+
 export function CategoryBrowseScreen() {
   const nav = useNavigation<AppNav>();
   const { params } = useRoute<AppRoute<'CategoryBrowse'>>();
@@ -35,6 +42,8 @@ export function CategoryBrowseScreen() {
   const { width } = useWindowDimensions();
 
   const [childSlug, setChildSlug] = useState<string | undefined>(params.childSlug);
+  const [sort, setSort] = useState<ProductSort>('popular');
+  const [inStockOnly, setInStockOnly] = useState(false);
   const listRef = useRef<FlatList<ProductSummary>>(null);
 
   /* Two columns of products fit beside the rail even on a small phone. The
@@ -56,7 +65,7 @@ export function CategoryBrowseScreen() {
   // (fall back to the parent if it has no children or the page failed).
   const activeSlug = childSlug ?? ((page && !page.children.length) || pageFailed ? params.slug : undefined);
   const area = useDeliveryPointKey();
-  const products = useProductsQuery({ category: activeSlug, limit: 40, sort: 'popular', at: area }, { skip: !activeSlug });
+  const products = useProductsQuery({ category: activeSlug, limit: 40, sort, inStock: inStockOnly || undefined, at: area }, { skip: !activeSlug });
   // currentData is only ever this aisle's list, never the previous child's.
   const items: ProductSummary[] = products.currentData?.items ?? [];
   const loadingItems = !activeSlug || (products.isFetching && !products.currentData);
@@ -163,6 +172,32 @@ export function CategoryBrowseScreen() {
 
           {/* ------------------------------------------------------- grid -- */}
           <View style={styles.gridWrap}>
+            {/* Point: sort and filter inside a child aisle. */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterRow}>
+              <Pressable
+                onPress={() => setInStockOnly((v) => !v)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: inStockOnly }}
+                style={[styles.chip, inStockOnly && styles.chipOn]}
+              >
+                <Icon name={inStockOnly ? 'checkmark-circle' : 'ellipse-outline'} size={ms(13)} color={inStockOnly ? colors.brandInk : colors.inkMuted} />
+                <Txt variant="labelSm" style={[styles.chipText, inStockOnly && styles.chipTextOn]}>In stock</Txt>
+              </Pressable>
+              {SORTS.map((option) => {
+                const on = sort === option.key;
+                return (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => setSort(option.key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    style={[styles.chip, on && styles.chipOn]}
+                  >
+                    <Txt variant="labelSm" style={[styles.chipText, on && styles.chipTextOn]}>{option.label}</Txt>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
             {loadingItems ? (
               <View style={styles.skeletonGrid}>
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -266,6 +301,12 @@ const styles = themed(({ c, elevation }) => ({
 
   gridWrap: { flex: 1, backgroundColor: c.surface },
   gridContent: { padding: space.md, paddingBottom: ms(120) },
+  filterBar: { flexGrow: 0, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border },
+  filterRow: { paddingHorizontal: space.md, paddingVertical: space.sm, alignItems: 'center', gap: space.sm },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: ms(4), paddingHorizontal: ms(10), paddingVertical: ms(6), borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface },
+  chipOn: { backgroundColor: c.brandSurface, borderColor: c.brandBorder },
+  chipText: { color: c.inkMuted },
+  chipTextOn: { color: c.brandInk, fontWeight: '700' },
   skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, padding: space.md },
 
   cartBar: {

@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useCart } from '../context/CartContext';
+import { fetchPointsProducts } from '../api/catalog';
+import type { AppNav } from '../navigation/types';
+import type { ProductSummary } from '../types';
+import { ProductCard } from './ProductCard';
+import { Sheet } from '../ui/Sheet';
+import { ActivityIndicator } from 'react-native';
 import { currency, gutter, ms, radius, space, themed } from '../theme';
 import { SmartImage } from '../ui/SmartImage';
 import { Txt } from '../ui/Text';
@@ -21,6 +28,21 @@ export function CartPoints({ ready = true }: { ready?: boolean }) {
   const tried = useRef(false);
   const [removed, setRemoved] = useState(false);
   const [left, setLeft] = useState<number | null>(null);
+  const nav = useNavigation<AppNav>();
+  const { width } = useWindowDimensions();
+  const [allOpen, setAllOpen] = useState(false);
+  const [allItems, setAllItems] = useState<ProductSummary[] | null>(null);
+  const [allError, setAllError] = useState('');
+  useEffect(() => {
+    if (!allOpen || allItems) return;
+    let live = true;
+    setAllError('');
+    fetchPointsProducts()
+      .then((list) => { if (live) setAllItems(list); })
+      .catch(() => { if (live) { setAllItems([]); setAllError('Could not load products. Pull to retry.'); } });
+    return () => { live = false; };
+  }, [allOpen, allItems]);
+  const sheetCardWidth = Math.floor((Math.min(width, 520) - gutter * 2 - space.md) / 2);
 
   useEffect(() => {
     if (!pts?.enabled) return;
@@ -111,6 +133,40 @@ export function CartPoints({ ready = true }: { ready?: boolean }) {
           ))}
         </ScrollView>
       ))}
+
+      <Pressable
+        onPress={() => setAllOpen(true)}
+        accessibilityRole="button"
+        style={styles.seeAll}
+      >
+        <Txt variant="label" tone="brand">See all products</Txt>
+      </Pressable>
+
+      <Sheet visible={allOpen} onClose={() => setAllOpen(false)} title="Add more to your order">
+        {!allItems ? (
+          <View style={styles.sheetLoading}>
+            <ActivityIndicator />
+          </View>
+        ) : allItems.length === 0 ? (
+          <Txt variant="body" tone="muted" center style={styles.sheetEmpty}>
+            {allError || 'No products to show right now.'}
+          </Txt>
+        ) : (
+          <View style={styles.sheetGrid}>
+            {allItems.map((item) => (
+              <ProductCard
+                key={item._id}
+                product={item}
+                width={sheetCardWidth}
+                onPress={() => {
+                  setAllOpen(false);
+                  nav.navigate('ProductDetail', { id: item._id, name: item.name });
+                }}
+              />
+            ))}
+          </View>
+        )}
+      </Sheet>
     </View>
   );
 }
@@ -124,4 +180,8 @@ const styles = themed(({ c }) => ({
   art: { width: '100%', height: ms(84) },
   name: { minHeight: ms(34) },
   add: { marginTop: space.xs, paddingVertical: ms(5), alignItems: 'center', borderRadius: radius.sm, borderWidth: 1.5, borderColor: c.brand },
+  seeAll: { alignSelf: 'flex-start', marginTop: space.xs, paddingVertical: ms(6), paddingHorizontal: space.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSurface },
+  sheetLoading: { paddingVertical: ms(40), alignItems: 'center' },
+  sheetEmpty: { paddingVertical: ms(30) },
+  sheetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, justifyContent: 'space-between' },
 }));

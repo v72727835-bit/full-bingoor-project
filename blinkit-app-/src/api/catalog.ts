@@ -87,3 +87,9 @@ export async function fetchReviews(productId: string, page = 1): Promise<ReviewP
 export async function submitReview(productId: string, rating: number, comment?: string): Promise<void> {
   await api.put(`/products/${productId}/reviews`, comment ? { rating, comment } : { rating });
 }
+
+/** #35 "See all products": every top-up (50-point) product, for the cart sheet. */
+export async function fetchPointsProducts(): Promise<ProductSummary[]> {
+  const { data } = await api.get<ApiEnvelope<ProductSummary[]>>('/cart/points-products');
+  return data.data;
+}
