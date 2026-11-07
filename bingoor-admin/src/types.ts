@@ -288,7 +288,7 @@ export interface Settings {
     sections: { title: string; category: CategoryRef | string }[];
   };
   sixDay: { days: number; categories: (CategoryRef | string)[] };
-  cod: { disabledCategories: (CategoryRef | string)[]; message: string };
+  cod: { disabledCategories: (CategoryRef | string)[]; message: string; cutoffEnabled?: boolean; cutoffTime?: string; cutoffMessage?: string };
   riderCodLimit: number;
   riderPay?: {
     enabled: boolean;

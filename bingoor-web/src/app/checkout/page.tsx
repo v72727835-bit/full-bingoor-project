@@ -110,7 +110,7 @@ function CheckoutInner() {
     const items = (cart?.groups ?? []).flatMap((g) => g.items);
     const noCod = items.some((i) => i.codAvailable === false);
     const noOnline = items.some((i) => i.onlineAvailable === false);
-    if (noCod && !noOnline && settings?.onlinePaymentOn) setPay('online');
+    if (((noCod && !noOnline) || codTimeBlocked) && settings?.onlinePaymentOn) setPay('online');
     else if (noOnline && !noCod) setPay('cod');
   }, [cart, settings?.onlinePaymentOn]);
 
@@ -178,6 +178,18 @@ function CheckoutInner() {
   // carrying cash, so COD is refused however the cart is made up.
   const codTooFar = quote ? quote.codAllowed === false : false;
   const farCodMessage = quote?.codMessage || 'For long distance "COD" option is not available';
+  // Point 8: COD switched off after the admin's daily cut-off (IST). Trust the
+  // server flag and also recompute live so it flips at the cut-off minute.
+  const codCut = settings?.codCutoff;
+  const codTimeBlocked = (() => {
+    if (!codCut?.enabled) return false;
+    if (codCut.blocked) return true;
+    const [h, m] = (codCut.time || '19:00').split(':').map((n) => Number(n));
+    const cutoffMin = (Number.isFinite(h) ? h : 19) * 60 + (Number.isFinite(m) ? m : 0);
+    const local = new Date(Date.now() + 330 * 60_000);
+    return local.getUTCHours() * 60 + local.getUTCMinutes() >= cutoffMin;
+  })();
+  const codTimeMessage = codCut?.message || 'After 7 PM COD option is not available';
   const subtotalShort = quote ? !quote.meetsMinOrder : false;
 
   const place = async () => {
@@ -255,6 +267,7 @@ function CheckoutInner() {
     );
   }
   if (pay === 'cod' && codTooFar) blockers.push(farCodMessage);
+  if (pay === 'cod' && codTimeBlocked) blockers.push(codTimeMessage);
   if (incompatiblePayments) blockers.push('This cart contains both COD-only and online-only items. Place separate orders for these items.');
   else if (pay === 'cod' && codBlocked.length > 0) blockers.push(`Cash on delivery is not available for: ${codBlocked.join(', ')}.`);
   else if (pay === 'online' && onlineBlocked.length > 0) blockers.push(`Online payment is not available for: ${onlineBlocked.join(', ')}. Choose Cash on Delivery.`);
@@ -401,6 +414,13 @@ function CheckoutInner() {
                 </Alert>
               </div>
             ) : null}
+            {codTimeBlocked && !codTooFar && pay === 'cod' ? (
+              <div style={{ marginBottom: 14 }}>
+                <Alert tone="bad" icon="wallet">
+                  {codTimeMessage}
+                </Alert>
+              </div>
+            ) : null}
             {codBlocked.length > 0 && !codTooFar && !incompatiblePayments && pay === 'cod' ? (
               <div style={{ marginBottom: 14 }}>
                 <Alert tone="bad" icon="wallet">
@@ -420,12 +440,12 @@ function CheckoutInner() {
             <div className={s.pays}>
               {options.map((o) => {
                 const online = o.key !== 'cod';
-                const off = (online && (!onlineOn || onlineBlocked.length > 0)) || (!online && (codBlocked.length > 0 || codTooFar));
+                const off = (online && (!onlineOn || onlineBlocked.length > 0)) || (!online && (codBlocked.length > 0 || codTooFar || codTimeBlocked));
                 const fee = quote?.paymentFees?.[o.key] ?? 0;
                 const on = opt === o.key;
                 return (
                   <label key={o.key} className={s.pay} data-on={on} style={off ? { opacity: 0.5 } : undefined}>
-                    <input type="radio" name="pay" checked={on} disabled={(online && (!onlineOn || onlineBlocked.length > 0)) || (!online && codBlocked.length > 0)} onChange={() => setOpt(o.key)} />
+                    <input type="radio" name="pay" checked={on} disabled={(online && (!onlineOn || onlineBlocked.length > 0)) || (!online && (codBlocked.length > 0 || codTimeBlocked))} onChange={() => setOpt(o.key)} />
                     <span className={s.payIcon}>
                       <Icon name={PAY_ICON[o.key]} size={19} />
                     </span>
@@ -448,7 +468,7 @@ function CheckoutInner() {
                       {online && !onlineOn ? <span className={s.payBody}>Coming soon</span> : null}
                       {on ? (
                         <span className={s.payFee}>
-                          {o.key === 'cod' && codTooFar ? farCodMessage : fee > 0 ? `${o.label} charges: ₹${fee}` : o.note || 'Free'}
+                          {o.key === 'cod' && codTooFar ? farCodMessage : o.key === 'cod' && codTimeBlocked ? codTimeMessage : fee > 0 ? `${o.label} charges: ₹${fee}` : o.note || 'Free'}
                         </span>
                       ) : null}
                     </span>

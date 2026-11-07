@@ -477,6 +477,8 @@ export interface PublicSettings {
   socialOther?: { label: string; url: string }[];
   sixDayDays: number;
   codMessage?: string;
+  /** Daily cut-off after which cash on delivery is refused. */
+  codCutoff?: { enabled: boolean; time: string; blocked: boolean; message: string };
   /** True once the admin saved Razorpay keys. */
   onlinePaymentOn?: boolean;
   /** Public sign-in ids; null while that provider is not set up. */

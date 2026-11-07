@@ -5,7 +5,7 @@ import { CUSTOMER_CANCELLABLE, IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { User } from '../models/User';
 import { cartPointsTotal, getCartView, lineIssue, resolveCart } from '../services/cart.service';
-import { paymentFeePct, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
+import { codTimeBlocked, paymentFeePct, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
 import { loadSettings, productRules } from '../services/settings.service';
 import { createRazorpayOrder, razorpayEnabled, razorpayKeys, razorpayWebhookSecret, refundRazorpayPayment, verifyRazorpaySignature } from '../services/razorpay.service';
 import { PaymentIntent } from '../models/PaymentIntent';
@@ -86,6 +86,11 @@ async function runPlaceOrder(
   const groups = await resolveCart(userId);
   if (groups.length === 0) throw new ApiError(400, 'Your cart is empty');
   const { settings } = await loadSettings();
+  // Point 8: cash on delivery is switched off after the admin's daily cut-off (e.g. 7 PM IST).
+  if (paymentMethod === 'cod') {
+    const codCut = codTimeBlocked(settings);
+    if (codCut.blocked) throw new ApiError(400, codCut.message);
+  }
 
   // Hidden cart-points rule: checkout stays closed until the basket reaches the target.
   if (settings.cartPoints?.enabled && cartPointsTotal(groups) < settings.cartPoints.target) {

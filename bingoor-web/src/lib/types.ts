@@ -457,6 +457,8 @@ export interface PublicSettings {
   socialOther?: { label: string; url: string }[];
   sixDayDays: number;
   codMessage?: string;
+  /** Daily cut-off after which cash on delivery is refused. */
+  codCutoff?: { enabled: boolean; time: string; blocked: boolean; message: string };
   supportPhone?: string;
   /** Only the delivery times the admin left on, in order. */
   deliverySlots?: { key: SlotKey; label: string }[];

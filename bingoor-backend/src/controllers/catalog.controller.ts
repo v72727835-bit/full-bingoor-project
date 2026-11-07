@@ -1,6 +1,6 @@
 import { FilterQuery, SortOrder, Types } from 'mongoose';
 import { pointsProductIds } from '../services/cart.service';
-import { paymentOptions } from '../services/pricing.service';
+import { codTimeBlocked, paymentOptions } from '../services/pricing.service';
 import { Banner } from '../models/Banner';
 import { Category } from '../models/Category';
 import { IProduct, Product } from '../models/Product';
@@ -743,6 +743,7 @@ export const publicSettings = asyncHandler(async (_req, res) => {
     company: { name: settings.company?.name ?? '', logo: settings.company?.logo ?? '', tagline: settings.company?.tagline ?? '' },
     sixDayDays: settings.sixDay?.days ?? 6,
     codMessage: settings.cod?.message,
+    codCutoff: codTimeBlocked(settings),
     supportPhone: settings.supportPhone ?? '',
     // Only the slots the admin left on, so a hidden slot disappears from every client.
     deliverySlots: (settings.deliverySlots ?? []).filter((s) => s.enabled).map((s) => ({ key: s.key, label: s.label })),

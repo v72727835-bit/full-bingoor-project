@@ -312,6 +312,9 @@ function CodCard({
 }) {
   const [picked, setPicked] = useState(() => new Set(settings.cod.disabledCategories.map(idOf)));
   const [message, setMessage] = useState(settings.cod.message);
+  const [cutoffEnabled, setCutoffEnabled] = useState(!!settings.cod.cutoffEnabled);
+  const [cutoffTime, setCutoffTime] = useState(settings.cod.cutoffTime || '19:00');
+  const [cutoffMessage, setCutoffMessage] = useState(settings.cod.cutoffMessage || 'After 7 PM COD option is not available');
   const [saving, setSaving] = useState(false);
 
   const toggle = (id: string) =>
@@ -324,7 +327,7 @@ function CodCard({
 
   const submit = async () => {
     setSaving(true);
-    await onSave({ cod: { disabledCategories: [...picked], message } });
+    await onSave({ cod: { disabledCategories: [...picked], message, cutoffEnabled, cutoffTime, cutoffMessage } });
     setSaving(false);
   };
 
@@ -347,6 +350,34 @@ function CodCard({
       <Field label="Message shown to the customer">
         <input value={message} onChange={(e) => setMessage(e.target.value)} maxLength={300} />
       </Field>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '16px 0' }} />
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <input type="checkbox" checked={cutoffEnabled} onChange={(e) => setCutoffEnabled(e.target.checked)} />
+        <span>Switch COD off after a time every day</span>
+      </label>
+      <div className="page-subtitle" style={{ marginBottom: 12 }}>
+        After this time (India time) customers still see Cash on delivery, but tapping it shows the message below and checkout
+        refuses COD until the next morning.
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ width: 150 }}>
+          <Field label="Turn off daily at (24h)">
+            <input type="time" value={cutoffTime} disabled={!cutoffEnabled} onChange={(e) => setCutoffTime(e.target.value)} />
+          </Field>
+        </div>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <Field label="Message after the cut-off">
+            <input
+              value={cutoffMessage}
+              disabled={!cutoffEnabled}
+              onChange={(e) => setCutoffMessage(e.target.value)}
+              maxLength={200}
+            />
+          </Field>
+        </div>
+      </div>
 
       <div className="modal-actions">
         <Button onClick={submit} disabled={saving}>

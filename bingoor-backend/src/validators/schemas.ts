@@ -444,7 +444,7 @@ export const adminSettingsBody = z
       })
       .partial(),
     sixDay: z.object({ days: z.coerce.number().int().min(1).max(60), categories: z.array(objectId).max(100) }).partial(),
-    cod: z.object({ disabledCategories: z.array(objectId).max(100), message: z.string().trim().max(300) }).partial(),
+    cod: z.object({ disabledCategories: z.array(objectId).max(100), message: z.string().trim().max(300), cutoffEnabled: z.boolean(), cutoffTime: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/), cutoffMessage: z.string().trim().max(200) }).partial(),
     riderCodLimit: z.coerce.number().min(0).max(1_000_000),
     riderPay: z
       .object({

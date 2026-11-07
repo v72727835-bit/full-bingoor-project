@@ -25,6 +25,12 @@ export interface ISettings {
     /** Sub categories (and everything under them) where cash on delivery is off. */
     disabledCategories: Types.ObjectId[];
     message: string;
+    /** When on, COD is refused every day from `cutoffTime` (IST) until midnight. */
+    cutoffEnabled: boolean;
+    /** "HH:MM" in 24h IST, e.g. "19:00" for 7 PM. */
+    cutoffTime: string;
+    /** Shown when a customer taps COD after the cutoff. */
+    cutoffMessage: string;
   };
   /** A rider is paused automatically once this much COD cash is unsettled. */
   riderCodLimit: number;
@@ -146,6 +152,9 @@ const settingsSchema = new Schema<ISettings>(
         type: String,
         default: 'Cash on delivery is not available for fruits and vegetables. You can buy other products with COD.',
       },
+      cutoffEnabled: { type: Boolean, default: false },
+      cutoffTime: { type: String, default: '19:00', trim: true },
+      cutoffMessage: { type: String, default: 'After 7 PM COD option is not available', trim: true },
     },
     riderCodLimit: { type: Number, default: 2000, min: 0 },
     riderPay: {

@@ -128,3 +128,24 @@ export function paymentFee(settings: Pick<ISettings, 'paymentOptions'> | null, k
   const option = paymentOptions(settings).find((o) => o.key === key);
   return round2((amount * paymentFeePct(option, amount)) / 100);
 }
+
+/**
+ * Point 8: cash on delivery is switched off every day after a cut-off time
+ * (default 7 PM IST), controlled from the admin panel. Returns whether COD is
+ * blocked right now and the message to show. Evaluated in IST (UTC+5:30).
+ */
+export function codTimeBlocked(
+  settings: Pick<ISettings, 'cod'> | null,
+  now: Date = new Date(),
+): { enabled: boolean; time: string; blocked: boolean; message: string } {
+  const cod = settings?.cod;
+  const time = cod?.cutoffTime || '19:00';
+  const message = cod?.cutoffMessage || 'After 7 PM COD option is not available';
+  if (!cod?.cutoffEnabled) return { enabled: false, time, blocked: false, message };
+  const [h, m] = time.split(':').map((n) => Number(n));
+  const cutoffMin = (Number.isFinite(h) ? h : 19) * 60 + (Number.isFinite(m) ? m : 0);
+  const IST = 330 * 60_000;
+  const local = new Date(now.getTime() + IST);
+  const nowMin = local.getUTCHours() * 60 + local.getUTCMinutes();
+  return { enabled: true, time, blocked: nowMin >= cutoffMin, message };
+}
