@@ -35,6 +35,7 @@ type FormState = {
   nameHi: string;
   points: string;
   cartFeatured: boolean;
+  dealOfDay: boolean;
   sortCode: string;
   standardCategories: string[];
   isActive: boolean;
@@ -66,6 +67,7 @@ const EMPTY_FORM: FormState = {
   nameHi: '',
   points: '0',
   cartFeatured: false,
+  dealOfDay: false,
   sortCode: '',
   standardCategories: [],
   isActive: true,
@@ -427,6 +429,7 @@ function ProductForm({
           nameHi: product.nameHi ?? '',
           points: String(product.points ?? 0),
           cartFeatured: !!product.cartFeatured,
+          dealOfDay: !!product.dealOfDay,
           sortCode: product.sortCode && product.sortCode < 1_000_000 ? String(product.sortCode) : '',
           standardCategories: (product.standardCategories ?? []).map(String),
           isActive: product.isActive,
@@ -510,6 +513,7 @@ function ProductForm({
         nameHi: form.nameHi.trim() || undefined,
         points: Math.min(50, Math.max(0, Number(form.points) || 0)),
         cartFeatured: form.cartFeatured,
+        dealOfDay: form.dealOfDay,
         // Blank = no sort code, so the item falls back to A-Z after the ones that have one.
         sortCode: form.sortCode.trim() === '' ? null : Number(form.sortCode),
         standardCategories: form.standardCategories,
@@ -668,6 +672,11 @@ function ProductForm({
         <label className="checkbox-row">
           <input type="checkbox" checked={form.cartFeatured} onChange={(e) => set('cartFeatured', e.target.checked)} />
           Show this product in the cart / checkout top-up list (the 50-point row customers see before paying)
+        </label>
+
+        <label className="checkbox-row">
+          <input type="checkbox" checked={form.dealOfDay} onChange={(e) => set('dealOfDay', e.target.checked)} />
+          Show this product in &ldquo;Deals of the day&rdquo; on the home screen (you can pick as many as you like)
         </label>
 
         <Field label="Standard category (home screen row, optional)">

@@ -283,10 +283,20 @@ export const home = asyncHandler(async (req, res) => {
     ...headliners.map(async (c) => railQuery(await categoryFamily(c._id as Types.ObjectId), 10, scope)),
   ]);
 
-  const deals = dealPool
-    .map(toCard)
-    .sort((a, b) => b.discountPercent - a.discountPercent)
-    .slice(0, 12);
+  // Point 27: when the admin has hand-picked products for Deals of the Day,
+  // show all of them (unlimited). Otherwise fall back to the automatic strip of
+  // the biggest everyday savings.
+  const pickedDeals = await Product.find({ ...scope, dealOfDay: true, $expr: { $gt: ['$mrp', '$price'] } })
+    .sort({ soldCount: -1, updatedAt: -1 })
+    .select(CARD_FIELDS)
+    .populate('shop', 'name slug isOpen')
+    .lean();
+  const deals = pickedDeals.length
+    ? pickedDeals.map(toCard).sort((a, b) => b.discountPercent - a.discountPercent)
+    : dealPool
+        .map(toCard)
+        .sort((a, b) => b.discountPercent - a.discountPercent)
+        .slice(0, 12);
 
   type Section = Record<string, unknown> & { type: string };
   const sections: Section[] = [];

@@ -198,7 +198,7 @@ export const stats = asyncHandler(async (req, res) => {
 // without description / video / cartFeatured / standardCategories the form
 // opened blank and saving it wiped them.
 const ADMIN_PRODUCT_FIELDS =
-  'name slug brand description video images icon price mrp unit stock attributes foodType hsn gstRate paymentMode tags isActive rating ratingCount soldCount nameHi points sortCode ratingLabel variantGroup variantLabel cartFeatured standardCategories seller shop category createdAt';
+  'name slug brand description video images icon price mrp unit stock attributes foodType hsn gstRate paymentMode tags isActive rating ratingCount soldCount nameHi points sortCode ratingLabel variantGroup variantLabel cartFeatured dealOfDay standardCategories seller shop category createdAt';
 
 export const listProductsAdmin = asyncHandler(async (req, res) => {
   const { q, category, shop, isActive, variantGroup, page, limit } = req.query as unknown as {

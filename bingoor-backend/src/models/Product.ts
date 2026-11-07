@@ -44,6 +44,8 @@ export interface IProduct {
   points: number;
   /** Admin tick: show this product in the cart / checkout top-up (50-point) list. */
   cartFeatured: boolean;
+  /** Admin-picked for the Deals of the Day strip (unlimited). */
+  dealOfDay: boolean;
   /** Admin-set ordering (lower first); the default is last, so unsorted items fall back to A-Z. */
   sortCode: number;
   /** Set when a seller listed it. */
@@ -83,6 +85,7 @@ const productSchema = new Schema<IProduct>(
     nameHi: { type: String, trim: true },
     points: { type: Number, default: 0, min: 0, max: 50 },
     cartFeatured: { type: Boolean, default: false, index: true },
+    dealOfDay: { type: Boolean, default: false, index: true },
     sortCode: { type: Number, default: 1_000_000 },
     seller: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     standardCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'StandardCategory' }], default: undefined, index: true },
@@ -96,6 +99,7 @@ productSchema.index({ isActive: 1, shop: 1, soldCount: -1, rating: -1 });
 productSchema.index({ isActive: 1, standardCategories: 1, sortCode: 1, name: 1 });
 productSchema.index({ name: 1 });
 productSchema.index({ isActive: 1, brand: 1 });
+productSchema.index({ isActive: 1, dealOfDay: 1, soldCount: -1 });
 // ISSUE-13: cover the default browse sort ({ sortCode, name }), "newest" and
 // "rating" sorts so they do not fall back to in-memory sorts / the 32 MB limit.
 productSchema.index({ isActive: 1, sortCode: 1, name: 1 });
