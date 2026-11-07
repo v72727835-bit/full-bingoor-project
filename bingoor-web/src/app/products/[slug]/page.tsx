@@ -437,6 +437,17 @@ export default function ProductPage() {
           </div>
         </section>
       ) : null}
+
+      {p.relatedOther && p.relatedOther.items.length > 0 ? (
+        <section className={s.related}>
+          <SectionHead title={`More from ${p.relatedOther.category.name}`} subtitle="Another range you may like" />
+          <div className="rail">
+            {p.relatedOther.items.map((r) => (
+              <ProductCard key={r.id} product={r} width={168} />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

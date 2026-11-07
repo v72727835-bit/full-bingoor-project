@@ -684,6 +684,28 @@ export const getProduct = asyncHandler(async (req, res) => {
     .populate('shop', 'name slug isOpen')
     .lean();
 
+  // Point: a second row on the product page from one OTHER child category under
+  // the same parent aisle, so customers discover nearby ranges too.
+  const cat = product.category as unknown as { _id: Types.ObjectId; parent?: Types.ObjectId };
+  let relatedOther: { category: { name: string; slug: string }; items: ReturnType<typeof toCard>[] } | null = null;
+  if (cat?.parent) {
+    const siblings = await Category.find({ parent: cat.parent, _id: { $ne: cat._id }, isActive: true })
+      .select('name slug')
+      .lean();
+    for (const sib of siblings) {
+      const items = await Product.find({ category: sib._id, isActive: true, stock: { $gt: 0 }, _id: { $ne: product._id } })
+        .sort({ soldCount: -1 })
+        .limit(10)
+        .select(CARD_FIELDS)
+        .populate('shop', 'name slug isOpen')
+        .lean();
+      if (items.length) {
+        relatedOther = { category: { name: sib.name, slug: sib.slug }, items: items.map(toCard) };
+        break;
+      }
+    }
+  }
+
   // Other sizes of the same item (e.g. 100 g / 200 g / 500 g), cheapest first.
   const variants = product.variantGroup
     ? await Product.find({ variantGroup: product.variantGroup, isActive: true })
@@ -695,6 +717,7 @@ export const getProduct = asyncHandler(async (req, res) => {
   ok(res, {
     ...toCard(product),
     related: related.map(toCard),
+    relatedOther,
     variants: variants.map((v) => ({ ...v, label: v.variantLabel || v.unit, inStock: v.stock > 0 })),
   });
 });

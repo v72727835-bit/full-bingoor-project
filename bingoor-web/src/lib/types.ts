@@ -45,6 +45,7 @@ export interface RawProduct {
   inStock?: boolean;
   reviews?: RawReview[];
   related?: RawProduct[];
+  relatedOther?: { category: { name: string; slug: string }; items: RawProduct[] } | null;
 }
 
 export interface RawVariant {
@@ -175,6 +176,7 @@ export interface Product {
   category?: Ref;
   reviews?: Review[];
   related?: Product[];
+  relatedOther?: { category: { name: string; slug: string }; items: Product[] } | null;
 }
 
 export interface ProductVariant {

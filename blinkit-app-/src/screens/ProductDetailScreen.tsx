@@ -496,6 +496,31 @@ export function ProductDetailScreen() {
             />
           </View>
         ) : null}
+
+        {/* ----------------------------------------- related (other) -- */}
+        {product.relatedOther?.items?.length ? (
+          <View style={styles.relatedSection}>
+            <SectionHeader
+              title={`More from ${product.relatedOther.category.name}`}
+              subtitle="Another range you may like"
+            />
+            <FlatList
+              horizontal
+              data={product.relatedOther.items}
+              keyExtractor={(p) => p._id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.relatedRail}
+              ItemSeparatorComponent={() => <View style={{ width: space.md }} />}
+              renderItem={({ item }) => (
+                <ProductCard
+                  product={item}
+                  width={railWidth}
+                  onPress={() => navigation.push('ProductDetail', { id: item._id, name: item.name })}
+                />
+              )}
+            />
+          </View>
+        ) : null}
       </ScrollView>
 
       {/* --------------------------------------------- floating nav -- */}

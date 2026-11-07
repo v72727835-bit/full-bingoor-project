@@ -152,6 +152,8 @@ export interface ProductDetail extends Omit<ProductSummary, 'shop' | 'category'>
   /** Other sizes of the same item - each one its own product. */
   variants?: CardVariant[];
   related: ProductSummary[];
+  /** A second row from one other child category under the same parent aisle. */
+  relatedOther?: { category: { name: string; slug: string }; items: ProductSummary[] } | null;
 }
 
 export interface ProductVariant {

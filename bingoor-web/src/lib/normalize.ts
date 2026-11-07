@@ -133,6 +133,7 @@ export function product(raw: RawProduct): Product {
     category: ref(raw.category),
     reviews: raw.reviews?.map(review),
     related: raw.related?.map(product),
+    relatedOther: raw.relatedOther ? { category: raw.relatedOther.category, items: raw.relatedOther.items.map(product) } : null,
   };
 }
 
