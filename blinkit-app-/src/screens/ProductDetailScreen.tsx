@@ -197,21 +197,29 @@ export function ProductDetailScreen() {
             {localName(product)}
           </Txt>
 
-          <View style={styles.metaRow}>
-            <Txt variant="body" tone="muted">
-              {product.unit}
-            </Txt>
-            {product.ratingCount > 0 ? (
-              <>
-                <View style={styles.metaDot} />
-                <Stars value={product.rating} size={14} />
-                <Txt variant="bodySm" tone="muted" style={styles.ratingText}>
-                  {product.rating.toFixed(1)} ({product.ratingCount})
-                </Txt>
-              </>
-            ) : null}
-            {product.ratingLabel ? <Pill label={product.ratingLabel} /> : null}
+          {/* Weight/pack on its own line - kept apart from the rating row. */}
+          <View style={styles.weightRow}>
+            <View style={styles.weightPill}>
+              <Ionicons name="cube-outline" size={ms(13)} color={colors.inkMuted} />
+              <Txt variant="label" tone="body">
+                {product.unit}
+              </Txt>
+            </View>
           </View>
+
+          {product.ratingCount > 0 || product.ratingLabel ? (
+            <View style={styles.metaRow}>
+              {product.ratingCount > 0 ? (
+                <>
+                  <Stars value={product.rating} size={14} />
+                  <Txt variant="bodySm" tone="muted" style={styles.ratingText}>
+                    {product.rating.toFixed(1)} ({product.ratingCount})
+                  </Txt>
+                </>
+              ) : null}
+              {product.ratingLabel ? <Pill label={product.ratingLabel} /> : null}
+            </View>
+          ) : null}
 
           <View style={styles.priceRow}>
             <Txt variant="display">{currency(product.price)}</Txt>
@@ -651,6 +659,8 @@ const styles = themed(({ c, elevation }) => ({
   dotOn: { backgroundColor: c.brand, width: ms(18) },
   // Below the top bar's buttons, so the badge is fully visible.
   galleryBadge: { position: 'absolute', top: ms(116), left: gutter },
+  weightRow: { flexDirection: 'row', justifyContent: 'center', marginTop: ms(6) },
+  weightPill: { flexDirection: 'row', alignItems: 'center', gap: ms(5), backgroundColor: c.surfaceSunken, borderWidth: 1, borderColor: c.border, borderRadius: radius.pill, paddingHorizontal: ms(12), paddingVertical: ms(5) },
   descBox: { borderWidth: 1, borderColor: c.border, borderRadius: radius.lg, padding: space.lg, backgroundColor: c.surface },
   descHead: { flexDirection: 'row', alignItems: 'center' },
   descBody: { marginTop: space.md },

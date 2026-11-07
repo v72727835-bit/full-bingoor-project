@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { useCart } from '../context/CartContext';
 import { NotifyMeSheet } from './NotifyMeSheet';
+import { VariantPickerSheet } from './VariantPickerSheet';
+import { tapAdd } from '../utils/haptics';
 import { useWishlist } from '../context/WishlistContext';
 import { colors, currency, fillParent, hitSlop, ms, radius, space, themed } from '../theme';
 import { ProductSummary } from '../types';
@@ -33,6 +35,9 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
   const { isSaved, toggle } = useWishlist();
   const localName = useLocalName();
   const [notifyOpen, setNotifyOpen] = useState(false);
+  const [sizeOpen, setSizeOpen] = useState(false);
+  const variantCount = product.variants?.length ?? 0;
+  const hasVariants = variantCount >= 2;
 
   const qty = quantityOf(product._id);
   const busy = false; // Quantities render immediately; requests are serialized by CartProvider.
@@ -150,9 +155,26 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
                 onChange={(next) => setQuantity(product._id, next)}
                 onRemove={() => remove(product._id)}
               />
+            ) : hasVariants ? (
+              <Pressable
+                onPress={() => setSizeOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Add ${product.name}, ${variantCount} sizes to choose`}
+                style={({ pressed }) => [styles.addBtn, styles.addBtnTall, pressed && styles.addBtnPressed]}
+              >
+                <Txt variant="labelSm" tone="brand" style={styles.addLabel}>
+                  ADD
+                </Txt>
+                <Txt variant="caption" tone="brand" style={styles.optionsLabel} numberOfLines={1}>
+                  {variantCount} options
+                </Txt>
+              </Pressable>
             ) : (
               <Pressable
-                onPress={() => add(product._id, 1, product.name, product)}
+                onPress={() => {
+                  tapAdd();
+                  add(product._id, 1, product.name, product);
+                }}
                 disabled={busy}
                 accessibilityRole="button"
                 accessibilityLabel={`Add ${product.name} to cart`}
@@ -170,6 +192,7 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
         </View>
       </View>
       <NotifyMeSheet visible={notifyOpen} onClose={() => setNotifyOpen(false)} productId={product._id} productName={product.name} />
+      {hasVariants ? <VariantPickerSheet visible={sizeOpen} onClose={() => setSizeOpen(false)} product={product} /> : null}
     </Pressable>
   );
 }
@@ -272,6 +295,8 @@ const styles = themed(({ c }) => ({
     justifyContent: 'center',
   },
   addBtnPressed: { backgroundColor: c.brandSurface },
+  addBtnTall: { height: ms(40), flexDirection: 'column', paddingVertical: ms(2) },
+  optionsLabel: { fontWeight: '700', fontSize: ms(8.5), lineHeight: ms(10), marginTop: ms(-1) },
   notifyBtn: { borderColor: c.danger },
   notifyLabel: { color: c.danger, fontWeight: '800' },
   addLabel: { fontWeight: '800', letterSpacing: 0.7 },
