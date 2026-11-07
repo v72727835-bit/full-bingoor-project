@@ -131,6 +131,23 @@ export default function OrdersScreen() {
     catch (err) { setError(getErrorMessage(err)); }
     finally { setSaving(null); }
   };
+  const deliverDirect = async () => {
+    if (!delivery || saving) return;
+    setSaving(delivery._id);
+    setDeliveryError('');
+    try {
+      const updated = await deliverRiderOrder(delivery._id);
+      setOrders((items) => [updated, ...items.filter((item) => item._id !== delivery._id)]);
+      setDelivery(null);
+      setOtp('');
+      void loadProfile();
+      void loadHistory();
+    } catch (err) {
+      setDeliveryError(getErrorMessage(err));
+    } finally {
+      setSaving(null);
+    }
+  };
   const deliver = async () => {
     if (!delivery || otp.length !== 4 || saving) return;
     setDeliveryError('');
@@ -187,7 +204,7 @@ export default function OrdersScreen() {
     <FlatList data={loading ? [] : visible} keyExtractor={(item) => item._id} ListHeaderComponent={header} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void load(true); void loadProfile(); if (tab === 'history') void loadHistory(); }} tintColor={colors.primary} />} contentContainerStyle={styles.list} ListEmptyComponent={loading ? undefined : <View style={styles.empty}><Ionicons name={tab === 'history' ? 'checkmark-done-circle-outline' : 'bicycle-outline'} size={50} color={colors.primary} /><Text style={styles.emptyTitle}>{tab === 'available' ? 'No new orders' : tab === 'active' ? 'No active deliveries' : 'No delivery history'}</Text><Text style={styles.emptyText}>New updates will appear here automatically.</Text></View>} renderItem={({ item, index }) => <FadeSlide delay={Math.min(index, 6) * 55}><View style={styles.cardWrap}><OrderCard onShowRoute={() => { setRouteId(item._id); setTab('active'); }} order={item} saving={saving === item._id} riderLocation={riderLocation} onAccept={() => accept(item)} onDeliver={() => openDelivery(item)} onCancel={() => void cancel(item)} /></View></FadeSlide>} />
     {/* Always on screen while a parcel is out: the card's own button can sit below the map, out of sight on small phones. */}
     {activeOrder ? <View style={styles.deliverBar}><View style={{ flex: 1, marginRight: 10 }}><Text style={styles.deliverBarTitle} numberOfLines={1}>Delivering #{activeOrder.orderNumber}</Text><Text style={styles.muted} numberOfLines={1}>{activeOrder.paymentMethod === 'cod' ? `Collect ${money(activeOrder.total)} in cash` : 'Paid online'} · ask for the OTP</Text></View><Button title="Enter delivery OTP" onPress={() => openDelivery(activeOrder)} disabled={!!saving} style={{ paddingHorizontal: 16 }} /></View> : null}
-    <Modal visible={!!delivery} transparent animationType="slide" onRequestClose={() => { if (!saving) setDelivery(null); }}><KeyboardAvoidingView style={styles.modalBackdrop} behavior="padding"><View style={styles.modal}><Text style={styles.modalTitle}>Confirm delivery</Text><Text style={styles.modalSub}>Order #{delivery?.orderNumber} · {delivery?.shop?.name ?? 'Warehouse'}{'\n'}Ask the customer to open this same order and share its 4-digit delivery OTP.</Text>{deliveryError ? <ErrorBanner message={deliveryError} /> : null}<TextInput value={otp} onChangeText={(value) => { setOtp(value.replace(/\D/g, '').slice(0, 4)); setDeliveryError(''); }} editable={!saving} keyboardType="number-pad" placeholder="••••" placeholderTextColor="#94A3B8" style={styles.otp} autoFocus /><Button title="Mark as delivered" onPress={() => void deliver()} loading={saving === delivery?._id} disabled={otp.length !== 4 || !!saving} /><Button title="Cancel" variant="outline" disabled={!!saving} onPress={() => setDelivery(null)} style={{ marginTop: 10 }} /></View></KeyboardAvoidingView></Modal>
+    <Modal visible={!!delivery} transparent animationType="slide" onRequestClose={() => { if (!saving) setDelivery(null); }}><KeyboardAvoidingView style={styles.modalBackdrop} behavior="padding"><View style={styles.modal}><Text style={styles.modalTitle}>Confirm delivery</Text><Text style={styles.modalSub}>Order #{delivery?.orderNumber} · {delivery?.shop?.name ?? 'Warehouse'}{'\n'}Ask the customer to open this same order and share its 4-digit delivery OTP.</Text>{deliveryError ? <ErrorBanner message={deliveryError} /> : null}<TextInput value={otp} onChangeText={(value) => { setOtp(value.replace(/\D/g, '').slice(0, 4)); setDeliveryError(''); }} editable={!saving} keyboardType="number-pad" placeholder="••••" placeholderTextColor="#94A3B8" style={styles.otp} autoFocus /><Button title="Mark as delivered" onPress={() => void deliver()} loading={saving === delivery?._id} disabled={otp.length !== 4 || !!saving} /><Text style={styles.modalSub}>No OTP from the customer? You can still mark it delivered.</Text><Button title="Mark delivered directly" variant="outline" disabled={!!saving} onPress={() => void deliverDirect()} style={{ marginTop: 10 }} /><Button title="Cancel" variant="outline" disabled={!!saving} onPress={() => setDelivery(null)} style={{ marginTop: 10 }} /></View></KeyboardAvoidingView></Modal>
   </View>;
 }
 

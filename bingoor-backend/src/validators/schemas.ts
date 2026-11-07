@@ -207,7 +207,7 @@ export const riderLocationBody = z.object({
   lng: z.number().min(-180).max(180),
 });
 
-export const riderDeliveryBody = z.object({ otp: z.string().trim().regex(/^\d{4}$/, 'Enter the 4-digit delivery OTP') });
+export const riderDeliveryBody = z.object({ otp: z.string().trim().regex(/^\d{4}$/, 'Enter the 4-digit delivery OTP').optional(), direct: z.coerce.boolean().optional() }).refine((b) => !!b.otp || b.direct, { message: 'Enter the 4-digit delivery OTP' });
 
 /* ---------- admin ---------- */
 export const adminLoginBody = z.object({
