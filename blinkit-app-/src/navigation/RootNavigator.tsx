@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { AddressFormScreen } from '../screens/AddressFormScreen';
 import { AddressListScreen } from '../screens/AddressListScreen';
 import { CategoryBrowseScreen } from '../screens/CategoryBrowseScreen';
+import { PopupPages } from '../components/PopupPages';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
@@ -104,6 +105,7 @@ export default function RootNavigator() {
     <NavigationContainer theme={navTheme}>
       {user ? <AppFlow /> : <AuthFlow />}
       <WelcomeCredentials />
+      {user ? <PopupPages /> : null}
     </NavigationContainer>
   );
 }

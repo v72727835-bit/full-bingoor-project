@@ -462,6 +462,8 @@ export interface PublicSettings {
   /** Daily cut-off after which cash on delivery is refused. */
   codCutoff?: { enabled: boolean; time: string; blocked: boolean; message: string };
   supportPhone?: string;
+  /** Full-screen promo pages shown on a timer. */
+  popup?: { enabled: boolean; intervalSeconds: number; pages: { image: string; link?: string | null }[] };
   /** Only the delivery times the admin left on, in order. */
   deliverySlots?: { key: SlotKey; label: string }[];
   twoHourCharge?: { enabled: boolean; amount: number };

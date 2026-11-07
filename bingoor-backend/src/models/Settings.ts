@@ -15,6 +15,13 @@ export interface ISettings {
     /** Rows on the festival page: a title and the aisle its products come from. */
     sections: { title: string; category: Types.ObjectId }[];
   };
+  /** Point 30: full-screen promo pages shown on a timer in the app and website. */
+  popup: {
+    enabled: boolean;
+    /** How often a page appears, in seconds (default 210 = 3.5 min). */
+    intervalSeconds: number;
+    pages: { image: string; link?: string }[];
+  };
   sixDay: {
     /** Delivery promise for these aisles, in days. */
     days: number;
@@ -139,6 +146,14 @@ const settingsSchema = new Schema<ISettings>(
       banner: String,
       sections: {
         type: [{ title: { type: String, trim: true }, category: { type: Schema.Types.ObjectId, ref: 'Category' }, _id: false }],
+        default: [],
+      },
+    },
+    popup: {
+      enabled: { type: Boolean, default: false },
+      intervalSeconds: { type: Number, default: 210, min: 15, max: 3600 },
+      pages: {
+        type: [{ image: { type: String, trim: true }, link: { type: String, trim: true }, _id: false }],
         default: [],
       },
     },

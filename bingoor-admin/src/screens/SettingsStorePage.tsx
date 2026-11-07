@@ -68,6 +68,7 @@ export default function SettingsStorePage() {
       <ErrorBanner message={error} />
 
       <FestivalCard settings={settings} subCategories={subCategories} onSave={save} />
+      <PopupCard settings={settings} onSave={save} />
       <DeliveryCard settings={settings} subCategories={subCategories} onSave={save} />
       <CodCard settings={settings} subCategories={subCategories} onSave={save} />
       <RiderCard settings={settings} onSave={save} />
@@ -613,6 +614,58 @@ function ImageField({ label, hint, value, onChange }: { label: string; hint: str
         </div>
       </div>
     </Field>
+  );
+}
+
+function PopupCard({ settings, onSave }: { settings: Settings; onSave: (patch: Record<string, unknown>) => Promise<void> }) {
+  const p = settings.popup ?? { enabled: false, intervalSeconds: 210, pages: [] };
+  const [enabled, setEnabled] = useState(!!p.enabled);
+  const [minutes, setMinutes] = useState(String(Math.round((p.intervalSeconds || 210) / 6) / 10));
+  const [pages, setPages] = useState<{ image: string; link?: string }[]>(p.pages ?? []);
+  const [saving, setSaving] = useState(false);
+
+  const setPage = (i: number, patch: Partial<{ image: string; link: string }>) =>
+    setPages((cur) => cur.map((pg, idx) => (idx === i ? { ...pg, ...patch } : pg)));
+  const addPage = () => setPages((cur) => [...cur, { image: '', link: '' }]);
+  const removePage = (i: number) => setPages((cur) => cur.filter((_, idx) => idx !== i));
+
+  const submit = async () => {
+    setSaving(true);
+    const intervalSeconds = Math.min(3600, Math.max(15, Math.round((Number(minutes) || 3.5) * 60)));
+    await onSave({ popup: { enabled, intervalSeconds, pages: pages.filter((pg) => pg.image) } });
+    setSaving(false);
+  };
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 18 }}>
+      <h2 className="card-title">Pop-up pages</h2>
+      <div className="page-subtitle" style={{ marginBottom: 14 }}>
+        Upload promo pages shown full-screen in the app and website. A different page appears every few minutes and can be
+        closed with the cross. Turn them all off any time with the switch.
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        <span>Show pop-up pages</span>
+      </label>
+      <div style={{ width: 200, marginBottom: 14 }}>
+        <Field label="Show a page every (minutes)">
+          <input type="number" min={0.5} step={0.5} value={minutes} disabled={!enabled} onChange={(e) => setMinutes(e.target.value)} />
+        </Field>
+      </div>
+      {pages.map((pg, i) => (
+        <div key={i} style={{ border: '1px solid var(--border, #334155)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+          <ImageField label={`Page ${i + 1} image`} hint="A tall promo image (JPG/PNG) looks best." value={pg.image} onChange={(v) => setPage(i, { image: v })} />
+          <Field label="Link when tapped (optional)">
+            <input value={pg.link ?? ''} onChange={(e) => setPage(i, { link: e.target.value })} placeholder="/categories/snacks or https://…" />
+          </Field>
+          <Button type="button" size="sm" variant="ghost" onClick={() => removePage(i)}>Remove page</Button>
+        </div>
+      ))}
+      <Button type="button" size="sm" variant="secondary" onClick={addPage} style={{ marginBottom: 12 }}>Add a page</Button>
+      <div className="modal-actions">
+        <Button onClick={submit} disabled={saving}>{saving ? 'Saving…' : 'Save pop-up pages'}</Button>
+      </div>
+    </div>
   );
 }
 

@@ -487,6 +487,8 @@ export interface PublicSettings {
   social?: { googleClientId: string | null; facebookAppId: string | null; instagramAppId?: string | null };
   deliverySlots?: { key: 'instant' | 'twoHour' | 'nextDay'; label: string }[];
   paymentOptions?: PayOptionDef[];
+  /** Full-screen promo pages shown on a timer. */
+  popup?: { enabled: boolean; intervalSeconds: number; pages: { image: string; link?: string | null }[] };
 }
 
 export interface FestivalSection {

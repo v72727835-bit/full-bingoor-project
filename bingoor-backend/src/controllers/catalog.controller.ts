@@ -769,6 +769,11 @@ export const publicSettings = asyncHandler(async (_req, res) => {
   const live = await getIntegrations();
   ok(res, {
     festival: { enabled: settings.festival?.enabled ?? false, name: settings.festival?.name || 'Festival', banner: settings.festival?.banner || null },
+    popup: {
+      enabled: settings.popup?.enabled ?? false,
+      intervalSeconds: settings.popup?.intervalSeconds ?? 210,
+      pages: (settings.popup?.pages ?? []).filter((p) => p.image).map((p) => ({ image: p.image, link: p.link || null })),
+    },
     appLinks: settings.appLinks ?? {},
     // Only the pages the admin filled in, so an empty one never shows an icon.
     socialLinks: Object.fromEntries(Object.entries(settings.socialLinks ?? {}).filter(([, v]) => typeof v === 'string' && /^https?:\/\//i.test(v))),
