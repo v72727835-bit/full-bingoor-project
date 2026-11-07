@@ -33,6 +33,9 @@ export interface IProduct {
   ratingCount: number;
   /** Shown instead of the count when set, e.g. "5L+", "20K", "12". */
   ratingLabel?: string;
+  /** Real average and count from delivered-customer reviews (internal; cards/detail still show the admin's rating/ratingCount). */
+  realRating: number;
+  realRatingCount: number;
   /** Products sharing a group are sizes/variants of one another (e.g. 100 g, 200 g). */
   variantGroup?: string;
   /** This product's chip in the size picker, e.g. "200 g". Defaults to `unit`. */
@@ -79,6 +82,8 @@ const productSchema = new Schema<IProduct>(
     rating: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0 },
     ratingLabel: { type: String, trim: true },
+    realRating: { type: Number, default: 0, min: 0, max: 5 },
+    realRatingCount: { type: Number, default: 0 },
     variantGroup: { type: String, trim: true, lowercase: true, index: true },
     variantLabel: { type: String, trim: true },
     soldCount: { type: Number, default: 0 },

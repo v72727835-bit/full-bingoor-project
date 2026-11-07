@@ -504,10 +504,11 @@ function ProductForm({
           .filter(Boolean),
         images,
         video: form.video.trim(),
-        ratingLabel: form.ratingLabel.trim() || undefined,
-        // Empty boxes leave the stored rating alone.
-        ...(form.rating.trim() !== '' ? { rating: Math.min(5, Math.max(0, Number(form.rating) || 0)) } : {}),
-        ...(form.ratingCount.trim() !== '' ? { ratingCount: Math.max(0, Math.round(Number(form.ratingCount) || 0)) } : {}),
+        // Point 23: these are editable and removable - a blank box clears the
+        // shown value (sets it to 0 / empty) instead of leaving the old one.
+        ratingLabel: form.ratingLabel.trim(),
+        rating: form.rating.trim() === '' ? 0 : Math.min(5, Math.max(0, Number(form.rating) || 0)),
+        ratingCount: form.ratingCount.trim() === '' ? 0 : Math.max(0, Math.round(Number(form.ratingCount) || 0)),
         variantGroup: form.variantGroup.trim() || undefined,
         variantLabel: form.variantLabel.trim() || undefined,
         nameHi: form.nameHi.trim() || undefined,

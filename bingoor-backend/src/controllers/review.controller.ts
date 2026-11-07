@@ -14,7 +14,9 @@ async function recomputeProductRating(productId: Types.ObjectId | string) {
   ]);
   await Product.updateOne(
     { _id: productId },
-    { $set: { rating: agg ? round2(agg.avg) : 0, ratingCount: agg?.count ?? 0 } },
+    // Point 23: keep the admin's shown rating/ratingCount untouched; store the
+    // real figures separately so a single genuine review never replaces them.
+    { $set: { realRating: agg ? round2(agg.avg) : 0, realRatingCount: agg?.count ?? 0 } },
   );
 }
 
