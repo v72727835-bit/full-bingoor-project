@@ -54,7 +54,7 @@ function LoginInner() {
 
   return (
     <AuthShell
-      title="Welcome back"
+      title="Log in to Bingoor"
       lead="Sign in with your phone number or email."
       footer={
         <>

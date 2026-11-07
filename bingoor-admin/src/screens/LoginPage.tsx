@@ -9,7 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [seller, setSeller] = useState(false);
+  const [seller, setSeller] = useState(true);
 
   if (user) return <Navigate to="/" replace />;
 
@@ -28,6 +28,11 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrap">
+      <aside className="login-brand">
+        <img className="logo-mark" src="/logo-mark.png" alt="Bingoor" width={52} height={52} />
+        <div className="login-brand-word">Bingoor</div>
+        <div className="login-brand-tag">Quick-commerce control panel</div>
+      </aside>
       <form className="login-card" onSubmit={submit}>
         <div className="login-logo">
           <img className="logo-mark" src="/logo-mark.png" alt="Bingoor" width={36} height={36} />
