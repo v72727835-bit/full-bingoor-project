@@ -83,7 +83,7 @@ export function CheckoutScreen() {
   );
   const choose = (o: PayOptionDef) => {
     if (o.key === 'cod') {
-      if (codBlocked.length) return;
+      if (codBlocked.length || codTimeBlocked) return;
       setOpt('cod');
       setPayment('cod');
     } else {
@@ -107,6 +107,20 @@ export function CheckoutScreen() {
     .flatMap((g) => g.items)
     .filter((i) => i.onlineAvailable === false)
     .map((i) => i.name);
+
+  // Point 8: cash on delivery switched off after the admin's daily cut-off (IST).
+  // Trust the server's flag, but also recompute live so it flips at the cut-off
+  // minute without a refetch.
+  const codCut = settings?.codCutoff;
+  const codTimeBlocked = (() => {
+    if (!codCut?.enabled) return false;
+    if (codCut.blocked) return true;
+    const [h, m] = (codCut.time || '19:00').split(':').map((n) => Number(n));
+    const cutoffMin = (Number.isFinite(h) ? h : 19) * 60 + (Number.isFinite(m) ? m : 0);
+    const local = new Date(Date.now() + 330 * 60_000);
+    return local.getUTCHours() * 60 + local.getUTCMinutes() >= cutoffMin;
+  })();
+  const codTimeMessage = codCut?.message || 'After 7 PM COD option is not available';
   // Pick the method the cart allows.
   useEffect(() => {
     const items = cart.groups.flatMap((g) => g.items);
@@ -191,6 +205,10 @@ export function CheckoutScreen() {
   const submit = async () => {
     if (!selected) {
       toast.error('Choose a delivery address first');
+      return;
+    }
+    if (payment === 'cod' && codTimeBlocked) {
+      toast.error(codTimeMessage);
       return;
     }
     setPlacing(true);
@@ -395,13 +413,17 @@ export function CheckoutScreen() {
             />
           ) : null}
 
+          {codTimeBlocked && codBlocked.length === 0 ? (
+            <Banner tone="warning" message={codTimeMessage} style={styles.codBanner} />
+          ) : null}
+
           {onlineBlocked.length > 0 ? (
             <Banner tone="warning" message={`Online payment is not available for some items in this order (${onlineBlocked.join(', ')}). Please pay by cash on delivery.`} style={styles.codBanner} />
           ) : null}
 
           {options.map((o) => {
             const fee = feeFor(o);
-            const blocked = o.key === 'cod' ? codBlocked.length > 0 : onlineBlocked.length > 0;
+            const blocked = o.key === 'cod' ? codBlocked.length > 0 || codTimeBlocked : onlineBlocked.length > 0;
             return (
               <PaymentOption
                 key={o.key}
@@ -409,7 +431,7 @@ export function CheckoutScreen() {
                 onPress={() => choose(o)}
                 icon={PAY_ICON[o.key]}
                 title={o.label}
-                subtitle={blocked ? 'Not available for this order' : fee > 0 ? `${o.label} charges: ${currency(fee)} (${pctText(o, cart.total)})` : o.note || 'No extra charge'}
+                subtitle={o.key === 'cod' && codTimeBlocked && !codBlocked.length ? codTimeMessage : blocked ? 'Not available for this order' : fee > 0 ? `${o.label} charges: ${currency(fee)} (${pctText(o, cart.total)})` : o.note || 'No extra charge'}
               />
             );
           })}
@@ -509,7 +531,7 @@ export function CheckoutScreen() {
             size="lg"
             block={false}
             loading={placing}
-            disabled={!selected}
+            disabled={!selected || (payment === 'cod' && codTimeBlocked)}
             onPress={submit}
             style={styles.barBtn}
           />

@@ -157,6 +157,15 @@ export function CartScreen({ active }: TabScreenProps) {
               </Txt>
             </View>
           ) : null}
+
+          {pointsShort ? (
+            <View style={styles.billWarn} accessibilityRole="alert">
+              <Ionicons name="alert-circle-outline" size={ms(15)} color={colors.danger} />
+              <Txt variant="labelSm" tone="danger" style={styles.savingsText}>
+                Add any one product from the list below to continue to payment.
+              </Txt>
+            </View>
+          ) : null}
         </View>
 
         {/* The cart-points rule (admin panel): a top-up product before checkout. */}
@@ -410,6 +419,7 @@ const styles = themed(({ c, elevation }) => ({
     borderTopColor: c.border,
   },
 
+  billWarn: { flexDirection: 'row', alignItems: 'center', gap: ms(6), marginTop: space.sm, padding: space.sm, borderRadius: radius.sm, borderWidth: 1, borderColor: c.danger, backgroundColor: c.dangerSurface },
   bill: {
     marginHorizontal: gutter,
     marginTop: space.sm,

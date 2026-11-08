@@ -33,6 +33,9 @@ export interface IProduct {
   ratingCount: number;
   /** Shown instead of the count when set, e.g. "5L+", "20K", "12". */
   ratingLabel?: string;
+  /** Real average and count from delivered-customer reviews (internal; cards/detail still show the admin's rating/ratingCount). */
+  realRating: number;
+  realRatingCount: number;
   /** Products sharing a group are sizes/variants of one another (e.g. 100 g, 200 g). */
   variantGroup?: string;
   /** This product's chip in the size picker, e.g. "200 g". Defaults to `unit`. */
@@ -44,6 +47,8 @@ export interface IProduct {
   points: number;
   /** Admin tick: show this product in the cart / checkout top-up (50-point) list. */
   cartFeatured: boolean;
+  /** Admin-picked for the Deals of the Day strip (unlimited). */
+  dealOfDay: boolean;
   /** Admin-set ordering (lower first); the default is last, so unsorted items fall back to A-Z. */
   sortCode: number;
   /** Set when a seller listed it. */
@@ -77,12 +82,15 @@ const productSchema = new Schema<IProduct>(
     rating: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0 },
     ratingLabel: { type: String, trim: true },
+    realRating: { type: Number, default: 0, min: 0, max: 5 },
+    realRatingCount: { type: Number, default: 0 },
     variantGroup: { type: String, trim: true, lowercase: true, index: true },
     variantLabel: { type: String, trim: true },
     soldCount: { type: Number, default: 0 },
     nameHi: { type: String, trim: true },
     points: { type: Number, default: 0, min: 0, max: 50 },
     cartFeatured: { type: Boolean, default: false, index: true },
+    dealOfDay: { type: Boolean, default: false, index: true },
     sortCode: { type: Number, default: 1_000_000 },
     seller: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     standardCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'StandardCategory' }], default: undefined, index: true },
@@ -96,6 +104,7 @@ productSchema.index({ isActive: 1, shop: 1, soldCount: -1, rating: -1 });
 productSchema.index({ isActive: 1, standardCategories: 1, sortCode: 1, name: 1 });
 productSchema.index({ name: 1 });
 productSchema.index({ isActive: 1, brand: 1 });
+productSchema.index({ isActive: 1, dealOfDay: 1, soldCount: -1 });
 // ISSUE-13: cover the default browse sort ({ sortCode, name }), "newest" and
 // "rating" sorts so they do not fall back to in-memory sorts / the 32 MB limit.
 productSchema.index({ isActive: 1, sortCode: 1, name: 1 });

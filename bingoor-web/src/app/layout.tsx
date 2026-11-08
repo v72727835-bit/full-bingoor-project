@@ -20,6 +20,7 @@ import { PwaRegister } from '../components/PwaRegister';
 import { AccountPrompt } from '../components/AccountPrompt';
 import { INSTALL_BOOT } from '../lib/install';
 import { RateOrderPrompt } from '../components/RateOrderPrompt';
+import { PopupPages } from '../components/PopupPages';
 
 /**
  * Plus Jakarta Sans, served from our own origin rather than Google's. It
@@ -107,6 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <BottomNav />
                     <OrderProgressToast />
                     <RateOrderPrompt />
+                    <PopupPages />
                     <PwaRegister />
                     <AccountPrompt />
                   </ToastProvider>

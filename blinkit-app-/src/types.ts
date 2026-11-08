@@ -115,6 +115,22 @@ export interface ProductSummary {
   inStock: boolean;
   shop?: { _id: string; name: string; slug: string; isOpen: boolean };
   category?: string | { _id: string; name: string; slug: string };
+  /** Every size of this item at the same shop (>= 2), so the card can offer "ADD - N options". */
+  variants?: CardVariant[];
+}
+
+/** A size of a product as it appears on a card's size picker. */
+export interface CardVariant {
+  _id: string;
+  slug: string;
+  label: string;
+  unit: string;
+  price: number;
+  mrp: number;
+  stock: number;
+  inStock: boolean;
+  images?: string[];
+  icon?: string;
 }
 
 export interface ProductDetail extends Omit<ProductSummary, 'shop' | 'category'> {
@@ -134,8 +150,10 @@ export interface ProductDetail extends Omit<ProductSummary, 'shop' | 'category'>
   };
   category?: { _id: string; name: string; slug: string };
   /** Other sizes of the same item - each one its own product. */
-  variants?: ProductVariant[];
+  variants?: CardVariant[];
   related: ProductSummary[];
+  /** A second row from one other child category under the same parent aisle. */
+  relatedOther?: { category: { name: string; slug: string }; items: ProductSummary[] } | null;
 }
 
 export interface ProductVariant {
@@ -461,12 +479,16 @@ export interface PublicSettings {
   socialOther?: { label: string; url: string }[];
   sixDayDays: number;
   codMessage?: string;
+  /** Daily cut-off after which cash on delivery is refused. */
+  codCutoff?: { enabled: boolean; time: string; blocked: boolean; message: string };
   /** True once the admin saved Razorpay keys. */
   onlinePaymentOn?: boolean;
   /** Public sign-in ids; null while that provider is not set up. */
   social?: { googleClientId: string | null; facebookAppId: string | null; instagramAppId?: string | null };
   deliverySlots?: { key: 'instant' | 'twoHour' | 'nextDay'; label: string }[];
   paymentOptions?: PayOptionDef[];
+  /** Full-screen promo pages shown on a timer. */
+  popup?: { enabled: boolean; intervalSeconds: number; pages: { image: string; link?: string | null }[] };
 }
 
 export interface FestivalSection {

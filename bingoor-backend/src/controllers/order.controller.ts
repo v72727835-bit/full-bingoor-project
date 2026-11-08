@@ -5,7 +5,8 @@ import { CUSTOMER_CANCELLABLE, IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { User } from '../models/User';
 import { cartPointsTotal, getCartView, lineIssue, resolveCart } from '../services/cart.service';
-import { paymentFeePct, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
+import { codTimeBlocked, paymentFeePct, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
+import { sendOrderWhatsApp } from '../services/whatsapp.service';
 import { loadSettings, productRules } from '../services/settings.service';
 import { createRazorpayOrder, razorpayEnabled, razorpayKeys, razorpayWebhookSecret, refundRazorpayPayment, verifyRazorpaySignature } from '../services/razorpay.service';
 import { PaymentIntent } from '../models/PaymentIntent';
@@ -86,6 +87,11 @@ async function runPlaceOrder(
   const groups = await resolveCart(userId);
   if (groups.length === 0) throw new ApiError(400, 'Your cart is empty');
   const { settings } = await loadSettings();
+  // Point 8: cash on delivery is switched off after the admin's daily cut-off (e.g. 7 PM IST).
+  if (paymentMethod === 'cod') {
+    const codCut = codTimeBlocked(settings);
+    if (codCut.blocked) throw new ApiError(400, codCut.message);
+  }
 
   // Hidden cart-points rule: checkout stays closed until the basket reaches the target.
   if (settings.cartPoints?.enabled && cartPointsTotal(groups) < settings.cartPoints.target) {
@@ -262,6 +268,20 @@ async function runPlaceOrder(
   }
   const placed = orders!;
 
+  // Point 31: confirm the order on WhatsApp (no-op until the server has the
+  // WhatsApp credentials). Never blocks or fails checkout.
+  if (placed.length) {
+    const first = placed[0];
+    const itemCount = placed.reduce((n, o) => n + (o.items?.length ?? 0), 0);
+    void sendOrderWhatsApp({
+      phone: first.address?.phone,
+      name: first.address?.name,
+      orderNumber: first.orderNumber,
+      total: round2(placed.reduce((sum, o) => sum + o.total, 0)),
+      itemCount,
+      paymentMethod,
+    });
+  }
 
   return {
     checkoutId,

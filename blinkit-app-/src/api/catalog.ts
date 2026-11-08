@@ -55,8 +55,9 @@ export async function fetchProducts(query: ProductQuery = {}): Promise<Paged<Pro
   return { items: data.data, meta: data.meta };
 }
 
-export async function fetchProduct(idOrSlug: string): Promise<ProductDetail> {
-  const { data } = await api.get<ApiEnvelope<ProductDetail>>(`/products/${idOrSlug}`);
+export async function fetchProduct(idOrSlug: string, point?: { lat: number; lng: number } | null): Promise<ProductDetail> {
+  const params = point ? { lat: point.lat, lng: point.lng } : undefined;
+  const { data } = await api.get<ApiEnvelope<ProductDetail>>(`/products/${idOrSlug}`, params ? { params } : undefined);
   return data.data;
 }
 
@@ -86,4 +87,10 @@ export async function fetchReviews(productId: string, page = 1): Promise<ReviewP
 
 export async function submitReview(productId: string, rating: number, comment?: string): Promise<void> {
   await api.put(`/products/${productId}/reviews`, comment ? { rating, comment } : { rating });
+}
+
+/** #35 "See all products": every top-up (50-point) product, for the cart sheet. */
+export async function fetchPointsProducts(): Promise<ProductSummary[]> {
+  const { data } = await api.get<ApiEnvelope<ProductSummary[]>>('/cart/points-products');
+  return data.data;
 }

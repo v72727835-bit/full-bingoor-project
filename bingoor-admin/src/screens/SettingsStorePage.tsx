@@ -68,6 +68,7 @@ export default function SettingsStorePage() {
       <ErrorBanner message={error} />
 
       <FestivalCard settings={settings} subCategories={subCategories} onSave={save} />
+      <PopupCard settings={settings} onSave={save} />
       <DeliveryCard settings={settings} subCategories={subCategories} onSave={save} />
       <CodCard settings={settings} subCategories={subCategories} onSave={save} />
       <RiderCard settings={settings} onSave={save} />
@@ -312,6 +313,9 @@ function CodCard({
 }) {
   const [picked, setPicked] = useState(() => new Set(settings.cod.disabledCategories.map(idOf)));
   const [message, setMessage] = useState(settings.cod.message);
+  const [cutoffEnabled, setCutoffEnabled] = useState(!!settings.cod.cutoffEnabled);
+  const [cutoffTime, setCutoffTime] = useState(settings.cod.cutoffTime || '19:00');
+  const [cutoffMessage, setCutoffMessage] = useState(settings.cod.cutoffMessage || 'After 7 PM COD option is not available');
   const [saving, setSaving] = useState(false);
 
   const toggle = (id: string) =>
@@ -324,7 +328,7 @@ function CodCard({
 
   const submit = async () => {
     setSaving(true);
-    await onSave({ cod: { disabledCategories: [...picked], message } });
+    await onSave({ cod: { disabledCategories: [...picked], message, cutoffEnabled, cutoffTime, cutoffMessage } });
     setSaving(false);
   };
 
@@ -347,6 +351,34 @@ function CodCard({
       <Field label="Message shown to the customer">
         <input value={message} onChange={(e) => setMessage(e.target.value)} maxLength={300} />
       </Field>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '16px 0' }} />
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <input type="checkbox" checked={cutoffEnabled} onChange={(e) => setCutoffEnabled(e.target.checked)} />
+        <span>Switch COD off after a time every day</span>
+      </label>
+      <div className="page-subtitle" style={{ marginBottom: 12 }}>
+        After this time (India time) customers still see Cash on delivery, but tapping it shows the message below and checkout
+        refuses COD until the next morning.
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ width: 150 }}>
+          <Field label="Turn off daily at (24h)">
+            <input type="time" value={cutoffTime} disabled={!cutoffEnabled} onChange={(e) => setCutoffTime(e.target.value)} />
+          </Field>
+        </div>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <Field label="Message after the cut-off">
+            <input
+              value={cutoffMessage}
+              disabled={!cutoffEnabled}
+              onChange={(e) => setCutoffMessage(e.target.value)}
+              maxLength={200}
+            />
+          </Field>
+        </div>
+      </div>
 
       <div className="modal-actions">
         <Button onClick={submit} disabled={saving}>
@@ -582,6 +614,58 @@ function ImageField({ label, hint, value, onChange }: { label: string; hint: str
         </div>
       </div>
     </Field>
+  );
+}
+
+function PopupCard({ settings, onSave }: { settings: Settings; onSave: (patch: Record<string, unknown>) => Promise<void> }) {
+  const p = settings.popup ?? { enabled: false, intervalSeconds: 210, pages: [] };
+  const [enabled, setEnabled] = useState(!!p.enabled);
+  const [minutes, setMinutes] = useState(String(Math.round((p.intervalSeconds || 210) / 6) / 10));
+  const [pages, setPages] = useState<{ image: string; link?: string }[]>(p.pages ?? []);
+  const [saving, setSaving] = useState(false);
+
+  const setPage = (i: number, patch: Partial<{ image: string; link: string }>) =>
+    setPages((cur) => cur.map((pg, idx) => (idx === i ? { ...pg, ...patch } : pg)));
+  const addPage = () => setPages((cur) => [...cur, { image: '', link: '' }]);
+  const removePage = (i: number) => setPages((cur) => cur.filter((_, idx) => idx !== i));
+
+  const submit = async () => {
+    setSaving(true);
+    const intervalSeconds = Math.min(3600, Math.max(15, Math.round((Number(minutes) || 3.5) * 60)));
+    await onSave({ popup: { enabled, intervalSeconds, pages: pages.filter((pg) => pg.image) } });
+    setSaving(false);
+  };
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 18 }}>
+      <h2 className="card-title">Pop-up pages</h2>
+      <div className="page-subtitle" style={{ marginBottom: 14 }}>
+        Upload promo pages shown full-screen in the app and website. A different page appears every few minutes and can be
+        closed with the cross. Turn them all off any time with the switch.
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        <span>Show pop-up pages</span>
+      </label>
+      <div style={{ width: 200, marginBottom: 14 }}>
+        <Field label="Show a page every (minutes)">
+          <input type="number" min={0.5} step={0.5} value={minutes} disabled={!enabled} onChange={(e) => setMinutes(e.target.value)} />
+        </Field>
+      </div>
+      {pages.map((pg, i) => (
+        <div key={i} style={{ border: '1px solid var(--border, #334155)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+          <ImageField label={`Page ${i + 1} image`} hint="A tall promo image (JPG/PNG) looks best." value={pg.image} onChange={(v) => setPage(i, { image: v })} />
+          <Field label="Link when tapped (optional)">
+            <input value={pg.link ?? ''} onChange={(e) => setPage(i, { link: e.target.value })} placeholder="/categories/snacks or https://…" />
+          </Field>
+          <Button type="button" size="sm" variant="ghost" onClick={() => removePage(i)}>Remove page</Button>
+        </div>
+      ))}
+      <Button type="button" size="sm" variant="secondary" onClick={addPage} style={{ marginBottom: 12 }}>Add a page</Button>
+      <div className="modal-actions">
+        <Button onClick={submit} disabled={saving}>{saving ? 'Saving…' : 'Save pop-up pages'}</Button>
+      </div>
+    </div>
   );
 }
 

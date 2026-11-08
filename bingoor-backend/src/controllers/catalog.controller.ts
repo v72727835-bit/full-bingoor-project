@@ -1,6 +1,6 @@
 import { FilterQuery, SortOrder, Types } from 'mongoose';
 import { pointsProductIds } from '../services/cart.service';
-import { paymentOptions } from '../services/pricing.service';
+import { codTimeBlocked, paymentOptions, quoteDelivery } from '../services/pricing.service';
 import { Banner } from '../models/Banner';
 import { Category } from '../models/Category';
 import { IProduct, Product } from '../models/Product';
@@ -283,10 +283,20 @@ export const home = asyncHandler(async (req, res) => {
     ...headliners.map(async (c) => railQuery(await categoryFamily(c._id as Types.ObjectId), 10, scope)),
   ]);
 
-  const deals = dealPool
-    .map(toCard)
-    .sort((a, b) => b.discountPercent - a.discountPercent)
-    .slice(0, 12);
+  // Point 27: when the admin has hand-picked products for Deals of the Day,
+  // show all of them (unlimited). Otherwise fall back to the automatic strip of
+  // the biggest everyday savings.
+  const pickedDeals = await Product.find({ ...scope, dealOfDay: true, $expr: { $gt: ['$mrp', '$price'] } })
+    .sort({ soldCount: -1, updatedAt: -1 })
+    .select(CARD_FIELDS)
+    .populate('shop', 'name slug isOpen')
+    .lean();
+  const deals = pickedDeals.length
+    ? pickedDeals.map(toCard).sort((a, b) => b.discountPercent - a.discountPercent)
+    : dealPool
+        .map(toCard)
+        .sort((a, b) => b.discountPercent - a.discountPercent)
+        .slice(0, 12);
 
   type Section = Record<string, unknown> & { type: string };
   const sections: Section[] = [];
@@ -392,8 +402,21 @@ export const home = asyncHandler(async (req, res) => {
 
   if (shops.length) sections.push({ type: 'storeTiles', id: 'stores', title: 'Stores near you', items: shops });
 
-  const instant = (await loadSettings()).settings.deliverySlots?.find((x) => x.key === 'instant');
-  const deliveryText = instant?.label || '19 minutes';
+  const homeSettings = (await loadSettings()).settings;
+  const instant = homeSettings.deliverySlots?.find((x) => x.key === 'instant');
+  // The admin's default promise (shown when no address/location is set).
+  const defaultText = instant?.label || '19 minutes';
+  // Point 1/2/6: with a location, show the real promise for that distance;
+  // without one, keep the admin's default. The nearest serving shop's distance
+  // drives the delivery days through the same pricing bands checkout uses.
+  let deliveryText = defaultText;
+  if (lat !== undefined && lng !== undefined) {
+    const nearestKm = (await shopsServing(lat, lng))[0]?.km ?? null;
+    if (nearestKm !== null) {
+      const q = quoteDelivery(homeSettings, { subtotal: 0, distanceKm: nearestKm, slot: 'instant' });
+      deliveryText = q.days >= 2 ? `${q.days} days delivery` : q.days === 1 ? 'Next day delivery' : defaultText;
+    }
+  }
   const deliveryMins = Number(/(\d+)\s*min/i.exec(deliveryText)?.[1]) || 19;
 
   // One tab per group, never two with the same label, even if the data drifts.
@@ -656,6 +679,7 @@ export const suggestProducts = asyncHandler(async (req, res) => {
 });
 
 export const getProduct = asyncHandler(async (req, res) => {
+  const { lat, lng } = req.query as unknown as { lat?: number; lng?: number };
   const product = await Product.findOne({ ...idOrSlugFilter(req.params.idOrSlug), isActive: true })
     .populate('shop', 'name slug logo isOpen deliveryFee minOrderAmount deliveryRadiusKm rating')
     .populate('category', 'name slug icon tint parent level')
@@ -674,6 +698,28 @@ export const getProduct = asyncHandler(async (req, res) => {
     .populate('shop', 'name slug isOpen')
     .lean();
 
+  // Point: a second row on the product page from one OTHER child category under
+  // the same parent aisle, so customers discover nearby ranges too.
+  const cat = product.category as unknown as { _id: Types.ObjectId; parent?: Types.ObjectId };
+  let relatedOther: { category: { name: string; slug: string }; items: ReturnType<typeof toCard>[] } | null = null;
+  if (cat?.parent) {
+    const siblings = await Category.find({ parent: cat.parent, _id: { $ne: cat._id }, isActive: true })
+      .select('name slug')
+      .lean();
+    for (const sib of siblings) {
+      const items = await Product.find({ category: sib._id, isActive: true, stock: { $gt: 0 }, _id: { $ne: product._id } })
+        .sort({ soldCount: -1 })
+        .limit(10)
+        .select(CARD_FIELDS)
+        .populate('shop', 'name slug isOpen')
+        .lean();
+      if (items.length) {
+        relatedOther = { category: { name: sib.name, slug: sib.slug }, items: items.map(toCard) };
+        break;
+      }
+    }
+  }
+
   // Other sizes of the same item (e.g. 100 g / 200 g / 500 g), cheapest first.
   const variants = product.variantGroup
     ? await Product.find({ variantGroup: product.variantGroup, isActive: true })
@@ -682,9 +728,22 @@ export const getProduct = asyncHandler(async (req, res) => {
         .lean()
     : [];
 
+  const card = toCard(product);
+  // Point 6: with a delivery location, show the real promise for this distance
+  // (the longer of the 6-day aisle rule and the distance-based days). Without a
+  // location, the card keeps the aisle rule only (the admin default applies).
+  if (lat !== undefined && lng !== undefined) {
+    const nearestKm = (await shopsServing(lat, lng))[0]?.km ?? null;
+    if (nearestKm !== null) {
+      const dq = quoteDelivery((await loadSettings()).settings, { subtotal: 0, distanceKm: nearestKm, slot: 'instant' });
+      const eff = Math.max(card.deliveryDays ?? 0, dq.days);
+      card.deliveryDays = eff > 0 ? eff : null;
+    }
+  }
   ok(res, {
-    ...toCard(product),
+    ...card,
     related: related.map(toCard),
+    relatedOther,
     variants: variants.map((v) => ({ ...v, label: v.variantLabel || v.unit, inStock: v.stock > 0 })),
   });
 });
@@ -736,6 +795,11 @@ export const publicSettings = asyncHandler(async (_req, res) => {
   const live = await getIntegrations();
   ok(res, {
     festival: { enabled: settings.festival?.enabled ?? false, name: settings.festival?.name || 'Festival', banner: settings.festival?.banner || null },
+    popup: {
+      enabled: settings.popup?.enabled ?? false,
+      intervalSeconds: settings.popup?.intervalSeconds ?? 210,
+      pages: (settings.popup?.pages ?? []).filter((p) => p.image).map((p) => ({ image: p.image, link: p.link || null })),
+    },
     appLinks: settings.appLinks ?? {},
     // Only the pages the admin filled in, so an empty one never shows an icon.
     socialLinks: Object.fromEntries(Object.entries(settings.socialLinks ?? {}).filter(([, v]) => typeof v === 'string' && /^https?:\/\//i.test(v))),
@@ -743,6 +807,7 @@ export const publicSettings = asyncHandler(async (_req, res) => {
     company: { name: settings.company?.name ?? '', logo: settings.company?.logo ?? '', tagline: settings.company?.tagline ?? '' },
     sixDayDays: settings.sixDay?.days ?? 6,
     codMessage: settings.cod?.message,
+    codCutoff: codTimeBlocked(settings),
     supportPhone: settings.supportPhone ?? '',
     // Only the slots the admin left on, so a hidden slot disappears from every client.
     deliverySlots: (settings.deliverySlots ?? []).filter((s) => s.enabled).map((s) => ({ key: s.key, label: s.label })),

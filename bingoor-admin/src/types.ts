@@ -103,6 +103,7 @@ export interface Product {
   points?: number;
   /** Admin tick: show this product in the cart / checkout top-up (50-point) list. */
   cartFeatured?: boolean;
+  dealOfDay?: boolean;
   /** Lower comes first; 1000000 (default) = A-Z after the sorted ones. */
   sortCode?: number | null;
   seller?: { _id: string; name: string; sellerId?: string; sellerProfile?: { firm?: string } } | string;
@@ -288,7 +289,8 @@ export interface Settings {
     sections: { title: string; category: CategoryRef | string }[];
   };
   sixDay: { days: number; categories: (CategoryRef | string)[] };
-  cod: { disabledCategories: (CategoryRef | string)[]; message: string };
+  popup?: { enabled: boolean; intervalSeconds: number; pages: { image: string; link?: string }[] };
+  cod: { disabledCategories: (CategoryRef | string)[]; message: string; cutoffEnabled?: boolean; cutoffTime?: string; cutoffMessage?: string };
   riderCodLimit: number;
   riderPay?: {
     enabled: boolean;
@@ -316,6 +318,7 @@ export interface Settings {
     bands: { upToKm: number; minOrder: number; freeAbove: number; fee: number; nextDay: boolean; redOrder: boolean }[];
     beyondDays: number;
     beyondMinOrder: number;
+    beyondFee?: number;
     beyondCodDisabled: boolean;
     beyondCodMessage: string;
     /** Point 37: the only categories a customer past the last row sees; empty = all. */

@@ -22,8 +22,9 @@ export async function sendRiderLocation(lat: number, lng: number): Promise<void>
   await api.post('/rider/location', { lat, lng });
 }
 
-export async function deliverRiderOrder(id: string, otp: string): Promise<RiderOrder> {
-  const { data } = await api.post<ApiEnvelope<RiderOrder>>(`/rider/orders/${id}/deliver`, { otp });
+export async function deliverRiderOrder(id: string, otp?: string): Promise<RiderOrder> {
+  const body = otp ? { otp } : { direct: true };
+  const { data } = await api.post<ApiEnvelope<RiderOrder>>(`/rider/orders/${id}/deliver`, body);
   return data.data;
 }
 

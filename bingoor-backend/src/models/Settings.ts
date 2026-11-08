@@ -15,6 +15,13 @@ export interface ISettings {
     /** Rows on the festival page: a title and the aisle its products come from. */
     sections: { title: string; category: Types.ObjectId }[];
   };
+  /** Point 30: full-screen promo pages shown on a timer in the app and website. */
+  popup: {
+    enabled: boolean;
+    /** How often a page appears, in seconds (default 210 = 3.5 min). */
+    intervalSeconds: number;
+    pages: { image: string; link?: string }[];
+  };
   sixDay: {
     /** Delivery promise for these aisles, in days. */
     days: number;
@@ -25,6 +32,12 @@ export interface ISettings {
     /** Sub categories (and everything under them) where cash on delivery is off. */
     disabledCategories: Types.ObjectId[];
     message: string;
+    /** When on, COD is refused every day from `cutoffTime` (IST) until midnight. */
+    cutoffEnabled: boolean;
+    /** "HH:MM" in 24h IST, e.g. "19:00" for 7 PM. */
+    cutoffTime: string;
+    /** Shown when a customer taps COD after the cutoff. */
+    cutoffMessage: string;
   };
   /** A rider is paused automatically once this much COD cash is unsettled. */
   riderCodLimit: number;
@@ -76,6 +89,8 @@ export interface ISettings {
     /** Beyond the last band: delivery in this many days, COD off. */
     beyondDays: number;
     beyondMinOrder: number;
+    /** Point: delivery fee for customers past the last band (30km+). Falls back to the last band's fee when unset. */
+    beyondFee?: number;
     /** Cash on delivery is refused past the last band when this is on. */
     beyondCodDisabled: boolean;
     /** Shown when a long-distance customer taps COD. */
@@ -136,6 +151,14 @@ const settingsSchema = new Schema<ISettings>(
         default: [],
       },
     },
+    popup: {
+      enabled: { type: Boolean, default: false },
+      intervalSeconds: { type: Number, default: 210, min: 15, max: 3600 },
+      pages: {
+        type: [{ image: { type: String, trim: true }, link: { type: String, trim: true }, _id: false }],
+        default: [],
+      },
+    },
     sixDay: {
       days: { type: Number, default: 6, min: 1, max: 60 },
       categories: [{ type: Schema.Types.ObjectId, ref: 'Category' }],
@@ -146,6 +169,9 @@ const settingsSchema = new Schema<ISettings>(
         type: String,
         default: 'Cash on delivery is not available for fruits and vegetables. You can buy other products with COD.',
       },
+      cutoffEnabled: { type: Boolean, default: false },
+      cutoffTime: { type: String, default: '19:00', trim: true },
+      cutoffMessage: { type: String, default: 'After 7 PM COD option is not available', trim: true },
     },
     riderCodLimit: { type: Number, default: 2000, min: 0 },
     riderPay: {
@@ -211,6 +237,7 @@ const settingsSchema = new Schema<ISettings>(
       },
       beyondDays: { type: Number, default: 3, min: 1 },
       beyondMinOrder: { type: Number, default: 199, min: 0 },
+      beyondFee: { type: Number, min: 0 },
       beyondCodDisabled: { type: Boolean, default: true },
       beyondCodMessage: { type: String, default: 'For long distance "COD" option is not available', trim: true },
       beyondCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'Category' }], default: [] },

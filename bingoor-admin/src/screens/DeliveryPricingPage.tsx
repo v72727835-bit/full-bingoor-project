@@ -250,6 +250,9 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
         <Field label="Long distance: minimum shopping (₹)">
           <input type="number" min={0} value={p.beyondMinOrder} onChange={(e) => setP({ ...p, beyondMinOrder: num(e.target.value) })} />
         </Field>
+        <Field label="Long distance: delivery fee (₹, blank = last row's fee)">
+          <input type="number" min={0} value={p.beyondFee ?? ''} onChange={(e) => setP({ ...p, beyondFee: e.target.value === '' ? undefined : num(e.target.value) })} placeholder="e.g. 80" />
+        </Field>
       </div>
 
       <div className="field-row">

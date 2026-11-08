@@ -21,3 +21,6 @@ export const tapTab = () => buzz(40);
 
 /** Confirming something the customer chose, e.g. the delivery time. */
 export const tapConfirm = () => buzz(50);
+
+/** Dropping an item into the cart - a short, Blinkit-style buzz on every ADD. */
+export const tapAdd = () => buzz(45);

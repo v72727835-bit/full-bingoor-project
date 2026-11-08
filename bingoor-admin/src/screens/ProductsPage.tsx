@@ -35,6 +35,7 @@ type FormState = {
   nameHi: string;
   points: string;
   cartFeatured: boolean;
+  dealOfDay: boolean;
   sortCode: string;
   standardCategories: string[];
   isActive: boolean;
@@ -66,6 +67,7 @@ const EMPTY_FORM: FormState = {
   nameHi: '',
   points: '0',
   cartFeatured: false,
+  dealOfDay: false,
   sortCode: '',
   standardCategories: [],
   isActive: true,
@@ -427,6 +429,7 @@ function ProductForm({
           nameHi: product.nameHi ?? '',
           points: String(product.points ?? 0),
           cartFeatured: !!product.cartFeatured,
+          dealOfDay: !!product.dealOfDay,
           sortCode: product.sortCode && product.sortCode < 1_000_000 ? String(product.sortCode) : '',
           standardCategories: (product.standardCategories ?? []).map(String),
           isActive: product.isActive,
@@ -501,15 +504,17 @@ function ProductForm({
           .filter(Boolean),
         images,
         video: form.video.trim(),
-        ratingLabel: form.ratingLabel.trim() || undefined,
-        // Empty boxes leave the stored rating alone.
-        ...(form.rating.trim() !== '' ? { rating: Math.min(5, Math.max(0, Number(form.rating) || 0)) } : {}),
-        ...(form.ratingCount.trim() !== '' ? { ratingCount: Math.max(0, Math.round(Number(form.ratingCount) || 0)) } : {}),
+        // Point 23: these are editable and removable - a blank box clears the
+        // shown value (sets it to 0 / empty) instead of leaving the old one.
+        ratingLabel: form.ratingLabel.trim(),
+        rating: form.rating.trim() === '' ? 0 : Math.min(5, Math.max(0, Number(form.rating) || 0)),
+        ratingCount: form.ratingCount.trim() === '' ? 0 : Math.max(0, Math.round(Number(form.ratingCount) || 0)),
         variantGroup: form.variantGroup.trim() || undefined,
         variantLabel: form.variantLabel.trim() || undefined,
         nameHi: form.nameHi.trim() || undefined,
         points: Math.min(50, Math.max(0, Number(form.points) || 0)),
         cartFeatured: form.cartFeatured,
+        dealOfDay: form.dealOfDay,
         // Blank = no sort code, so the item falls back to A-Z after the ones that have one.
         sortCode: form.sortCode.trim() === '' ? null : Number(form.sortCode),
         standardCategories: form.standardCategories,
@@ -668,6 +673,11 @@ function ProductForm({
         <label className="checkbox-row">
           <input type="checkbox" checked={form.cartFeatured} onChange={(e) => set('cartFeatured', e.target.checked)} />
           Show this product in the cart / checkout top-up list (the 50-point row customers see before paying)
+        </label>
+
+        <label className="checkbox-row">
+          <input type="checkbox" checked={form.dealOfDay} onChange={(e) => set('dealOfDay', e.target.checked)} />
+          Show this product in &ldquo;Deals of the day&rdquo; on the home screen (you can pick as many as you like)
         </label>
 
         <Field label="Standard category (home screen row, optional)">

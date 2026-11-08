@@ -7,9 +7,9 @@ const MARK = require('../assets/logo-mark.png');
 const MARK_WHITE = require('../assets/logo-white.png');
 
 /** Just the tile - app bars, splash, order confirmations. */
-export function LogoMark({ size = 40, style }: { size?: number; style?: StyleProp<ImageStyle> }) {
+export function LogoMark({ size = 40, onDark = false, style }: { size?: number; onDark?: boolean; style?: StyleProp<ImageStyle> }) {
   const px = ms(size);
-  return <Image source={MARK} style={[{ width: px, height: px }, style]} resizeMode="contain" accessibilityIgnoresInvertColors />;
+  return <Image source={onDark ? MARK_WHITE : MARK} style={[{ width: px, height: px }, style]} resizeMode="contain" accessibilityIgnoresInvertColors />;
 }
 
 /**

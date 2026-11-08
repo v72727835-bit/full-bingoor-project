@@ -45,6 +45,7 @@ export interface RawProduct {
   inStock?: boolean;
   reviews?: RawReview[];
   related?: RawProduct[];
+  relatedOther?: { category: { name: string; slug: string }; items: RawProduct[] } | null;
 }
 
 export interface RawVariant {
@@ -175,6 +176,7 @@ export interface Product {
   category?: Ref;
   reviews?: Review[];
   related?: Product[];
+  relatedOther?: { category: { name: string; slug: string }; items: Product[] } | null;
 }
 
 export interface ProductVariant {
@@ -457,7 +459,11 @@ export interface PublicSettings {
   socialOther?: { label: string; url: string }[];
   sixDayDays: number;
   codMessage?: string;
+  /** Daily cut-off after which cash on delivery is refused. */
+  codCutoff?: { enabled: boolean; time: string; blocked: boolean; message: string };
   supportPhone?: string;
+  /** Full-screen promo pages shown on a timer. */
+  popup?: { enabled: boolean; intervalSeconds: number; pages: { image: string; link?: string | null }[] };
   /** Only the delivery times the admin left on, in order. */
   deliverySlots?: { key: SlotKey; label: string }[];
   twoHourCharge?: { enabled: boolean; amount: number };

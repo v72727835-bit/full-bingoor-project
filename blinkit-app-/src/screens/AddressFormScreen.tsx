@@ -73,6 +73,26 @@ export function AddressFormScreen() {
   const locationTurn = useRef(0);
   const [locating, setLocating] = useState(false);
   const [stateOpen, setStateOpen] = useState(false);
+  const [confirmLoad, setConfirmLoad] = useState(false);
+  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const fieldY = useRef<Record<string, number>>({});
+  const onFieldLayout = (key: string) => (e: { nativeEvent: { layout: { y: number } } }) => {
+    fieldY.current[key] = e.nativeEvent.layout.y;
+  };
+  const scrollToError = (errs: Record<string, string>) => {
+    // Point: on save, take the customer to what needs fixing - up to the
+    // "use my current location" button when the pin is missing, otherwise down
+    // to the first field in the map form that has an error.
+    const order = ['location', 'name', 'phone', 'line1', 'line2', 'city', 'state', 'pincode'];
+    const first = order.find((k) => errs[k]);
+    if (!first) return;
+    if (first === 'location') {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    const y = fieldY.current[first] ?? 0;
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - ms(24)), animated: true });
+  };
 
   /** Pins the address to where the phone is now, so the rider can navigate to the door. */
   const locate = async () => {
@@ -82,6 +102,7 @@ export function AddressFormScreen() {
     try {
       const point = await getPhoneLocation();
       if (turn !== locationTurn.current) return;
+      setConfirmLoad(true);
       setLocation(point);
       setErrors((e) => ({ ...e, location: '' }));
     } catch (err) {
@@ -111,7 +132,7 @@ export function AddressFormScreen() {
     toast.success('Location pasted');
   };
 
-  const validate = (): boolean => {
+  const validate = (): Record<string, string> => {
     const next: Record<string, string> = {};
     if (form.name.trim().length < 2) next.name = 'Enter the name of whoever receives the order';
     if (!isValidPhone(form.phone)) next.phone = 'Enter a valid 10-digit mobile number';
@@ -122,12 +143,16 @@ export function AddressFormScreen() {
     if (!isValidPincode(form.pincode)) next.pincode = 'Pincode must be 6 digits';
     if (!location) next.location = 'Tap "Use my current location" so the rider can find you';
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return next;
   };
 
   const submit = async () => {
     setFormError(null);
-    if (!validate()) return;
+    const errs = validate();
+    if (Object.keys(errs).length) {
+      scrollToError(errs);
+      return;
+    }
 
     const payload: AddressInput = {
       label: form.label,
@@ -164,7 +189,7 @@ export function AddressFormScreen() {
       <AppHeader title={editing ? 'Edit address' : 'New address'} />
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {formError ? <Banner tone="danger" message={formError} style={styles.banner} /> : null}
 
           <Button
@@ -185,9 +210,10 @@ export function AddressFormScreen() {
             </Txt>
           ) : null}
 
-          <DeliveryMap destination={location} onPick={(pin) => {
+          <DeliveryMap destination={location} confirmOnLoad={confirmLoad} onPick={(pin) => {
             locationTurn.current++;
             setLocating(false);
+            setConfirmLoad(false);
             setLocation({ lat: pin.lat, lng: pin.lng });
             setErrors((e) => ({ ...e, location: '' }));
             const a = pin.address;
@@ -243,6 +269,7 @@ export function AddressFormScreen() {
             })}
           </View>
 
+          <View onLayout={onFieldLayout('name')}>
           <TextField
             label="Receiver's name"
             placeholder="Who should we hand the order to?"
@@ -254,7 +281,9 @@ export function AddressFormScreen() {
             onSubmitEditing={() => phoneRef.current?.focus()}
             error={errors.name}
           />
+          </View>
 
+          <View onLayout={onFieldLayout('phone')}>
           <TextField
             label="Mobile number"
             placeholder="9876543210"
@@ -269,7 +298,9 @@ export function AddressFormScreen() {
             error={errors.phone}
             hint="The delivery partner will call this number."
           />
+          </View>
 
+          <View onLayout={onFieldLayout('line1')}>
           <TextField
             label="Flat / house / building number"
             placeholder="Flat 12A, Shanti Apartment"
@@ -282,7 +313,9 @@ export function AddressFormScreen() {
             onSubmitEditing={() => line2Ref.current?.focus()}
             error={errors.line1}
           />
+          </View>
 
+          <View onLayout={onFieldLayout('line2')}>
           <TextField
             label="Street, area / colony"
             placeholder="Gandhi Nagar Road, Civil Lines"
@@ -295,6 +328,7 @@ export function AddressFormScreen() {
             onSubmitEditing={() => landmarkRef.current?.focus()}
             error={errors.line2}
           />
+          </View>
 
           <TextField
             label="Landmark (optional)"
@@ -346,6 +380,7 @@ export function AddressFormScreen() {
             </View>
           </View>
 
+          <View onLayout={onFieldLayout('pincode')}>
           <TextField
             label="Pincode"
             placeholder="231216"
@@ -358,6 +393,7 @@ export function AddressFormScreen() {
             onSubmitEditing={submit}
             error={errors.pincode}
           />
+          </View>
 
           <Pressable
             onPress={() => setForm((f) => ({ ...f, isDefault: !f.isDefault }))}

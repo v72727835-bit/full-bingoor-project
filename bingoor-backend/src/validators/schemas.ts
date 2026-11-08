@@ -207,7 +207,7 @@ export const riderLocationBody = z.object({
   lng: z.number().min(-180).max(180),
 });
 
-export const riderDeliveryBody = z.object({ otp: z.string().trim().regex(/^\d{4}$/, 'Enter the 4-digit delivery OTP') });
+export const riderDeliveryBody = z.object({ otp: z.string().trim().regex(/^\d{4}$/, 'Enter the 4-digit delivery OTP').optional(), direct: z.coerce.boolean().optional() }).refine((b) => !!b.otp || b.direct, { message: 'Enter the 4-digit delivery OTP' });
 
 /* ---------- admin ---------- */
 export const adminLoginBody = z.object({
@@ -253,6 +253,7 @@ export const adminProductBody = z.object({
   points: z.coerce.number().int().min(0).max(50).optional(),
   /** Admin tick: include this product in the cart / checkout top-up (50-point) list. */
   cartFeatured: z.coerce.boolean().optional(),
+  dealOfDay: z.coerce.boolean().optional(),
   /** Admin-only ordering; lower comes first. Empty = alphabetical. */
   sortCode: z.preprocess((v) => (v === null || v === '' ? 1_000_000 : v), z.coerce.number().int().min(0).max(1_000_000)).optional(),
   /** Home-screen rows (Standard categories) this product is shown in. */
@@ -444,7 +445,8 @@ export const adminSettingsBody = z
       })
       .partial(),
     sixDay: z.object({ days: z.coerce.number().int().min(1).max(60), categories: z.array(objectId).max(100) }).partial(),
-    cod: z.object({ disabledCategories: z.array(objectId).max(100), message: z.string().trim().max(300) }).partial(),
+        popup: z.object({ enabled: z.boolean(), intervalSeconds: z.coerce.number().int().min(15).max(3600), pages: z.array(z.object({ image: z.string().trim().max(500), link: z.string().trim().max(500).optional().or(z.literal('')) })).max(30) }).partial(),
+    cod: z.object({ disabledCategories: z.array(objectId).max(100), message: z.string().trim().max(300), cutoffEnabled: z.boolean(), cutoffTime: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/), cutoffMessage: z.string().trim().max(200) }).partial(),
     riderCodLimit: z.coerce.number().min(0).max(1_000_000),
     riderPay: z
       .object({
@@ -501,6 +503,7 @@ export const adminSettingsBody = z
           .max(10),
         beyondDays: z.coerce.number().int().min(1).max(30),
         beyondMinOrder: z.coerce.number().min(0).max(100000),
+        beyondFee: z.coerce.number().min(0).max(1000).optional(),
         beyondCodDisabled: z.coerce.boolean(),
         beyondCodMessage: z.string().trim().min(1).max(200),
         beyondCategories: z.array(objectId).max(300),
