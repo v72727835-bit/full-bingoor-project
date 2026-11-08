@@ -18,6 +18,9 @@ const schema = z.object({
    * keys. Falls back to the JWT refresh secret when unset (see utils/secretBox).
    */
   ENCRYPTION_SECRET: z.string().min(16, 'ENCRYPTION_SECRET must be at least 16 chars').optional(),
+  /** Optional: WhatsApp order alerts (Meta Cloud API). Both switch the feature on. */
+  WHATSAPP_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   /** Optional: online payments switch on when both are set. */
   /** Optional: Continue with Google / Facebook switch on when these are set. */
   GOOGLE_CLIENT_ID: z.string().optional(),
