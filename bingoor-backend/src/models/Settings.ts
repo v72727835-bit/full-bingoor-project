@@ -89,6 +89,8 @@ export interface ISettings {
     /** Beyond the last band: delivery in this many days, COD off. */
     beyondDays: number;
     beyondMinOrder: number;
+    /** Point: delivery fee for customers past the last band (30km+). Falls back to the last band's fee when unset. */
+    beyondFee?: number;
     /** Cash on delivery is refused past the last band when this is on. */
     beyondCodDisabled: boolean;
     /** Shown when a long-distance customer taps COD. */
@@ -235,6 +237,7 @@ const settingsSchema = new Schema<ISettings>(
       },
       beyondDays: { type: Number, default: 3, min: 1 },
       beyondMinOrder: { type: Number, default: 199, min: 0 },
+      beyondFee: { type: Number, min: 0 },
       beyondCodDisabled: { type: Boolean, default: true },
       beyondCodMessage: { type: String, default: 'For long distance "COD" option is not available', trim: true },
       beyondCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'Category' }], default: [] },

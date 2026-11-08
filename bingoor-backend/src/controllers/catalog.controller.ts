@@ -1,6 +1,6 @@
 import { FilterQuery, SortOrder, Types } from 'mongoose';
 import { pointsProductIds } from '../services/cart.service';
-import { codTimeBlocked, paymentOptions } from '../services/pricing.service';
+import { codTimeBlocked, paymentOptions, quoteDelivery } from '../services/pricing.service';
 import { Banner } from '../models/Banner';
 import { Category } from '../models/Category';
 import { IProduct, Product } from '../models/Product';
@@ -402,8 +402,21 @@ export const home = asyncHandler(async (req, res) => {
 
   if (shops.length) sections.push({ type: 'storeTiles', id: 'stores', title: 'Stores near you', items: shops });
 
-  const instant = (await loadSettings()).settings.deliverySlots?.find((x) => x.key === 'instant');
-  const deliveryText = instant?.label || '19 minutes';
+  const homeSettings = (await loadSettings()).settings;
+  const instant = homeSettings.deliverySlots?.find((x) => x.key === 'instant');
+  // The admin's default promise (shown when no address/location is set).
+  const defaultText = instant?.label || '19 minutes';
+  // Point 1/2/6: with a location, show the real promise for that distance;
+  // without one, keep the admin's default. The nearest serving shop's distance
+  // drives the delivery days through the same pricing bands checkout uses.
+  let deliveryText = defaultText;
+  if (lat !== undefined && lng !== undefined) {
+    const nearestKm = (await shopsServing(lat, lng))[0]?.km ?? null;
+    if (nearestKm !== null) {
+      const q = quoteDelivery(homeSettings, { subtotal: 0, distanceKm: nearestKm, slot: 'instant' });
+      deliveryText = q.days >= 2 ? `${q.days} days delivery` : q.days === 1 ? 'Next day delivery' : defaultText;
+    }
+  }
   const deliveryMins = Number(/(\d+)\s*min/i.exec(deliveryText)?.[1]) || 19;
 
   // One tab per group, never two with the same label, even if the data drifts.
@@ -666,6 +679,7 @@ export const suggestProducts = asyncHandler(async (req, res) => {
 });
 
 export const getProduct = asyncHandler(async (req, res) => {
+  const { lat, lng } = req.query as unknown as { lat?: number; lng?: number };
   const product = await Product.findOne({ ...idOrSlugFilter(req.params.idOrSlug), isActive: true })
     .populate('shop', 'name slug logo isOpen deliveryFee minOrderAmount deliveryRadiusKm rating')
     .populate('category', 'name slug icon tint parent level')
@@ -714,8 +728,20 @@ export const getProduct = asyncHandler(async (req, res) => {
         .lean()
     : [];
 
+  const card = toCard(product);
+  // Point 6: with a delivery location, show the real promise for this distance
+  // (the longer of the 6-day aisle rule and the distance-based days). Without a
+  // location, the card keeps the aisle rule only (the admin default applies).
+  if (lat !== undefined && lng !== undefined) {
+    const nearestKm = (await shopsServing(lat, lng))[0]?.km ?? null;
+    if (nearestKm !== null) {
+      const dq = quoteDelivery((await loadSettings()).settings, { subtotal: 0, distanceKm: nearestKm, slot: 'instant' });
+      const eff = Math.max(card.deliveryDays ?? 0, dq.days);
+      card.deliveryDays = eff > 0 ? eff : null;
+    }
+  }
   ok(res, {
-    ...toCard(product),
+    ...card,
     related: related.map(toCard),
     relatedOther,
     variants: variants.map((v) => ({ ...v, label: v.variantLabel || v.unit, inStock: v.stock > 0 })),

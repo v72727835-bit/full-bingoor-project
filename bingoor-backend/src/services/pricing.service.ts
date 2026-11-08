@@ -77,7 +77,7 @@ export function quoteDelivery(
       const last = bands[bands.length - 1];
       minOrder = pricing.beyondMinOrder ?? last.minOrder;
       freeAbove = last.freeAbove;
-      fee = last.fee;
+      fee = pricing.beyondFee ?? last.fee;
       days = pricing.beyondDays ?? 3;
       longDistance = true;
     }

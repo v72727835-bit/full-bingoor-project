@@ -503,6 +503,7 @@ export const adminSettingsBody = z
           .max(10),
         beyondDays: z.coerce.number().int().min(1).max(30),
         beyondMinOrder: z.coerce.number().min(0).max(100000),
+        beyondFee: z.coerce.number().min(0).max(1000).optional(),
         beyondCodDisabled: z.coerce.boolean(),
         beyondCodMessage: z.string().trim().min(1).max(200),
         beyondCategories: z.array(objectId).max(300),

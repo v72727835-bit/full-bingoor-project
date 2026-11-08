@@ -60,8 +60,8 @@ export const catalogApi = createApi({
     products: build.query<Paged<ProductSummary>, ProductQuery & { at?: string }>({
       queryFn: ({ at: _area, ...q }) => run(() => fetchProducts(q)),
     }),
-    product: build.query<ProductDetail, string>({
-      queryFn: id => run(() => fetchProduct(id)),
+    product: build.query<ProductDetail, { id: string; at?: string; point?: { lat: number; lng: number } | null }>({
+      queryFn: ({ id, point }) => run(() => fetchProduct(id, point)),
       // Stock and price move; a product page should not be minutes old.
       keepUnusedDataFor: 60,
     }),

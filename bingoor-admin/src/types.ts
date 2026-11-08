@@ -318,6 +318,7 @@ export interface Settings {
     bands: { upToKm: number; minOrder: number; freeAbove: number; fee: number; nextDay: boolean; redOrder: boolean }[];
     beyondDays: number;
     beyondMinOrder: number;
+    beyondFee?: number;
     beyondCodDisabled: boolean;
     beyondCodMessage: string;
     /** Point 37: the only categories a customer past the last row sees; empty = all. */

@@ -25,6 +25,7 @@ import { useTabs } from '../navigation/TabsContext';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, currency, gutter, hitSlop, ms, radius, space, themed } from '../theme';
 import { useProductQuery } from '../store/catalogApi';
+import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
 import { ReviewPage } from '../types';
 import { Button } from '../ui/Button';
 import { Banner, EmptyState, FullScreenLoader } from '../ui/Feedback';
@@ -70,7 +71,8 @@ export function ProductDetailScreen() {
 
   // The product comes from the Redux cache, so opening it again (or from a
   // second rail) is instant; reviews load alongside once we know its id.
-  const { data, error: queryError, refetch } = useProductQuery(params.id);
+  const area = useDeliveryPointKey();
+  const { data, error: queryError, refetch } = useProductQuery({ id: params.id, at: area, point: deliveryPointParams() });
   const product = data ?? null;
   const error = typeof queryError === 'string' ? queryError : queryError ? 'Something went wrong' : null;
   const load = useCallback(() => void refetch(), [refetch]);

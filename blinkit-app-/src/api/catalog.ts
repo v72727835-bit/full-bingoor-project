@@ -55,8 +55,9 @@ export async function fetchProducts(query: ProductQuery = {}): Promise<Paged<Pro
   return { items: data.data, meta: data.meta };
 }
 
-export async function fetchProduct(idOrSlug: string): Promise<ProductDetail> {
-  const { data } = await api.get<ApiEnvelope<ProductDetail>>(`/products/${idOrSlug}`);
+export async function fetchProduct(idOrSlug: string, point?: { lat: number; lng: number } | null): Promise<ProductDetail> {
+  const params = point ? { lat: point.lat, lng: point.lng } : undefined;
+  const { data } = await api.get<ApiEnvelope<ProductDetail>>(`/products/${idOrSlug}`, params ? { params } : undefined);
   return data.data;
 }
 
