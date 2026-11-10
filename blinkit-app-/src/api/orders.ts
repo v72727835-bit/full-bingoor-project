@@ -7,6 +7,8 @@ export async function placeOrder(input: {
   note?: string;
   /** Which online way to pay (UPI, card, net banking...): its charge is added to the bill. */
   payOption?: string;
+  /** A thank-you for the delivery partner, in rupees (0-500); all of it goes to the rider. */
+  tip?: number;
 }): Promise<PlaceOrderResult | PaymentRequired> {
   const { data } = await api.post<ApiEnvelope<PlaceOrderResult | PaymentRequired>>('/orders', input);
   return data.data;

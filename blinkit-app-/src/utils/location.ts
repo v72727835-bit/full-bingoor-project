@@ -1,5 +1,5 @@
 import Geolocation, { GeolocationError, GeolocationResponse } from '@react-native-community/geolocation';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { Alert, Linking, PermissionsAndroid, Platform } from 'react-native';
 
 export type LocationProblem = 'denied' | 'off' | 'timeout';
 
@@ -66,3 +66,29 @@ export const problemFromError = (e: unknown): LocationProblem => {
   const m = (e as Error | undefined)?.message;
   return m === 'denied' || m === 'off' ? m : 'timeout';
 };
+
+/**
+ * Takes the customer straight to the phone screen where Location can be switched on
+ * (an app cannot turn GPS on by itself - the phone only lets the customer do that).
+ */
+export async function openLocationSettings(problem: LocationProblem): Promise<void> {
+  try {
+    if (problem === 'off' && Platform.OS === 'android') await Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS');
+    else await Linking.openSettings();
+  } catch {
+    await Linking.openSettings().catch(() => undefined);
+  }
+}
+
+/** One tap to fix it: explains the problem and offers the settings screen. */
+export function offerLocationFix(problem: LocationProblem): void {
+  if (problem === 'timeout') return;
+  Alert.alert(
+    problem === 'off' ? 'Turn on location' : 'Allow location',
+    locationMessage(problem),
+    [
+      { text: 'Not now', style: 'cancel' },
+      { text: problem === 'off' ? 'Turn on location' : 'Open settings', onPress: () => void openLocationSettings(problem) },
+    ],
+  );
+}

@@ -83,6 +83,9 @@ export function CheckoutScreen() {
   const [fees, setFees] = useState<Record<string, number> | null>(null);
   // Delivery days for the chosen address, from the server's quote (0 = same day).
   const [quoteDays, setQuoteDays] = useState<number | null>(null);
+  // A tip for the delivery partner (rupees); the server adds it to the first order and pays all of it to the rider.
+  const [tip, setTip] = useState(0);
+  const [customTip, setCustomTip] = useState('');
   const options = (settings?.paymentOptions?.length ? settings.paymentOptions : FALLBACK_PAY).filter(
     (o) => o.enabled !== false && (o.key === 'cod' || settings?.onlinePaymentOn),
   );
@@ -100,7 +103,7 @@ export function CheckoutScreen() {
   const feeFor = (o: PayOptionDef) => fees?.[o.key] ?? localFee(o, cart.total);
   const chosen = options.find((o) => o.key === opt);
   const payFee = chosen ? feeFor(chosen) : 0;
-  const payable = Math.round((cart.total + payFee) * 100) / 100;
+  const payable = Math.round((cart.total + payFee + tip) * 100) / 100;
 
   // Items from aisles where the admin turned cash on delivery off.
   const codBlocked = cart.groups
@@ -225,6 +228,7 @@ export function CheckoutScreen() {
         addressId: selected._id,
         paymentMethod: payment,
         note: note.trim() || undefined,
+        ...(tip > 0 ? { tip } : {}),
         ...(payment === 'online' && opt !== 'cod' ? { payOption: opt } : {}),
       });
       if ('requiresPayment' in result) {
@@ -488,6 +492,44 @@ export function CheckoutScreen() {
           ))}
         </View>
 
+        {/* -------------------------------------------------- tip --- */}
+        <View style={styles.section}>
+          <Txt variant="h3" style={styles.sectionTitle}>
+            Tip your delivery partner
+          </Txt>
+          <Txt variant="caption" tone="muted" style={{ marginBottom: space.sm }}>
+            Your kindness means a lot. All of the tip goes to the delivery partner.
+          </Txt>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {[10, 20, 30, 50].map((n) => {
+              const on = tip === n;
+              return (
+                <Pressable
+                  key={n}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => { setCustomTip(''); setTip(on ? 0 : n); }}
+                  style={[styles.tipChip, on && styles.tipChipOn]}
+                >
+                  <Txt variant="label" style={on ? styles.tipChipTextOn : undefined}>{`₹${n}`}</Txt>
+                </Pressable>
+              );
+            })}
+          </View>
+          <TextField
+            placeholder="Other amount (max ₹500)"
+            keyboardType="number-pad"
+            maxLength={3}
+            value={customTip}
+            onChangeText={(v) => {
+              const digits = v.replace(/\D/g, '').slice(0, 3);
+              setCustomTip(digits);
+              setTip(Math.min(500, Number(digits) || 0));
+            }}
+            containerStyle={{ marginTop: space.sm }}
+          />
+        </View>
+
         {/* ---------------------------------------------------- note -- */}
         <View style={styles.section}>
           <Txt variant="h3" style={styles.sectionTitle}>
@@ -513,6 +555,7 @@ export function CheckoutScreen() {
           <Row label="Item total" value={currency(cart.subtotal)} />
           <Row label="Delivery fee" value={cart.deliveryFee === 0 ? 'FREE' : currency(cart.deliveryFee)} highlight={cart.deliveryFee === 0} />
           {payFee > 0 && chosen ? <Row label={`${chosen.label} charges`} value={currency(payFee)} /> : null}
+          {tip > 0 ? <Row label="Tip for delivery partner" value={currency(tip)} /> : null}
           <View style={styles.billDivider} />
           <View style={styles.row}>
             <Txt variant="h3">Amount payable</Txt>
@@ -520,7 +563,7 @@ export function CheckoutScreen() {
           </View>
           {payment === 'cod' ? (
             <Txt variant="caption" tone="faint" style={styles.codNote}>
-              Please keep {currency(cart.total)} ready for the delivery partner.
+              Please keep {currency(cart.total + tip)} ready for the delivery partner.
             </Txt>
           ) : null}
         </View>
@@ -607,6 +650,9 @@ const styles = themed(({ c, elevation }) => ({
   content: { paddingVertical: space.lg, paddingBottom: ms(110) },
   block: { marginHorizontal: gutter, marginBottom: space.lg },
 
+  tipChip: { paddingHorizontal: ms(16), paddingVertical: ms(8), borderRadius: radius.pill, borderWidth: 1.5, borderColor: c.border, backgroundColor: c.surface },
+  tipChipOn: { borderColor: c.brand, backgroundColor: c.brandSurface },
+  tipChipTextOn: { color: c.brandInk, fontWeight: '800' },
   section: {
     marginHorizontal: gutter,
     marginBottom: space.lg,

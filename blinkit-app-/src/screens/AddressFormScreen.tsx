@@ -29,7 +29,7 @@ import { Txt } from '../ui/Text';
 import { TextField, TextInputRef } from '../ui/TextField';
 import { useToast } from '../ui/Toast';
 import { isValidPhone, isValidPincode, normalizePhone } from '../utils/validation';
-import { getPhoneLocation, locationMessage, problemFromError } from '../utils/location';
+import { getPhoneLocation, locationMessage, offerLocationFix, problemFromError } from '../utils/location';
 
 const LABELS: { key: AddressLabel; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
   { key: 'home', label: 'Home', icon: 'home-outline' },
@@ -106,7 +106,11 @@ export function AddressFormScreen() {
       setLocation(point);
       setErrors((e) => ({ ...e, location: '' }));
     } catch (err) {
-      if (turn === locationTurn.current) setFormError(locationMessage(problemFromError(err)));
+      if (turn === locationTurn.current) {
+        const problem = problemFromError(err);
+        setFormError(locationMessage(problem));
+        offerLocationFix(problem);
+      }
     } finally {
       if (turn === locationTurn.current) setLocating(false);
     }
