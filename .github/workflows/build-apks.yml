@@ -1,5 +1,5 @@
 # Builds the Bingoor customer, rider and warehouse APKs.
-# Every run keeps the APKs as a downloadable artifact. A run on main also force-pushes them to
+# Every run keeps the APKs as a downloadable artifact for one day. A run on main also force-pushes them to
 # the `apk-builds` branch and asks the server to publish them (deploy/docker-deploy.sh, "apks"),
 # so https://api.bingoor.com/downloads/bingoor-<app>.apk always serves the latest build.
 name: Build APKs
@@ -65,7 +65,10 @@ jobs:
         with:
           name: bingoor-${{ matrix.app }}
           path: bingoor-${{ matrix.app }}.apk
-          retention-days: 30
+          # The publish job below picks these up within minutes, and the latest APKs also live on the
+          # apk-builds branch and api.bingoor.com/downloads. A 30-day keep filled the repository's
+          # artifact storage (3 APKs per run) and made every later run fail at this step.
+          retention-days: 1
 
   publish:
     needs: build
