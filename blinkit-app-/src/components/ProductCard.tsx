@@ -1,7 +1,7 @@
 import Icon from '@react-native-vector-icons/ionicons/static';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
-import { useCart } from '../context/CartContext';
+import { useCartItem } from '../context/CartContext';
 import { NotifyMeSheet } from './NotifyMeSheet';
 import { VariantPickerSheet } from './VariantPickerSheet';
 import { tapAdd } from '../utils/haptics';
@@ -30,8 +30,8 @@ interface Props {
  * then a centred column: name, price, rating, delivery time. The name keeps a
  * fixed two-line height so a row of cards lines up on the price.
  */
-export function ProductCard({ product, width, onPress, deliveryText = '19 min', style }: Props) {
-  const { quantityOf, add, setQuantity, remove, pending } = useCart();
+function ProductCardBase({ product, width, onPress, deliveryText = '19 min', style }: Props) {
+  const { quantity: qty, add, setQuantity, remove } = useCartItem(product._id);
   const { isSaved, toggle } = useWishlist();
   const localName = useLocalName();
   const [notifyOpen, setNotifyOpen] = useState(false);
@@ -39,7 +39,6 @@ export function ProductCard({ product, width, onPress, deliveryText = '19 min', 
   const variantCount = product.variants?.length ?? 0;
   const hasVariants = variantCount >= 2;
 
-  const qty = quantityOf(product._id);
   const busy = false; // Quantities render immediately; requests are serialized by CartProvider.
   const saved = isSaved(product._id);
   const soldOut = !product.inStock;
@@ -318,3 +317,13 @@ const styles = themed(({ c }) => ({
   },
   eta: { flexDirection: 'row', alignItems: 'center', gap: ms(3) },
 }));
+
+/**
+ * Cards on a long list only re-render when their product, width, delivery text or
+ * style change. `onPress` is deliberately ignored: callers build it inline on every
+ * render, and it only ever opens this same product.
+ */
+export const ProductCard = React.memo(
+  ProductCardBase,
+  (a, b) => a.product === b.product && a.width === b.width && a.deliveryText === b.deliveryText && a.style === b.style,
+);

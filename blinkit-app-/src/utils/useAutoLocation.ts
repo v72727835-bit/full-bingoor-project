@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { deliveryPointParams, setDeliveryPoint } from '../store/deliveryPoint';
-import { getPhoneLocation } from './location';
+import { getPhoneLocation, problemFromError, setLocationProblem } from './location';
 
 /**
  * When the app opens without a delivery pin (a visitor, or a customer with no
@@ -19,8 +19,12 @@ export function useAutoLocation() {
     getPhoneLocation()
       .then((point) => {
         if (!cancelled && !deliveryPointParams()) setDeliveryPoint(point);
+        setLocationProblem(null);
       })
-      .catch(() => undefined);
+      .catch((err) => {
+        // Not a popup: Home shows a small tappable hint that opens the phone's location settings.
+        if (!cancelled) setLocationProblem(problemFromError(err));
+      });
     return () => {
       cancelled = true;
     };

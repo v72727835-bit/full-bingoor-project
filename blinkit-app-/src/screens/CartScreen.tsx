@@ -1,13 +1,14 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import { useTabs } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useHomeQuery } from '../store/catalogApi';
-import { useDeliveryPointKey } from '../store/deliveryPoint';
+import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
+import { fetchCartQuote } from '../api/orders';
 import { shortDelivery } from '../utils/delivery';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { CartGroup, CartItem } from '../types';
@@ -40,6 +41,20 @@ export function CartScreen({ active }: TabScreenProps) {
   const cartItems = cart.groups.flatMap((g) => g.items);
   const allSlow = cartItems.length > 0 && cartItems.every((i) => (i.deliveryDays ?? 0) > 1);
   const slowDays = allSlow ? cartItems.reduce((max, i) => Math.max(max, i.deliveryDays ?? 0), 0) : 0;
+
+  // The shopping minimum for this customer's distance (e.g. Rs 199 nearby, Rs 1199 far), the same
+  // rule the website shows first. Without a priced quote the shops' own minimums stand in.
+  const [minQuote, setMinQuote] = useState<{ subtotal: number; minOrder: number } | null>(null);
+  useEffect(() => {
+    if (!active || cart.itemCount === 0) return;
+    let live = true;
+    fetchCartQuote(deliveryPointParams())
+      .then((q) => { if (live) setMinQuote({ subtotal: q.subtotal, minOrder: q.minOrder }); })
+      .catch(() => { if (live) setMinQuote(null); });
+    return () => { live = false; };
+  }, [active, area, cart.subtotal, cart.itemCount]);
+  const minMet = minQuote ? minQuote.subtotal >= minQuote.minOrder : cart.groups.every((g) => g.meetsMinOrder);
+  const minShort = minQuote ? Math.max(0, Math.ceil(minQuote.minOrder - minQuote.subtotal)) : 0;
 
   // Prices and stock move while the user is elsewhere, so re-check on entry.
   useEffect(() => {
@@ -97,6 +112,14 @@ export function CartScreen({ active }: TabScreenProps) {
             Delivery in {slowDays ? `${slowDays} days` : shortDelivery(home)}
           </Txt>
         </View>
+
+        {!minMet && minQuote ? (
+          <Banner
+            tone="warning"
+            message={`Shop at least ${currency(minQuote.minOrder)} to check out - add ${currency(minShort)} more.`}
+            style={styles.topBanner}
+          />
+        ) : null}
 
         {slowDays ? (
           <Banner
@@ -170,7 +193,7 @@ export function CartScreen({ active }: TabScreenProps) {
         </View>
 
         {/* The cart-points rule (admin panel): a top-up product before checkout. */}
-        <CartPoints ready={cart.groups.every((g) => g.meetsMinOrder)} />
+        <CartPoints ready={minMet} />
 
         <Pressable onPress={() => goToTab('home')} accessibilityRole="button" style={styles.keepShopping} hitSlop={8}>
           <Ionicons name="add-circle-outline" size={ms(17)} color={colors.brand} />
@@ -194,10 +217,10 @@ export function CartScreen({ active }: TabScreenProps) {
             </Txt>
           </View>
           <Button
-            label={cart.hasIssues ? 'Fix items to continue' : pointsShort ? 'Add 1 product above' : 'Proceed to checkout'}
-            iconRight={cart.hasIssues || pointsShort ? undefined : 'arrow-forward'}
+            label={cart.hasIssues ? 'Fix items to continue' : !minMet && minQuote ? `Add ${currency(minShort)} more to continue` : pointsShort ? 'Add 1 product above' : 'Proceed to checkout'}
+            iconRight={cart.hasIssues || pointsShort || !minMet ? undefined : 'arrow-forward'}
             size="lg"
-            disabled={cart.hasIssues || pointsShort}
+            disabled={cart.hasIssues || pointsShort || !minMet}
             onPress={() => navigation.navigate('Checkout')}
             style={styles.barBtn}
           />

@@ -48,3 +48,11 @@ export async function reorder(id: string): Promise<{ cart: CartView; skipped: { 
   );
   return data.data;
 }
+
+/** The shopping minimum for the customer's distance (e.g. 199 nearby, 1199 far) against what is in the basket. */
+export async function fetchCartQuote(point?: { lat: number; lng: number } | null): Promise<{ subtotal: number; minOrder: number; meetsMinOrder: boolean }> {
+  const { data } = await api.get<ApiEnvelope<{ subtotal: number; minOrder: number; meetsMinOrder: boolean }>>('/cart/quote', {
+    params: { slot: 'instant', ...(point ? { lat: point.lat, lng: point.lng } : {}) },
+  });
+  return data.data;
+}

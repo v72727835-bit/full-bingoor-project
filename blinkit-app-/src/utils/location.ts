@@ -1,4 +1,5 @@
 import Geolocation, { GeolocationError, GeolocationResponse } from '@react-native-community/geolocation';
+import { useSyncExternalStore } from 'react';
 import { Alert, Linking, PermissionsAndroid, Platform } from 'react-native';
 
 export type LocationProblem = 'denied' | 'off' | 'timeout';
@@ -90,5 +91,21 @@ export function offerLocationFix(problem: LocationProblem): void {
       { text: 'Not now', style: 'cancel' },
       { text: problem === 'off' ? 'Turn on location' : 'Open settings', onPress: () => void openLocationSettings(problem) },
     ],
+  );
+}
+
+/* The last reason the phone's location could not be read, shared so Home can show a tappable hint. */
+let currentProblem: LocationProblem | null = null;
+const problemListeners = new Set<() => void>();
+export function setLocationProblem(next: LocationProblem | null) {
+  if (next === currentProblem) return;
+  currentProblem = next;
+  problemListeners.forEach((l) => l());
+}
+export function useLocationProblem(): LocationProblem | null {
+  return useSyncExternalStore(
+    (l) => { problemListeners.add(l); return () => { problemListeners.delete(l); }; },
+    () => currentProblem,
+    () => null,
   );
 }
