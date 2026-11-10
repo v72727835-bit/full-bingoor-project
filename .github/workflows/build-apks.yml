@@ -50,6 +50,18 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
 
+      # GitHub-hosted runners are small and the Android build matrix can fill the disk quickly.
+      # Remove large preinstalled tooling before Gradle compiles all three apps.
+      - name: Free disk space
+        run: |
+          echo "Disk before cleanup:"
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/local/lib/node_modules/@angular /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/share/powershell
+          sudo apt-get clean || true
+          sudo docker image prune -af > /dev/null || true
+          echo "Disk after cleanup:"
+          df -h /
+
       - name: npm install
         working-directory: ${{ matrix.dir }}
         run: npm install --no-audit --no-fund
@@ -58,7 +70,7 @@ jobs:
         working-directory: ${{ matrix.dir }}/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --stacktrace
           cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/bingoor-${{ matrix.app }}.apk"
 
       - uses: actions/upload-artifact@v4
