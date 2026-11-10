@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows, x64, bingoor]
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -50,17 +50,9 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
 
-      # GitHub-hosted runners are small and the Android build matrix can fill the disk quickly.
-      # Remove large preinstalled tooling before Gradle compiles all three apps.
-      - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h /
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/local/lib/node_modules/@angular /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/share/powershell
-          sudo apt-get clean || true
-          sudo docker image prune -af > /dev/null || true
-          echo "Disk after cleanup:"
-          df -h /
+      - name: Show available disk space
+        shell: pwsh
+        run: Get-PSDrive -PSProvider FileSystem | Select-Object Name, Free, Used
 
       - name: npm install
         working-directory: ${{ matrix.dir }}
@@ -68,10 +60,10 @@ jobs:
 
       - name: gradlew assembleRelease
         working-directory: ${{ matrix.dir }}/android
+        shell: pwsh
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/bingoor-${{ matrix.app }}.apk"
+          .\gradlew.bat assembleRelease --no-daemon --stacktrace
+          Copy-Item app/build/outputs/apk/release/app-release.apk "$env:GITHUB_WORKSPACE/bingoor-${{ matrix.app }}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -85,7 +77,7 @@ jobs:
   publish:
     needs: build
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows, x64, bingoor]
     permissions:
       contents: write
     concurrency:
@@ -98,6 +90,7 @@ jobs:
 
       # One commit, force-pushed, so old APKs do not pile up in the repository history.
       - name: Push the APKs to the apk-builds branch
+        shell: bash
         run: |
           ls -la bingoor-*.apk
           git init -q -b apk-builds
@@ -109,6 +102,7 @@ jobs:
 
       # Same key as deploy.yml. "apks" only copies the APKs: no rebuild, the sites stay up.
       - name: Publish them on api.bingoor.com/downloads
+        shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}

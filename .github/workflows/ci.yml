@@ -19,7 +19,7 @@ concurrency:
 jobs:
   backend:
     name: Backend (typecheck, build, tests)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows, x64, bingoor]
     timeout-minutes: 15
     defaults:
       run:
@@ -40,7 +40,7 @@ jobs:
 
   customer-app:
     name: Customer app (blinkit-app-) typecheck
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows, x64, bingoor]
     timeout-minutes: 15
     defaults:
       run:
@@ -57,7 +57,7 @@ jobs:
 
   rider-app:
     name: Rider app (bingoor-mobile) typecheck
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows, x64, bingoor]
     timeout-minutes: 15
     defaults:
       run:
