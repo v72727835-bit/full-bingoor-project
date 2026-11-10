@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CartDock } from '../components/CartDock';
 import { OrderProgressPopup } from '../components/OrderProgressPopup';
@@ -9,7 +9,8 @@ import { FestivalScreen } from '../screens/FestivalScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
-import { usePublicSettingsQuery } from '../store/catalogApi';
+import { catalogApi, usePublicSettingsQuery } from '../store/catalogApi';
+import { useDeliveryPointKey } from '../store/deliveryPoint';
 import { themed } from '../theme';
 import { TabBar, TabDef } from './TabBar';
 import { useAutoLocation } from '../utils/useAutoLocation';
@@ -22,6 +23,15 @@ import { useTabs } from './TabsContext';
  * unmounted, so scroll position and loaded lists survive a tab switch - the
  * difference between an app that feels instant and one that reloads constantly.
  */
+// A tab switch changes MainTabs' state; memoising each screen means only the two whose
+// `active` flag changed re-render, instead of all five (Home is by far the heaviest).
+const HomeTab = React.memo(HomeScreen);
+const FestivalTab = React.memo(FestivalScreen);
+const BrowseTab = React.memo(BrowseScreen);
+const CartTab = React.memo(CartScreen);
+const OrdersTab = React.memo(OrdersScreen);
+const ProfileTab = React.memo(ProfileScreen);
+
 export function MainTabs() {
   const { active, goToTab } = useTabs();
   const { cart } = useCart();
@@ -30,6 +40,12 @@ export function MainTabs() {
   const festival = settings?.festival.enabled ? settings.festival.name : null;
   // No pinned address yet: use where the phone is, so the right shops show up.
   useAutoLocation();
+  // Warm the festival tab as soon as it exists, so its first tap shows content instead of loading.
+  const prefetchFestival = catalogApi.usePrefetch('festival');
+  const area = useDeliveryPointKey();
+  useEffect(() => {
+    if (festival) prefetchFestival(area);
+  }, [festival, area, prefetchFestival]);
 
   // The festival tab takes the second slot while the admin has it switched on,
   // and Orders steps aside rather than crowding a sixth tab onto the bar.
@@ -51,22 +67,22 @@ export function MainTabs() {
     <>
       <View style={styles.root}>
         <Pane visible={active === 'home'}>
-          <HomeScreen active={active === 'home'} />
+          <HomeTab active={active === 'home'} />
         </Pane>
         <Pane visible={active === 'festival'}>
-          <FestivalScreen active={active === 'festival'} />
+          <FestivalTab active={active === 'festival'} />
         </Pane>
         <Pane visible={active === 'browse'}>
-          <BrowseScreen active={active === 'browse'} />
+          <BrowseTab active={active === 'browse'} />
         </Pane>
         <Pane visible={active === 'cart'}>
-          <CartScreen active={active === 'cart'} />
+          <CartTab active={active === 'cart'} />
         </Pane>
         <Pane visible={active === 'orders'}>
-          <OrdersScreen active={active === 'orders'} />
+          <OrdersTab active={active === 'orders'} />
         </Pane>
         <Pane visible={active === 'profile'}>
-          <ProfileScreen active={active === 'profile'} />
+          <ProfileTab active={active === 'profile'} />
         </Pane>
       </View>
       <View onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>

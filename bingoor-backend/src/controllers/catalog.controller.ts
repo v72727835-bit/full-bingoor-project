@@ -179,6 +179,18 @@ async function farRule(lat?: number, lng?: number): Promise<{ match: FilterQuery
 }
 
 /**
+ * Point 37 (simple version): a customer past the last distance band only sees
+ * the categories the admin ticked (plus the parents above them so the menu
+ * still leads there, and everything below them). Anyone else sees everything.
+ */
+async function visibleToFarCustomer<T extends { _id: unknown }>(list: T[], lat?: number, lng?: number): Promise<T[]> {
+  const far = await farRule(lat, lng);
+  if (!far) return list;
+  const allowed = new Set(far.categoryIds.map(String));
+  return list.filter((c) => allowed.has(String(c._id)));
+}
+
+/**
  * Does any warehouse deliver to this point? Used by the website's "where should we deliver?"
  * step, so a customer outside every warehouse's range is told so instead of seeing products.
  */
@@ -448,8 +460,13 @@ export const home = asyncHandler(async (req, res) => {
 
 /* ---------------- categories ---------------- */
 /** Whole three-level tree in one request; the Categories tab renders it directly. */
-export const categoryTree = asyncHandler(async (_req, res) => {
-  const all = await Category.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean();
+export const categoryTree = asyncHandler(async (req, res) => {
+  const { lat, lng } = req.query as unknown as { lat?: number; lng?: number };
+  const all = await visibleToFarCustomer(
+    await Category.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean(),
+    lat,
+    lng,
+  );
   const kidsOf = (id: unknown) => all.filter((c) => String(c.parent) === String(id));
   ok(
     res,
@@ -463,23 +480,27 @@ export const categoryTree = asyncHandler(async (_req, res) => {
 });
 
 export const listCategories = asyncHandler(async (req, res) => {
-  const { parent, level, all } = req.query as unknown as { parent?: string; level?: number; all?: boolean };
+  const { parent, level, all, lat, lng } = req.query as unknown as { parent?: string; level?: number; all?: boolean; lat?: number; lng?: number };
 
-  if (all) return ok(res, await Category.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean());
+  if (all) return ok(res, await visibleToFarCustomer(await Category.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean(), lat, lng));
 
   const filter: FilterQuery<unknown> = { isActive: true };
   if (parent) filter.parent = parent;
   else if (level) filter.level = level;
   else filter.parent = null;
 
-  const categories = await Category.find(filter).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean();
+  const categories = await visibleToFarCustomer(await Category.find(filter).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean(), lat, lng);
 
   // Top-level request gets its children inlined so the menu needs one call.
   if (!parent) {
-    const subs = await Category.find({ isActive: true, parent: { $in: categories.map((c) => c._id) } })
-      .sort({ sortOrder: 1, name: 1 })
-      .select(CAT_FIELDS)
-      .lean();
+    const subs = await visibleToFarCustomer(
+      await Category.find({ isActive: true, parent: { $in: categories.map((c) => c._id) } })
+        .sort({ sortOrder: 1, name: 1 })
+        .select(CAT_FIELDS)
+        .lean(),
+      lat,
+      lng,
+    );
     return ok(res, categories.map((c) => ({ ...c, children: subs.filter((s) => String(s.parent) === String(c._id)) })));
   }
   ok(res, categories);
@@ -487,15 +508,24 @@ export const listCategories = asyncHandler(async (req, res) => {
 
 /** One tile's page: the category, its child rail, and which child is first. */
 export const getCategory = asyncHandler(async (req, res) => {
+  const { lat, lng } = req.query as unknown as { lat?: number; lng?: number };
   const category = await Category.findOne({ ...idOrSlugFilter(req.params.idOrSlug), isActive: true }).select(CAT_FIELDS).lean();
   if (!category) throw new ApiError(404, 'Category not found');
 
-  const children = await Category.find({ isActive: true, parent: category._id }).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean();
+  const children = await visibleToFarCustomer(
+    await Category.find({ isActive: true, parent: category._id }).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean(),
+    lat,
+    lng,
+  );
   const parent = category.parent
     ? await Category.findById(category.parent).select(CAT_FIELDS).lean()
     : null;
   const siblings = parent
-    ? await Category.find({ isActive: true, parent: parent._id }).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean()
+    ? await visibleToFarCustomer(
+        await Category.find({ isActive: true, parent: parent._id }).sort({ sortOrder: 1, name: 1 }).select(CAT_FIELDS).lean(),
+        lat,
+        lng,
+      )
     : [];
 
   ok(res, { ...category, parent, children, siblings });

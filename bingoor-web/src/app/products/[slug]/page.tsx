@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
 import { fetchProduct, submitReview } from '../../../api/catalog';
+import { POINT_EVENT } from '../../../lib/deliveryPoint';
 import { addToWishlist, fetchWishlist, removeFromWishlist } from '../../../api/account';
 import { getErrorMessage } from '../../../lib/client';
 import { videoSource } from '../../../lib/video';
@@ -67,6 +68,13 @@ export default function ProductPage() {
   }, [slug]);
 
   useEffect(load, [load]);
+
+  // The delivery time depends on the delivery location, so a changed location reloads the page's data.
+  useEffect(() => {
+    const onPoint = () => load();
+    window.addEventListener(POINT_EVENT, onPoint);
+    return () => window.removeEventListener(POINT_EVENT, onPoint);
+  }, [load]);
 
   useEffect(() => {
     if (!user || !p) return;
@@ -325,7 +333,9 @@ export default function ProductPage() {
               <Icon name="bolt" size={16} />
               {p.deliveryDays && p.deliveryDays > 1
                 ? `Delivered in ${p.deliveryDays} days`
-                : home
+                : p.deliveryDays === 1
+                  ? 'Next day delivery'
+                  : home
                   ? `Delivery time: ${shortDelivery(home)}`
                   : 'Delivered in minutes'}
             </li>

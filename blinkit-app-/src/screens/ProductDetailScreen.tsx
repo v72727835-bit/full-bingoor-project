@@ -24,7 +24,8 @@ import { useWishlist } from '../context/WishlistContext';
 import { useTabs } from '../navigation/TabsContext';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, currency, gutter, hitSlop, ms, radius, space, themed } from '../theme';
-import { useProductQuery } from '../store/catalogApi';
+import { useHomeQuery, useProductQuery } from '../store/catalogApi';
+import { shortDelivery } from '../utils/delivery';
 import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
 import { ReviewPage } from '../types';
 import { Button } from '../ui/Button';
@@ -72,6 +73,7 @@ export function ProductDetailScreen() {
   // The product comes from the Redux cache, so opening it again (or from a
   // second rail) is instant; reviews load alongside once we know its id.
   const area = useDeliveryPointKey();
+  const { data: home } = useHomeQuery(area);
   const { data, error: queryError, refetch } = useProductQuery({ id: params.id, at: area, point: deliveryPointParams() });
   const product = data ?? null;
   const error = typeof queryError === 'string' ? queryError : queryError ? 'Something went wrong' : null;
@@ -344,8 +346,10 @@ export function ProductDetailScreen() {
               ? { icon: 'bicycle-outline' as const, title: `${currency(product.shop.deliveryFee)} delivery`, body: 'From this shop' }
               : { icon: 'bicycle-outline' as const, title: 'Free delivery', body: 'From this shop' },
             product.deliveryDays && product.deliveryDays > 1
-              ? { icon: 'calendar-outline' as const, title: `${product.deliveryDays} day delivery`, body: 'For this aisle' }
-              : { icon: 'flash-outline' as const, title: 'Same-day delivery', body: 'Ordered before 6 pm' },
+              ? { icon: 'calendar-outline' as const, title: `${product.deliveryDays} day delivery`, body: area ? 'To your location' : 'For this aisle' }
+              : product.deliveryDays === 1
+                ? { icon: 'calendar-outline' as const, title: 'Next day delivery', body: area ? 'To your location' : 'For this aisle' }
+                : { icon: 'flash-outline' as const, title: `Delivery in ${shortDelivery(home)}`, body: area ? 'To your location' : 'Set your address for exact time' },
           ].map((p) => (
             <View key={p.title} style={styles.promise}>
               <View style={styles.promiseIcon}>

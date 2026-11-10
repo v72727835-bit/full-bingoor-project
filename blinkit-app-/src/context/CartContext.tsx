@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import * as cartApi from '../api/cart';
 import { getErrorMessage } from '../api/client';
 import { CartView, ProductSummary } from '../types';
@@ -34,6 +34,41 @@ interface CartApi {
 const CartContext = createContext<CartApi | undefined>(undefined);
 
 /**
+ * Per-product quantities as a tiny external store. A product card reads only its
+ * own quantity from here, so adding one item re-renders that card (and the cart
+ * badge) instead of every card on a long list.
+ */
+function createQtyStore() {
+  let qty = new Map<string, number>();
+  const listeners = new Set<() => void>();
+  return {
+    get: (id: string) => qty.get(id) ?? 0,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
+    },
+    update(view: CartView) {
+      const next = new Map<string, number>();
+      for (const group of view.groups) for (const item of group.items) next.set(item.productId, item.quantity);
+      let changed = next.size !== qty.size;
+      if (!changed) for (const [id, n] of next) if (qty.get(id) !== n) { changed = true; break; }
+      qty = next;
+      if (changed) listeners.forEach((l) => l());
+    },
+  };
+}
+type QtyStore = ReturnType<typeof createQtyStore>;
+
+/** The cart actions never change identity, so a component that only adds items never re-renders for cart changes. */
+interface CartActions {
+  add: CartApi['add'];
+  setQuantity: CartApi['setQuantity'];
+  remove: CartApi['remove'];
+  qtyStore: QtyStore;
+}
+const CartActionsContext = createContext<CartActions | undefined>(undefined);
+
+/**
  * Single owner of cart state.
  *
  * Every screen reads quantities from here rather than keeping its own copy,
@@ -47,6 +82,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const mounted = useRef(true);
+  const qtyStore = useRef<QtyStore>(createQtyStore()).current;
   const confirmed = useRef<CartView>(EMPTY);
   const operations = useRef<{ id: number; productId: string; apply: (cart: CartView) => CartView; request: () => Promise<CartView> }[]>([]);
   const serial = useRef(Promise.resolve());
@@ -57,6 +93,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(operations.current.reduce((view, op) => op.apply(view), confirmed.current));
     setPending(new Set(operations.current.map((op) => op.productId)));
   };
+
+  useLayoutEffect(() => { qtyStore.update(cart); }, [cart, qtyStore]);
 
   useEffect(() => {
     mounted.current = true;
@@ -152,7 +190,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [cart, loading, pending, refresh, quantityOf, add, setQuantity, remove, clear],
   );
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  const actions = useMemo<CartActions>(() => ({ add, setQuantity, remove, qtyStore }), [add, setQuantity, remove, qtyStore]);
+
+  return (
+    <CartActionsContext.Provider value={actions}>
+      <CartContext.Provider value={value}>{children}</CartContext.Provider>
+    </CartActionsContext.Provider>
+  );
+}
+
+/** For product cards: this product's quantity plus the actions, re-rendering only when THIS quantity changes. */
+export function useCartItem(productId: string) {
+  const ctx = useContext(CartActionsContext);
+  if (!ctx) throw new Error('useCartItem must be used inside <CartProvider>');
+  const quantity = useSyncExternalStore(ctx.qtyStore.subscribe, () => ctx.qtyStore.get(productId), () => 0);
+  return { quantity, add: ctx.add, setQuantity: ctx.setQuantity, remove: ctx.remove };
 }
 
 export function useCart(): CartApi {

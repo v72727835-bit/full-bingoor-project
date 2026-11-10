@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCategoryTreeQuery } from '../store/catalogApi';
+import { useDeliveryPointKey } from '../store/deliveryPoint';
 import { CategoryTile } from '../components/CategoryTile';
 import type { AppNav } from '../navigation/types';
 import type { TabScreenProps } from '../navigation/TabsContext';
@@ -32,7 +33,7 @@ export function BrowseScreen({ active }: TabScreenProps) {
   useEffect(() => {
     if (active) setStarted(true);
   }, [active]);
-  const { data: groups = null, error: queryError, refetch } = useCategoryTreeQuery(undefined, { skip: !started });
+  const { data: groups = null, error: queryError, refetch } = useCategoryTreeQuery(useDeliveryPointKey(), { skip: !started });
   const error = typeof queryError === 'string' ? queryError : queryError ? 'Something went wrong' : null;
 
   const [refreshing, setRefreshing] = useState(false);

@@ -68,7 +68,12 @@ api.interceptors.request.use((config) => {
   if (t) config.headers.Authorization = `Bearer ${t}`;
   // The catalogue is limited to shops that deliver to the customer's pin.
   const url = config.url ?? '';
-  if ((config.method ?? 'get') === 'get' && (url === '/home' || url === '/products' || url === '/products/suggest' || url === '/festival')) {
+  // Catalogue calls that depend on where the customer is: the home feed, product lists
+  // and a single product (its delivery time), the festival tab, and the category menu.
+  const needsPoint =
+    url === '/home' || url === '/products' || url === '/products/suggest' || url === '/festival' ||
+    /^\/products\/[^/]+$/.test(url) || url === '/categories' || url.startsWith('/categories/');
+  if ((config.method ?? 'get') === 'get' && needsPoint) {
     const point = pointParams();
     if (point) config.params = { ...point, ...config.params };
   }

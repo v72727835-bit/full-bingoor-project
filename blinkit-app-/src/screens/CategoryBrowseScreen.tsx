@@ -56,7 +56,7 @@ export function CategoryBrowseScreen() {
 
   // Both the aisle and its products come from the Redux cache, so switching
   // back to a child you already opened is instant.
-  const { data: page, isLoading: loadingPage, isError: pageFailed } = useCategoryQuery(params.slug);
+  const { data: page, isLoading: loadingPage, isError: pageFailed } = useCategoryQuery({ slug: params.slug, at: useDeliveryPointKey() });
   useEffect(() => {
     if (page) setChildSlug((prev) => prev ?? page.children[0]?.slug);
   }, [page]);

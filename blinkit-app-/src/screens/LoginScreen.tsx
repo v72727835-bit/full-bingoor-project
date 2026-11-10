@@ -12,12 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getErrorMessage, getFieldErrors } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { usePublicSettingsQuery } from '../store/catalogApi';
-import { googleAccessToken } from '../utils/social';
-import { mobileLoginCode } from '../utils/mobileLogin';
 import type { AuthNav } from '../navigation/types';
 import { gutter, space, themed } from '../theme';
 import { Button } from '../ui/Button';
+import { SocialButtons } from '../components/SocialButtons';
 import { Banner } from '../ui/Feedback';
 import { Logo } from '../ui/Logo';
 import { Txt } from '../ui/Text';
@@ -26,8 +24,7 @@ import { isValidEmail, isValidPhone, normalizePhone } from '../utils/validation'
 
 export function LoginScreen() {
   const navigation = useNavigation<AuthNav>();
-  const { signIn, signInSocial, signInCode } = useAuth();
-  const { data: publicSettings } = usePublicSettingsQuery();
+  const { signIn } = useAuth();
   const [usePhone] = useState(true);
   const passwordRef = useRef<TextInputRef>(null);
 
@@ -36,19 +33,6 @@ export function LoginScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const social = async (provider: 'google' | 'facebook' | 'instagram') => {
-    setFormError(null);
-    const ids = publicSettings?.social;
-    const appId = provider === 'google' ? ids?.googleClientId : provider === 'facebook' ? ids?.facebookAppId : ids?.instagramAppId;
-    if (!appId) { setFormError(`${provider} login is not configured yet. Please use your phone or email.`); return; }
-    setBusy(true);
-    try {
-      if (provider === 'google') await signInSocial('google', await googleAccessToken(appId));
-      else await signInCode(provider, await mobileLoginCode(provider, appId));
-    } catch (err) { setFormError(getErrorMessage(err)); }
-    finally { setBusy(false); }
-  };
 
   const validate = (): boolean => {
     const next: Record<string, string> = {};
@@ -102,12 +86,7 @@ export function LoginScreen() {
 
           {formError ? <Banner tone="danger" message={formError} style={styles.banner} /> : null}
 
-          <View style={{ gap: 10, marginBottom: 20 }}>
-            <Button label="Continue with Google" variant="secondary" disabled={busy} onPress={() => void social('google')} />
-            <Button label="Continue with Facebook" variant="secondary" disabled={busy} onPress={() => void social('facebook')} />
-            <Button label="Continue with Instagram" variant="secondary" disabled={busy} onPress={() => void social('instagram')} />
-            <Txt variant="caption" tone="muted" center>Instagram login supports professional (Business or Creator) accounts.</Txt>
-          </View>
+          <SocialButtons onError={setFormError} onBusy={setBusy} />
 
           {usePhone ? (
             <View>

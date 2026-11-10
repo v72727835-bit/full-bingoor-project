@@ -51,11 +51,13 @@ export const catalogApi = createApi({
     // The argument is the delivery-point key: it does not change the request
     // (the client adds the pin) but gives each area its own cache entry.
     home: build.query<HomeData, string>({ queryFn: () => run(fetchHome) }),
-    categoryTree: build.query<Category[], void>({
+    // Like home: the area key only gives each delivery area its own cache entry (the client adds the pin),
+    // because a customer far from every warehouse sees a shorter list of categories.
+    categoryTree: build.query<Category[], string>({
       queryFn: () => run(fetchCategoryTree),
     }),
-    category: build.query<CategoryPage, string>({
-      queryFn: slug => run(() => fetchCategory(slug)),
+    category: build.query<CategoryPage, { slug: string; at?: string }>({
+      queryFn: ({ slug }) => run(() => fetchCategory(slug)),
     }),
     products: build.query<Paged<ProductSummary>, ProductQuery & { at?: string }>({
       queryFn: ({ at: _area, ...q }) => run(() => fetchProducts(q)),

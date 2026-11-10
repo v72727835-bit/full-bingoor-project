@@ -170,14 +170,17 @@
     grid-template-columns: 240px minmax(0, 1fr);
     gap: 22px;
   }
+  /* The aisle list shows its full length on every category page (no inner
+     scrolling box), so Atta, Dal, Other flour and every other aisle look the same.
+     It scrolls with the page rather than sticking, because a sticky column taller
+     than the screen would hide its lower aisles. */
   .asideCol {
-    top: 136px;
+    position: static;
     display: flex;
     flex-direction: column;
     gap: 14px;
-    max-height: calc(100vh - 156px);
-    overflow-y: auto;
-    scrollbar-width: thin;
+    max-height: none;
+    overflow: visible;
   }
   .withAside .filterBtn {
     display: none;

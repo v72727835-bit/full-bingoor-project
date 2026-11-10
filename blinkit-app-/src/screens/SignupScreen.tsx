@@ -9,6 +9,7 @@ import { colors, gutter, ms, radius, space, themed } from '../theme';
 import { AppHeader } from '../ui/AppHeader';
 import { Button } from '../ui/Button';
 import { Banner } from '../ui/Feedback';
+import { SocialButtons } from '../components/SocialButtons';
 import { Txt } from '../ui/Text';
 import { TextField, TextInputRef } from '../ui/TextField';
 import { generatePassword } from '../utils/password';
@@ -85,6 +86,9 @@ export function SignupScreen() {
           </Txt>
 
           {formError ? <Banner tone="danger" message={formError} style={styles.banner} /> : null}
+
+          <SocialButtons onError={setFormError} />
+          <Txt variant="caption" tone="muted" center style={{ marginBottom: 12 }}>or sign up with your phone number</Txt>
 
           <TextField
             label="Full name"

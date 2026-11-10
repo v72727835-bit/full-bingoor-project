@@ -13,6 +13,7 @@ import { useTabs } from '../navigation/TabsContext';
 import { gutter, hitSlop, ms, radius, space, themed, useTheme } from '../theme';
 import { catalogApi, useHomeQuery } from '../store/catalogApi';
 import { useDeliveryPointKey } from '../store/deliveryPoint';
+import { offerLocationFix, useLocationProblem } from '../utils/location';
 import type { Category } from '../types';
 import { Button } from '../ui/Button';
 import { Banner, EmptyState } from '../ui/Feedback';
@@ -72,9 +73,11 @@ export function HomeScreen({ active }: TabScreenProps) {
 
   // Warm the Categories tab while the customer is still looking at Home.
   const prefetchTree = catalogApi.usePrefetch('categoryTree');
+  const treeArea = useDeliveryPointKey();
+  const locationProblem = useLocationProblem();
   useEffect(() => {
-    if (data) prefetchTree();
-  }, [data, prefetchTree]);
+    if (data) prefetchTree(treeArea);
+  }, [data, prefetchTree, treeArea]);
 
   const address = user?.addresses?.find((a) => a.isDefault) ?? user?.addresses?.[0];
   const { data: publicSettings } = usePublicSettingsQuery();
@@ -192,6 +195,21 @@ export function HomeScreen({ active }: TabScreenProps) {
         </Txt>
         <Icon name="chevron-down" size={ms(13)} color={c.onHeader} />
       </Pressable>
+
+      {locationProblem && !address && !area ? (
+        <Pressable
+          onPress={() => offerLocationFix(locationProblem)}
+          accessibilityRole="button"
+          accessibilityLabel="Turn on location"
+          style={({ pressed }) => [styles.addressRow, pressed && { opacity: 0.75 }]}
+        >
+          <Icon name="navigate-circle" size={ms(14)} color={c.headerAccent} />
+          <Txt variant="caption" tone="onHeader" numberOfLines={1} style={{ flex: 1 }}>
+            {locationProblem === 'off' ? 'Turn on location for your exact delivery time' : 'Allow location for your exact delivery time'}
+          </Txt>
+          <Icon name="chevron-forward" size={ms(13)} color={c.onHeader} />
+        </Pressable>
+      ) : null}
     </View>
   );
 

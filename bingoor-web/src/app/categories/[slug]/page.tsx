@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { fetchCategory } from '../../../api/catalog';
+import { POINT_EVENT } from '../../../lib/deliveryPoint';
 import { useLanguage } from '../../../context/LanguageContext';
 import { fitClass } from '../../../lib/art';
 import { Category } from '../../../lib/types';
@@ -32,9 +33,13 @@ export default function CategoryPage() {
 
   useEffect(() => {
     setCategory(null);
-    fetchCategory(slug)
-      .then(setCategory)
-      .catch(() => setCategory(null));
+    const load = () =>
+      fetchCategory(slug)
+        .then(setCategory)
+        .catch(() => setCategory(null));
+    load();
+    window.addEventListener(POINT_EVENT, load);
+    return () => window.removeEventListener(POINT_EVENT, load);
   }, [slug]);
 
   const tile = category?.tint

@@ -99,6 +99,8 @@ export const categoriesQuery = z.object({
   parent: objectId.optional(),
   level: z.coerce.number().int().min(1).max(3).optional(),
   all: boolFromQuery.optional(), // all=true -> flat list of every level
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
 });
 
 export const shopsQuery = pagination

@@ -5,7 +5,7 @@ import { CUSTOMER_CANCELLABLE, IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { User } from '../models/User';
 import { cartPointsTotal, getCartView, lineIssue, resolveCart } from '../services/cart.service';
-import { codTimeBlocked, paymentFeePct, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
+import { codTimeBlocked, orderDeliveryDays, paymentFeePct, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
 import { sendOrderWhatsApp } from '../services/whatsapp.service';
 import { loadSettings, productRules } from '../services/settings.service';
 import { createRazorpayOrder, razorpayEnabled, razorpayKeys, razorpayWebhookSecret, refundRazorpayPayment, verifyRazorpaySignature } from '../services/razorpay.service';
@@ -171,7 +171,10 @@ async function runPlaceOrder(
     const payFee = round2(((subtotal + deliveryFee + quote.handlingFee) * feePct) / 100);
     // The tip rides on the first order of the checkout only.
     const orderTip = idx === 0 ? tip : 0;
-    const days = Math.max(quote.days, ...g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0));
+    // 6-day aisles: the whole order takes the slow promise only when EVERY item
+    // in it is from a 6-day aisle. Mixed with other aisles, the customer's
+    // location decides the time (quote.days).
+    const days = orderDeliveryDays(quote.days, g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0));
     return {
       orderNumber: newOrderNumber(),
       checkoutId,

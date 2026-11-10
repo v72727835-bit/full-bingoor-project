@@ -1,5 +1,6 @@
 import Geolocation, { GeolocationError, GeolocationResponse } from '@react-native-community/geolocation';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { useSyncExternalStore } from 'react';
+import { Alert, Linking, PermissionsAndroid, Platform } from 'react-native';
 
 export type LocationProblem = 'denied' | 'off' | 'timeout';
 
@@ -66,3 +67,45 @@ export const problemFromError = (e: unknown): LocationProblem => {
   const m = (e as Error | undefined)?.message;
   return m === 'denied' || m === 'off' ? m : 'timeout';
 };
+
+/**
+ * Takes the customer straight to the phone screen where Location can be switched on
+ * (an app cannot turn GPS on by itself - the phone only lets the customer do that).
+ */
+export async function openLocationSettings(problem: LocationProblem): Promise<void> {
+  try {
+    if (problem === 'off' && Platform.OS === 'android') await Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS');
+    else await Linking.openSettings();
+  } catch {
+    await Linking.openSettings().catch(() => undefined);
+  }
+}
+
+/** One tap to fix it: explains the problem and offers the settings screen. */
+export function offerLocationFix(problem: LocationProblem): void {
+  if (problem === 'timeout') return;
+  Alert.alert(
+    problem === 'off' ? 'Turn on location' : 'Allow location',
+    locationMessage(problem),
+    [
+      { text: 'Not now', style: 'cancel' },
+      { text: problem === 'off' ? 'Turn on location' : 'Open settings', onPress: () => void openLocationSettings(problem) },
+    ],
+  );
+}
+
+/* The last reason the phone's location could not be read, shared so Home can show a tappable hint. */
+let currentProblem: LocationProblem | null = null;
+const problemListeners = new Set<() => void>();
+export function setLocationProblem(next: LocationProblem | null) {
+  if (next === currentProblem) return;
+  currentProblem = next;
+  problemListeners.forEach((l) => l());
+}
+export function useLocationProblem(): LocationProblem | null {
+  return useSyncExternalStore(
+    (l) => { problemListeners.add(l); return () => { problemListeners.delete(l); }; },
+    () => currentProblem,
+    () => null,
+  );
+}
