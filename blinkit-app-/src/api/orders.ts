@@ -13,8 +13,8 @@ export async function placeOrder(input: {
 }
 
 /** The server's price for this basket to an address: the charge of each way to pay. */
-export async function fetchQuote(addressId: string): Promise<{ paymentFees?: Record<string, number> }> {
-  const { data } = await api.get<ApiEnvelope<{ paymentFees?: Record<string, number> }>>('/cart/quote', { params: { addressId, slot: 'instant' } });
+export async function fetchQuote(addressId: string): Promise<{ paymentFees?: Record<string, number>; days?: number }> {
+  const { data } = await api.get<ApiEnvelope<{ paymentFees?: Record<string, number>; days?: number }>>('/cart/quote', { params: { addressId, slot: 'instant' } });
   return data.data;
 }
 

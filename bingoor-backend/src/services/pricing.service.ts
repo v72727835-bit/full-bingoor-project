@@ -149,3 +149,12 @@ export function codTimeBlocked(
   const nowMin = local.getUTCHours() * 60 + local.getUTCMinutes();
   return { enabled: true, time, blocked: nowMin >= cutoffMin, message };
 }
+
+/**
+ * The delivery days for one order. 6-day aisles only slow the order down when
+ * every item in it is from a 6-day aisle; as soon as it holds anything else,
+ * the customer's location decides (`quoteDays`).
+ */
+export function orderDeliveryDays(quoteDays: number, lineDays: number[]): number {
+  return lineDays.length > 0 && lineDays.every((d) => d > 0) ? Math.max(quoteDays, ...lineDays) : quoteDays;
+}

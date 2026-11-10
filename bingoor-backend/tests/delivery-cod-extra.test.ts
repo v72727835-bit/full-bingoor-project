@@ -1,7 +1,7 @@
 import './env';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { codTimeBlocked, quoteDelivery } from '../src/services/pricing.service';
+import { codTimeBlocked, orderDeliveryDays, quoteDelivery } from '../src/services/pricing.service';
 
 test('COD cut-off: disabled passes, enabled blocks only after the time (IST)', () => {
   // Disabled: never blocked.
@@ -41,4 +41,13 @@ test('long-distance (beyond the last band) uses beyondFee when set', () => {
   const near = quoteDelivery(settings, { subtotal: 100, distanceKm: 5, slot: 'instant' });
   assert.equal(near.longDistance, false);
   assert.equal(near.baseDeliveryFee, 30);
+});
+
+test('6-day aisles slow an order only when every item is from a 6-day aisle', () => {
+  assert.equal(orderDeliveryDays(0, [6]), 6); // single 6-day product
+  assert.equal(orderDeliveryDays(0, [6, 6, 6]), 6); // only 6-day products
+  assert.equal(orderDeliveryDays(0, [6, 0]), 0); // mixed: location decides
+  assert.equal(orderDeliveryDays(1, [6, 0, 0]), 1); // mixed, next-day location
+  assert.equal(orderDeliveryDays(3, [6, 6]), 6); // far customer, all 6-day: the slower of the two
+  assert.equal(orderDeliveryDays(0, []), 0);
 });

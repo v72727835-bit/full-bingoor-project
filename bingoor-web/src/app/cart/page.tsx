@@ -116,6 +116,12 @@ function CartInner() {
   }, [countdown, addItem, pickTopUp]);
 
   // Full product cards for the top-up rows (the cart itself only carries a summary of each).
+  // 6-day aisles: only when EVERY item is from one does the cart take the slow promise.
+  const allCartItems = cart ? cart.groups.flatMap((g) => g.items) : [];
+  const sixDayOnly =
+    allCartItems.length > 0 && allCartItems.every((i) => (i.deliveryDays ?? 0) > 1)
+      ? allCartItems.reduce((m, i) => Math.max(m, i.deliveryDays ?? 0), 0)
+      : 0;
   const topUpOpen = !!cart?.points.enabled && !cart.points.met && minMet;
   const [topProducts, setTopProducts] = useState<Product[] | null>(null);
   useEffect(() => {
@@ -176,7 +182,9 @@ function CartInner() {
         <Icon name="bolt" size={20} />
         <span className={s.etaTime}>
           {/* The real promise comes from the distance: far addresses are next day or a few working days. */}
-          {quote && quote.days > 0
+          {sixDayOnly > 1
+            ? `${t('delivery')}: ${sixDayOnly} days`
+            : quote && quote.days > 0
             ? `${t('delivery')}: ${quote.days === 1 ? 'Next day delivery' : `${quote.days} working days`}`
             : slot === 'instant' && home
               ? `${t('delivery')}: ${shortDelivery(home)}`

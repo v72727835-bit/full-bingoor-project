@@ -12,7 +12,9 @@ import { fetchAddresses } from '../api/user';
 import { useCart } from '../context/CartContext';
 import { useTabs } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
-import { usePublicSettingsQuery } from '../store/catalogApi';
+import { useHomeQuery, usePublicSettingsQuery } from '../store/catalogApi';
+import { useDeliveryPointKey } from '../store/deliveryPoint';
+import { shortDelivery } from '../utils/delivery';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { Address, CheckoutProblem, PayKey, PayOptionDef, PaymentMethod } from '../types';
 import { AppHeader } from '../ui/AppHeader';
@@ -75,9 +77,12 @@ export function CheckoutScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [payment, setPayment] = useState<PaymentMethod>('cod');
   const { data: settings } = usePublicSettingsQuery();
+  const { data: home } = useHomeQuery(useDeliveryPointKey());
   // Which of the six ways to pay; the online ones add their admin-set % charge to the bill.
   const [opt, setOpt] = useState<PayKey>('cod');
   const [fees, setFees] = useState<Record<string, number> | null>(null);
+  // Delivery days for the chosen address, from the server's quote (0 = same day).
+  const [quoteDays, setQuoteDays] = useState<number | null>(null);
   const options = (settings?.paymentOptions?.length ? settings.paymentOptions : FALLBACK_PAY).filter(
     (o) => o.enabled !== false && (o.key === 'cod' || settings?.onlinePaymentOn),
   );
@@ -139,7 +144,7 @@ export function CheckoutScreen() {
     if (!selectedId) return;
     let live = true;
     fetchQuote(selectedId)
-      .then((q) => { if (live) setFees(q.paymentFees ?? null); })
+      .then((q) => { if (live) { setFees(q.paymentFees ?? null); setQuoteDays(typeof q.days === 'number' ? q.days : null); } })
       .catch(() => undefined);
     return () => { live = false; };
   }, [selectedId, cart.total]);
@@ -443,6 +448,16 @@ export function CheckoutScreen() {
             />
           ) : null}
         </View>
+
+        {/* The delivery time for the address chosen above (not just the header's). */}
+        {selected && quoteDays !== null ? (
+          <View style={styles.section}>
+            <Banner
+              tone="info"
+              message={`Delivery to this address: ${quoteDays >= 2 ? `${quoteDays} days` : quoteDays === 1 ? 'Next day delivery' : shortDelivery(home)}`}
+            />
+          </View>
+        ) : null}
 
         {/* -------------------------------------------------- items --- */}
         <View style={styles.section}>

@@ -35,10 +35,11 @@ export function CartScreen({ active }: TabScreenProps) {
   const area = useDeliveryPointKey();
   const { data: home } = useHomeQuery(area);
 
-  // The slowest promise in the basket - the whole order lands on that day.
-  const slowDays = cart.groups
-    .flatMap((g) => g.items)
-    .reduce((max, i) => Math.max(max, i.deliveryDays ?? 0), 0);
+  // 6-day aisles: the basket only takes the slow promise when EVERY item is from
+  // one. Mixed with anything else, the customer's location decides the time.
+  const cartItems = cart.groups.flatMap((g) => g.items);
+  const allSlow = cartItems.length > 0 && cartItems.every((i) => (i.deliveryDays ?? 0) > 1);
+  const slowDays = allSlow ? cartItems.reduce((max, i) => Math.max(max, i.deliveryDays ?? 0), 0) : 0;
 
   // Prices and stock move while the user is elsewhere, so re-check on entry.
   useEffect(() => {
@@ -93,14 +94,14 @@ export function CartScreen({ active }: TabScreenProps) {
         <View style={styles.eta}>
           <Ionicons name="flash" size={ms(17)} color={colors.brand} />
           <Txt variant="h3" tone="brand" numberOfLines={1}>
-            Delivery in {shortDelivery(home)}
+            Delivery in {slowDays ? `${slowDays} days` : shortDelivery(home)}
           </Txt>
         </View>
 
         {slowDays ? (
           <Banner
             tone="info"
-            message={`Some items in this order are delivered in ${slowDays} days.`}
+            message={`Items in this order are delivered in ${slowDays} days.`}
             style={styles.topBanner}
           />
         ) : null}

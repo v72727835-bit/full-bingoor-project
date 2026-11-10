@@ -4,7 +4,7 @@ import { Product } from '../models/Product';
 import { Shop } from '../models/Shop';
 import { User } from '../models/User';
 import { getCartView, guestCartView, lineIssue, resolveCart, ResolvedGroup } from '../services/cart.service';
-import { paymentFee, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
+import { orderDeliveryDays, paymentFee, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
 import { codMessage, loadSettings, longDistanceCodMessage, productRules } from '../services/settings.service';
 import { haversineKm, round2 } from '../utils/helpers';
 import { ApiError } from '../utils/ApiError';
@@ -155,11 +155,12 @@ async function quoteFor(groups: ResolvedGroup[], point: { lat: number; lng: numb
   // #31: the cart's ETA must also honour a category's fixed "6 day" delivery,
   // exactly like the placed order does (order.controller runPlaceOrder), so a
   // slow-category item does not show "19 min" in the cart and then ship in days.
-  const categoryDays = Math.max(
-    0,
-    ...groups.flatMap((g) => g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0)),
-  );
-  const days = Math.max(perGroup.reduce((d, q) => Math.max(d, q.days), 0), categoryDays);
+  // Per order (shop group): a 6-day aisle only slows an order that holds nothing
+  // but 6-day aisles; mixed with other items the customer's location decides.
+  const days = groups.reduce((d, g, i) => {
+    const lineDays = g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0);
+    return Math.max(d, orderDeliveryDays(perGroup[i]?.days ?? 0, lineDays));
+  }, 0);
   const redOrder = perGroup.some((q) => q.redOrder);
   const longDistance = perGroup.some((q) => q.longDistance);
   const addForFree = sum((q) => q.addForFree);
