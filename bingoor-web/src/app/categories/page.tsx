@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { fetchCategoryTree } from '../../api/catalog';
+import { POINT_EVENT } from '../../lib/deliveryPoint';
 import { getErrorMessage } from '../../lib/client';
 import { Category } from '../../lib/types';
 import { CategoryTile } from '../../components/CategoryTile';
@@ -16,9 +17,14 @@ export default function CategoriesPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchCategoryTree()
-      .then(setTree)
-      .catch((e) => setError(getErrorMessage(e)));
+    const load = () =>
+      fetchCategoryTree()
+        .then(setTree)
+        .catch((e) => setError(getErrorMessage(e)));
+    load();
+    // A customer far from every warehouse sees fewer categories, so a new location reloads them.
+    window.addEventListener(POINT_EVENT, load);
+    return () => window.removeEventListener(POINT_EVENT, load);
   }, []);
 
   return (

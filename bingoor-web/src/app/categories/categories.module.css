@@ -169,7 +169,7 @@
   .sideRail {
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 140px);
+    max-height: calc(100vh - 96px);
     overflow-y: auto;
     border-right: 1px solid var(--line);
     scrollbar-width: none;

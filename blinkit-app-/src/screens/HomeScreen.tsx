@@ -72,9 +72,10 @@ export function HomeScreen({ active }: TabScreenProps) {
 
   // Warm the Categories tab while the customer is still looking at Home.
   const prefetchTree = catalogApi.usePrefetch('categoryTree');
+  const treeArea = useDeliveryPointKey();
   useEffect(() => {
-    if (data) prefetchTree();
-  }, [data, prefetchTree]);
+    if (data) prefetchTree(treeArea);
+  }, [data, prefetchTree, treeArea]);
 
   const address = user?.addresses?.find((a) => a.isDefault) ?? user?.addresses?.[0];
   const { data: publicSettings } = usePublicSettingsQuery();
