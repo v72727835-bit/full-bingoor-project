@@ -1,6 +1,6 @@
 import Icon from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from 'react-native';
 import { ProductCard } from '../components/ProductCard';
 import type { TabScreenProps } from '../navigation/TabsContext';
@@ -30,7 +30,13 @@ export function FestivalScreen({ active }: TabScreenProps) {
   // Three cards across, the same size as on Home.
   const railWidth = Math.floor((width - gutter * 2 - space.sm * 2) / 3);
   const area = useDeliveryPointKey();
-  const { data, error: queryError, isLoading, refetch } = useFestivalQuery(area, { skip: !active });
+  // Load on the first visit, then keep the data: skipping while hidden threw it away, so
+  // every return to the tab showed the loading skeleton again.
+  const [started, setStarted] = useState(active);
+  useEffect(() => {
+    if (active) setStarted(true);
+  }, [active]);
+  const { data, error: queryError, isLoading, refetch } = useFestivalQuery(area, { skip: !started });
   const [refreshing, setRefreshing] = useState(false);
 
   const error = typeof queryError === 'string' ? queryError : queryError ? 'Something went wrong' : null;

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
-import { useTabs } from '../navigation/TabsContext';
+import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useHomeQuery } from '../store/catalogApi';
 import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
@@ -20,7 +20,6 @@ import { Button } from '../ui/Button';
 import { Banner, EmptyState } from '../ui/Feedback';
 import { SmartImage } from '../ui/SmartImage';
 import { Stepper } from '../ui/Stepper';
-import { Pill } from '../ui/Surface';
 import { CartPoints } from '../components/CartPoints';
 import { Txt } from '../ui/Text';
 
@@ -32,8 +31,8 @@ const ISSUE_TEXT: Record<string, string> = {
 
 export function CartScreen({ active }: TabScreenProps) {
   const navigation = useNavigation<AppNav>();
-  const { goToTab } = useTabs();
-  const { cart, loading, refresh, setQuantity, remove, clear, pending } = useCart();
+  const goToTab = useGoToTab();
+  const { cart, loading, refresh, setQuantity, remove, clear } = useCart();
   // Checkout stays grey until the cart-points rule is met.
   const pointsShort = !!cart.points?.enabled && !cart.points.met;
   const area = useDeliveryPointKey();
@@ -62,11 +61,11 @@ export function CartScreen({ active }: TabScreenProps) {
 
   // Prices and stock move while the user is elsewhere, so re-check on entry.
   useEffect(() => {
-    if (active) void refresh();
+    if (active) void refresh({ silent: true });
   }, [active, refresh]);
 
   const confirmClear = () =>
-    Alert.alert('Empty your cart?', 'This removes every item from all shops in your cart.', [
+    Alert.alert('Empty your cart?', 'This removes every item from your cart.', [
       { text: 'Keep items', style: 'cancel' },
       { text: 'Empty cart', style: 'destructive', onPress: () => void clear() },
     ]);
@@ -78,7 +77,7 @@ export function CartScreen({ active }: TabScreenProps) {
         <EmptyState
           icon="cart-outline"
           title="Your cart is empty"
-          message="Browse your nearby shops and add a few things. Items from different shops are delivered as separate orders."
+          message="Browse the shop and add a few things."
           actionLabel="Start shopping"
           onAction={() => goToTab('home')}
         />
@@ -96,9 +95,7 @@ export function CartScreen({ active }: TabScreenProps) {
     <View style={styles.root}>
       <AppHeader
         title="Your cart"
-        subtitle={`${cart.itemCount} ${cart.itemCount === 1 ? 'item' : 'items'} from ${cart.groups.length} ${
-          cart.groups.length === 1 ? 'shop' : 'shops'
-        }`}
+        subtitle={`${cart.itemCount} ${cart.itemCount === 1 ? 'item' : 'items'}`}
         showBack={false}
         actions={[{ icon: 'trash-outline', label: 'Empty cart', onPress: confirmClear }]}
       />
@@ -106,7 +103,7 @@ export function CartScreen({ active }: TabScreenProps) {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} colors={[colors.brand]} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void refresh()} colors={[colors.brand]} />}
       >
         {/* The delivery promise is what a customer checks before paying, so it
             leads the page, centred and large rather than tucked in a subtitle. */}
@@ -145,17 +142,14 @@ export function CartScreen({ active }: TabScreenProps) {
           <Banner tone="success" message="Your order gets free delivery." style={styles.topBanner} />
         )}
 
-        {cart.groups.map((group) => (
-          <ShopGroup
-            key={group.shop.id}
-            group={group}
-            pending={pending}
-            onOpenShop={() => navigation.navigate('ShopDetail', { id: group.shop.id, name: group.shop.name })}
-            onOpenProduct={(item) => navigation.navigate('ProductDetail', { id: item.productId, name: item.name })}
-            onChange={setQuantity}
-            onRemove={remove}
-          />
-        ))}
+        {/* One basket: whichever warehouse fills an item stays behind the scenes, and the
+            minimum order above is for the whole cart. */}
+        <CartItems
+          groups={cart.groups}
+          onOpenProduct={(item) => navigation.navigate('ProductDetail', { id: item.productId, name: item.name })}
+          onChange={setQuantity}
+          onRemove={remove}
+        />
 
         {/* ------------------------------------------------ bill ------- */}
         <View style={styles.bill}>
@@ -260,54 +254,28 @@ export function CartScreen({ active }: TabScreenProps) {
 
 /* ------------------------------------------------------------ sub-views -- */
 
-function ShopGroup({
-  group,
-  pending,
-  onOpenShop,
+function CartItems({
+  groups,
   onOpenProduct,
   onChange,
   onRemove,
 }: {
-  group: CartGroup;
-  pending: Set<string>;
-  onOpenShop: () => void;
+  groups: CartGroup[];
   onOpenProduct: (item: CartItem) => void;
   onChange: (productId: string, qty: number) => void;
   onRemove: (productId: string) => void;
 }) {
-  const shortfall = group.shop.minOrderAmount - group.subtotal;
+  const items = groups.flatMap((g) => g.items);
+  const closed = groups.some((g) => !g.shop.isOpen);
+  const subtotal = groups.reduce((s, g) => s + g.subtotal, 0);
 
   return (
     <View style={styles.group}>
-      <Pressable onPress={onOpenShop} accessibilityRole="button" style={styles.groupHeader}>
-        <SmartImage uri={group.shop.logo} icon="shopping-cart" style={styles.groupLogo} radius={radius.sm} />
-        <View style={styles.groupTitles}>
-          <Txt variant="h4" numberOfLines={1}>
-            {group.shop.name}
-          </Txt>
-          <Txt variant="caption" tone="muted" numberOfLines={1}>
-            {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
-            {'  ·  '}
-            {group.deliveryFee === 0 ? 'Free delivery' : `${currency(group.deliveryFee)} delivery`}
-          </Txt>
-        </View>
-        {!group.shop.isOpen ? <Pill label="Closed" tone="danger" /> : null}
-        <Ionicons name="chevron-forward" size={ms(17)} color={colors.inkFaint} style={styles.groupChevron} />
-      </Pressable>
-
-      {!group.shop.isOpen ? (
-        <Banner tone="danger" message="This shop is closed right now. You can order once it reopens." style={styles.groupBanner} />
-      ) : !group.meetsMinOrder ? (
-        <Banner
-          tone="warning"
-          message={`Add ${currency(shortfall)} more from this shop to reach its ${currency(
-            group.shop.minOrderAmount,
-          )} minimum.`}
-          style={styles.groupBanner}
-        />
+      {closed ? (
+        <Banner tone="danger" message="Some items cannot be delivered right now. Remove them, or order once the shop reopens." style={styles.groupBanner} />
       ) : null}
 
-      {group.items.map((item, index) => (
+      {items.map((item, index) => (
         <View key={item.productId}>
           {index > 0 ? <View style={styles.itemDivider} /> : null}
           <CartLine
@@ -322,9 +290,9 @@ function ShopGroup({
 
       <View style={styles.groupFooter}>
         <Txt variant="bodySm" tone="muted">
-          Shop subtotal
+          Item total
         </Txt>
-        <Txt variant="h4">{currency(group.total)}</Txt>
+        <Txt variant="h4">{currency(subtotal)}</Txt>
       </View>
     </View>
   );

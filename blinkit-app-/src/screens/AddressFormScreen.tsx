@@ -16,7 +16,7 @@ import { AddressInput, createAddress, updateAddress } from '../api/user';
 import { useAuth } from '../context/AuthContext';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, gutter, ms, radius, space, themed } from '../theme';
-import { DeliveryMap } from '../components/DeliveryMap';
+import { DeliveryMap, PickedPin } from '../components/DeliveryMap';
 import { deliveryPointParams } from '../store/deliveryPoint';
 import { AddressLabel } from '../types';
 import { AppHeader } from '../ui/AppHeader';
@@ -30,6 +30,15 @@ import { TextField, TextInputRef } from '../ui/TextField';
 import { useToast } from '../ui/Toast';
 import { isValidPhone, isValidPincode, normalizePhone } from '../utils/validation';
 import { getPhoneLocation, locationMessage, offerLocationFix, problemFromError } from '../utils/location';
+
+/** Google's state name as it appears in our list (e.g. "Rajasthan"), if it is one of them. */
+function matchState(name?: string): string | undefined {
+  if (!name) return undefined;
+  const key = name.toLowerCase().replace(/[^a-z]/g, '');
+  return INDIA_STATES.find((st) => st.toLowerCase().replace(/[^a-z]/g, '') === key)
+    ?? (key.includes('delhi') ? INDIA_STATES.find((st) => /delhi/i.test(st)) : undefined)
+    ?? name;
+}
 
 const LABELS: { key: AddressLabel; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
   { key: 'home', label: 'Home', icon: 'home-outline' },
@@ -69,11 +78,16 @@ export function AddressFormScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | undefined>(existing?.location ?? deliveryPointParams() ?? undefined);
+  // `location` is the pin the address is saved with. A new address has none until the customer
+  // taps "Use my current location" or moves the map pin; the map only starts near them.
+  const [location, setLocation] = useState<{ lat: number; lng: number } | undefined>(existing?.location);
+  const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | undefined>(existing?.location ?? deliveryPointParams() ?? undefined);
+  const [focusKey, setFocusKey] = useState(0);
+  const [pinnedAt, setPinnedAt] = useState<string>('');
+  const [mapTouch, setMapTouch] = useState(false);
   const locationTurn = useRef(0);
   const [locating, setLocating] = useState(false);
   const [stateOpen, setStateOpen] = useState(false);
-  const [confirmLoad, setConfirmLoad] = useState(false);
   const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const fieldY = useRef<Record<string, number>>({});
   const onFieldLayout = (key: string) => (e: { nativeEvent: { layout: { y: number } } }) => {
@@ -94,6 +108,27 @@ export function AddressFormScreen() {
     scrollRef.current?.scrollTo({ y: Math.max(0, y - ms(24)), animated: true });
   };
 
+  /** The map's pin, with the address Google found for it: fills street, city, state and PIN. */
+  const onPick = (pin: PickedPin) => {
+    locationTurn.current++;
+    setLocating(false);
+    setLocation({ lat: pin.lat, lng: pin.lng });
+    setMapPoint({ lat: pin.lat, lng: pin.lng });
+    setErrors((e) => ({ ...e, location: '', line2: '', city: '', state: '', pincode: '' }));
+    const a = pin.address;
+    if (a?.formatted) setPinnedAt(a.formatted);
+    if (!a) return;
+    const state = matchState(a.state);
+    setForm((f) => ({
+      ...f,
+      line1: f.line1.trim() ? f.line1 : a.line1 || f.line1,
+      line2: a.line2 || f.line2,
+      city: a.city || f.city,
+      state: state || f.state,
+      pincode: a.pincode && /^\d{6}$/.test(a.pincode) ? a.pincode : f.pincode,
+    }));
+  };
+
   /** Pins the address to where the phone is now, so the rider can navigate to the door. */
   const locate = async () => {
     setFormError(null);
@@ -102,7 +137,9 @@ export function AddressFormScreen() {
     try {
       const point = await getPhoneLocation();
       if (turn !== locationTurn.current) return;
-      setConfirmLoad(true);
+      // The map moves its pin here and answers with the street, city, state and PIN (onPick).
+      setMapPoint(point);
+      setFocusKey((k) => k + 1);
       setLocation(point);
       setErrors((e) => ({ ...e, location: '' }));
     } catch (err) {
@@ -132,6 +169,8 @@ export function AddressFormScreen() {
     locationTurn.current++;
     setLocating(false);
     setLocation({ lat, lng });
+    setMapPoint({ lat, lng });
+    setFocusKey((k) => k + 1);
     setErrors((e) => ({ ...e, location: '' }));
     toast.success('Location pasted');
   };
@@ -145,7 +184,7 @@ export function AddressFormScreen() {
     if (form.city.trim().length < 2) next.city = 'Enter your city or town';
     if (form.state.trim().length < 2) next.state = 'Enter your state';
     if (!isValidPincode(form.pincode)) next.pincode = 'Pincode must be 6 digits';
-    if (!location) next.location = 'Tap "Use my current location" so the rider can find you';
+    if (!location) next.location = 'Tap "Use my current location" or move the pin on the map to your door, so the rider can reach you exactly.';
     setErrors(next);
     return next;
   };
@@ -193,7 +232,7 @@ export function AddressFormScreen() {
       <AppHeader title={editing ? 'Edit address' : 'New address'} />
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} scrollEnabled={!mapTouch} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {formError ? <Banner tone="danger" message={formError} style={styles.banner} /> : null}
 
           <Button
@@ -205,26 +244,30 @@ export function AddressFormScreen() {
             style={styles.locate}
           />
           {errors.location ? (
-            <Txt variant="caption" tone="danger" style={styles.locateHint}>
-              {errors.location}
-            </Txt>
+            <View style={styles.locateError} accessibilityRole="alert">
+              <Ionicons name="alert-circle" size={ms(16)} color={colors.danger} />
+              <Txt variant="caption" tone="danger" style={styles.locateErrorText}>
+                {errors.location}
+              </Txt>
+            </View>
           ) : location ? (
             <Txt variant="caption" tone="muted" style={styles.locateHint}>
-              {`Pinned at ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}
+              {pinnedAt || `Pinned at ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}
             </Txt>
           ) : null}
 
-          <DeliveryMap destination={location} confirmOnLoad={confirmLoad} onPick={(pin) => {
-            locationTurn.current++;
-            setLocating(false);
-            setConfirmLoad(false);
-            setLocation({ lat: pin.lat, lng: pin.lng });
-            setErrors((e) => ({ ...e, location: '' }));
-            const a = pin.address;
-            if (a) setForm((f) => ({ ...f, line2: a.line2 || f.line2, city: a.city || f.city,
-              state: a.state || f.state, pincode: a.pincode || f.pincode }));
-          }} />
-          <Txt variant="caption" tone="muted">Move the map pin to your entrance, confirm it, then save this address.</Txt>
+          {/* While a finger is on the map the page does not scroll, so the map moves instead. */}
+          <View
+            style={[styles.mapBox, errors.location ? styles.mapBoxError : null]}
+            onTouchStart={() => setMapTouch(true)}
+            onTouchEnd={() => setMapTouch(false)}
+            onTouchCancel={() => setMapTouch(false)}
+          >
+            <DeliveryMap destination={mapPoint} focusKey={focusKey} onPick={onPick} height={ms(420)} />
+          </View>
+          <Txt variant="caption" tone="muted" style={styles.mapHint}>
+            Move the map with your finger to put the pin on your entrance. Street, city, state and PIN fill in by themselves.
+          </Txt>
 
           {/* Someone else in the house usually has the pin already - sending
               it over on WhatsApp beats walking to the gate to fetch GPS. */}
@@ -449,6 +492,19 @@ const styles = themed(({ c, elevation }) => ({
 
   groupLabel: { marginBottom: space.sm },
   locate: { marginBottom: space.xs, alignSelf: 'stretch' },
+  mapBox: { borderRadius: radius.md, overflow: 'hidden', borderWidth: 1, borderColor: c.border },
+  mapBoxError: { borderColor: c.danger, borderWidth: 2 },
+  mapHint: { marginTop: space.xs },
+  locateError: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.xs,
+    padding: space.sm,
+    marginBottom: space.sm,
+    borderRadius: radius.sm,
+    backgroundColor: c.dangerSurface,
+  },
+  locateErrorText: { flex: 1, fontWeight: '700' },
   pinRow: { flexDirection: 'row', justifyContent: 'center', gap: space.md, marginTop: space.xs, marginBottom: space.md },
   locateHint: { marginBottom: space.sm, textAlign: 'center' },
   labelRow: { flexDirection: 'row', marginBottom: space.xl, gap: space.sm },

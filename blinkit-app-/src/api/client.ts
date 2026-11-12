@@ -82,17 +82,17 @@ type Problem = { shop?: string; name?: string; reason?: string };
 /** Turns the checkout's machine reasons ("min_order_99") into a sentence a customer can act on. */
 function explainProblem(p: Problem): string {
   const reason = p.reason ?? '';
-  const shop = p.shop ?? 'This shop';
   const item = p.name ?? 'An item';
-  if (reason === 'shop_closed') return `${shop} is closed right now`;
+  // Warehouses are never named to the customer: the basket is one shop.
+  if (reason === 'shop_closed') return `${item === 'An item' ? 'Some items' : item} cannot be delivered right now - remove them or try again later`;
   if (reason === 'out_of_stock') return `${item} is out of stock - remove it from your cart`;
   if (reason === 'insufficient_stock') return `Only a few ${item} are left - lower the quantity`;
   if (reason === 'unavailable') return `${item} is no longer available - remove it from your cart`;
   const min = /^min_order_(\d+(?:\.\d+)?)$/.exec(reason);
-  if (min) return `${shop} needs a minimum order of ₹${min[1]}`;
+  if (min) return `Shop for at least ₹${min[1]} to place this order`;
   const range = /^out_of_delivery_range_(\d+(?:\.\d+)?)km$/.exec(reason);
-  if (range) return `${shop} delivers only within ${range[1]} km - your delivery address is too far. Pick a closer address.`;
-  return `${p.name ?? p.shop ?? 'An item'}: ${reason.replace(/_/g, ' ')}`;
+  if (range) return `We deliver only within ${range[1]} km - your delivery address is too far. Pick a closer address.`;
+  return `${p.name ?? 'Your cart'}: ${reason.replace(/_/g, ' ')}`;
 }
 
 export function getErrorMessage(err: unknown): string {

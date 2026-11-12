@@ -20,7 +20,7 @@ export function DeliveryMap({ destination, pickup, rider, onPick, height = 260 }
   }, [destination?.lat, destination?.lng, pickup?.lat, pickup?.lng, !!onPick]);
   const send = () => ref.current?.injectJavaScript(`window.bingoorMapUpdate?.(${JSON.stringify({ type: 'positions', rider })});true;`);
   useEffect(send, [rider?.lat, rider?.lng]);
-  return <WebView<object> ref={ref} source={{ uri }} style={{ height, flex: 0 }} javaScriptEnabled
+  return <WebView<object> ref={ref} source={{ uri }} style={{ height, flex: 0 }} javaScriptEnabled nestedScrollEnabled
     onLoadEnd={send} onMessage={(event) => {
       try {
         if (!event.nativeEvent.url.startsWith(`${WEB_URL}/mobile-map.html`)) return;

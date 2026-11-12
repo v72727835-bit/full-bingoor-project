@@ -3,7 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, BackHandler, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTabs } from '../navigation/TabsContext';
+import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { Button } from '../ui/Button';
@@ -13,7 +13,7 @@ import { Txt } from '../ui/Text';
 export function OrderSuccessScreen() {
   const navigation = useNavigation<AppNav>();
   const { params } = useRoute<AppRoute<'OrderSuccess'>>();
-  const { goToTab } = useTabs();
+  const goToTab = useGoToTab();
 
   const pop = useRef(new Animated.Value(0)).current;
   const count = params.orderIds.length;
@@ -61,7 +61,7 @@ export function OrderSuccessScreen() {
           <Txt variant="bodyLg" center style={styles.subtitle}>
             {count === 1
               ? 'Your order is on its way to the shop. We will tell you as soon as they accept it.'
-              : `Your basket had items from ${count} shops, so we created ${count} separate orders. Each one is tracked on its own.`}
+              : `Your order is packed in ${count} parts so it reaches you fastest. Each part is tracked on its own.`}
           </Txt>
 
           <View style={styles.receipt}>
