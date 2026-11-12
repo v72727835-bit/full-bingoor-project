@@ -19,6 +19,7 @@ import { fetchReviews, submitReview } from '../api/catalog';
 import { getErrorMessage } from '../api/client';
 import { NotifyMeSheet } from '../components/NotifyMeSheet';
 import { ProductCard } from '../components/ProductCard';
+import { ProductVideo } from '../components/ProductVideo';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useTabs } from '../navigation/TabsContext';
@@ -188,6 +189,8 @@ export function ProductDetailScreen() {
             </View>
           ) : null}
         </View>
+
+        <ProductVideo url={product.video} name={product.name} />
 
         {/* ---------------------------------------------- main block -- */}
         <View style={styles.block}>
@@ -378,10 +381,13 @@ export function ProductDetailScreen() {
                 style={({ pressed }) => [styles.descBox, pressed && styles.pressed]}
               >
                 <View style={styles.descHead}>
-                  <Txt variant="h4" style={styles.flex}>
+                  <Txt variant="h3" weight="800" style={styles.flex}>
                     Product description
                   </Txt>
-                  <Ionicons name={descOpen ? 'chevron-up' : 'chevron-down'} size={ms(20)} color={colors.ink} />
+                  {/* A big, filled arrow so the box clearly reads as tappable. */}
+                  <View style={styles.descArrow}>
+                    <Ionicons name={descOpen ? 'chevron-up' : 'chevron-down'} size={ms(22)} color="#fff" />
+                  </View>
                 </View>
                 {descOpen ? (
                   <View style={styles.descBody}>
@@ -692,7 +698,8 @@ const styles = themed(({ c, elevation }) => ({
   galleryBadge: { position: 'absolute', top: ms(116), left: gutter },
   weightRow: { flexDirection: 'row', justifyContent: 'center', marginTop: ms(6) },
   weightPill: { flexDirection: 'row', alignItems: 'center', gap: ms(5), backgroundColor: c.surfaceSunken, borderWidth: 1, borderColor: c.border, borderRadius: radius.pill, paddingHorizontal: ms(12), paddingVertical: ms(5) },
-  descBox: { borderWidth: 1, borderColor: c.border, borderRadius: radius.lg, padding: space.lg, backgroundColor: c.surface },
+  descBox: { borderWidth: 1.5, borderColor: c.ink, borderRadius: radius.lg, padding: space.lg, backgroundColor: c.surface },
+  descArrow: { width: ms(32), height: ms(32), borderRadius: ms(16), backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center' },
   descHead: { flexDirection: 'row', alignItems: 'center' },
   descBody: { marginTop: space.md },
   starRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: space.xs, gap: ms(6) },

@@ -94,3 +94,9 @@ export async function fetchPointsProducts(): Promise<ProductSummary[]> {
   const { data } = await api.get<ApiEnvelope<ProductSummary[]>>('/cart/points-products');
   return data.data;
 }
+
+/** Brands inside an aisle (or everywhere), for the Brand filter - same list as the website. */
+export async function fetchBrands(category?: string): Promise<string[]> {
+  const { data } = await api.get<{ data: string[] }>('/products/brands', { params: category ? { category } : {} });
+  return data.data ?? [];
+}

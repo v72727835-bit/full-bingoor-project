@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { fetchProducts } from '../api/catalog';
 import { getErrorMessage } from '../api/client';
+import { BrandFilter } from '../components/BrandFilter';
 import { ProductCard } from '../components/ProductCard';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, gutter, ms, radius, space, themed } from '../theme';
@@ -31,6 +32,7 @@ export function ProductListScreen() {
 
   const [sort, setSort] = useState<ProductSort>(params.sort ?? 'relevance');
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [brand, setBrand] = useState<string | undefined>();
   const [items, setItems] = useState<ProductSummary[]>([]);
   const [meta, setMeta] = useState<PageMeta | undefined>();
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,7 @@ export function ProductListScreen() {
           q: params.q,
           sort,
           inStock: inStockOnly || undefined,
+          brand,
           page,
           limit: 20,
         });
@@ -67,7 +70,7 @@ export function ProductListScreen() {
         }
       }
     },
-    [params.category, params.shop, params.q, sort, inStockOnly],
+    [params.category, params.shop, params.q, sort, inStockOnly, brand],
   );
 
   useEffect(() => {
@@ -107,6 +110,8 @@ export function ProductListScreen() {
               In stock
             </Txt>
           </Pressable>
+
+          <BrandFilter category={params.category} value={brand} onChange={setBrand} />
 
           <View style={styles.chipSpacer} />
 

@@ -3,6 +3,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, View, ViewStyle } from 'react-native';
 import { ms, radius, space, useStyles, useTheme } from '../theme';
 import { Txt } from './Text';
+import { tapAdd } from '../utils/haptics';
 
 interface Props {
   value: number;
@@ -26,8 +27,16 @@ export function Stepper({ value, onChange, min = 1, max = 20, busy, size = 'md',
   const atMin = value <= min;
   const atMax = value >= max;
 
-  const dec = () => (atMin && onRemove ? onRemove() : onChange(Math.max(min, value - 1)));
-  const inc = () => onChange(Math.min(max, value + 1));
+  // A short buzz on both + and - (same as ADD), so every quantity change is felt.
+  const dec = () => {
+    tapAdd();
+    if (atMin && onRemove) onRemove();
+    else onChange(Math.max(min, value - 1));
+  };
+  const inc = () => {
+    tapAdd();
+    onChange(Math.min(max, value + 1));
+  };
   const minusIcon = atMin && onRemove ? 'trash-outline' : 'remove';
 
   const s = useStyles(({ c: p }) => ({

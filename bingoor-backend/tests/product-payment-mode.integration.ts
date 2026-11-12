@@ -52,23 +52,25 @@ test('product COD / online / both modes control cart, quotes and checkout at nea
         await fillCart();
         const cart = await request('/cart');
         const item = cart.body.data.groups[0].items[0];
-        assert.equal(item.codAvailable, mode !== 'online', `${mode}: product setting must override category COD default`);
+        // 'cod' forces cash on, 'online' forces it off; 'both' (the default) follows the aisle, which has COD off here.
+        assert.equal(item.codAvailable, mode === 'cod', `${mode}: aisle COD-off applies unless the product is COD-only`);
         assert.equal(item.onlineAvailable, mode !== 'cod');
         const quote = await request(`/cart/quote?addressId=${address._id}&slot=nextDay`);
         assert.equal(quote.body.data.longDistance, i === 1);
         // COD is off for an online-only product AND beyond the last distance band
         // (i === 1 here is past every band, so long-distance COD is refused).
-        const codAllowed = mode !== 'online' && i !== 1;
+        const codAllowed = mode === 'cod' && i !== 1;
         assert.equal(quote.body.data.codAllowed, codAllowed);
-        assert.equal(quote.body.data.codMessage === undefined, i === 0 && mode !== 'online');
+        assert.equal(quote.body.data.codMessage === undefined, i === 0 && mode === 'cod');
         const cod = await request('/orders', { addressId: String(address._id), paymentMethod: 'cod', slot: 'nextDay' });
         assert.equal(cod.status, codAllowed ? 201 : 409, JSON.stringify(cod.body));
         if (codAllowed) {
           assert.equal(cod.body.data.orders[0].paymentMethod, 'cod');
           assert.equal(cod.body.data.orders[0].longDistance, false);
         } else {
-          // An online-only product refuses COD itself; otherwise the refusal is the long-distance rule.
-          assert.equal(cod.body.details[0].reason, mode === 'online' ? 'cod_unavailable' : 'cod_long_distance');
+          // A product without cash (online-only, or 'both' in a COD-off aisle) refuses COD itself;
+          // the COD-only product is refused only by the long-distance rule.
+          assert.equal(cod.body.details[0].reason, mode === 'cod' ? 'cod_long_distance' : 'cod_unavailable');
         }
         await fillCart();
         const callsBefore = gatewayCalls;
@@ -81,10 +83,10 @@ test('product COD / online / both modes control cart, quotes and checkout at nea
       }
     }
     assert.equal(productRules(category._id).codAvailable, false, 'legacy products still inherit category defaults');
-    // COD orders succeed only for cod/both products at the near address (the far
-    // address is past the last band, so long-distance COD is refused): 2 orders.
-    assert.equal(await Order.countDocuments(), 2);
-    assert.equal((await Product.findById(product._id))?.stock, 80, 'only successful COD orders reserve stock');
+    // COD orders succeed only for the COD-only product at the near address (the far
+    // address is past the last band, and 'both' follows the aisle's COD-off): 1 order.
+    assert.equal(await Order.countDocuments(), 1);
+    assert.equal((await Product.findById(product._id))?.stock, 90, 'only successful COD orders reserve stock');
   } finally {
     mock.restoreAll();
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

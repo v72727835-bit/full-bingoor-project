@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { fetchBrands } from '../api/catalog';
 import { useLanguage } from '../context/LanguageContext';
 import { useSettings } from '../context/SettingsContext';
@@ -60,6 +60,9 @@ export function ListFilters({
   const filters = settings?.filters?.length ? settings.filters : DEFAULT_FILTERS;
   const sortOn = settings?.priceSortEnabled !== false;
   const [brands, setBrands] = useState<string[]>([]);
+  // The panel is mounted twice (sidebar + phone drawer); each copy needs its own radio
+  // group names, or the browser links them and a tap never changes the selection.
+  const uid = useId();
 
   useEffect(() => {
     if (!filters.some((f) => f.kind === 'brand')) return;
@@ -110,7 +113,7 @@ export function ListFilters({
                 <div className={s.opts}>
                   {brands.map((b) => (
                     <label key={b} className={s.opt}>
-                      <input type="radio" name={`brand-${f.key}`} checked={value.brand === b} onChange={() => set({ brand: b })} />
+                      <input type="radio" name={`brand-${f.key}-${uid}`} checked={value.brand === b} onChange={() => set({ brand: b })} />
                       {b}
                     </label>
                   ))}
@@ -126,7 +129,7 @@ export function ListFilters({
                     <label key={label} className={s.opt}>
                       <input
                         type="radio"
-                        name={`price-${f.key}`}
+                        name={`price-${f.key}-${uid}`}
                         checked={value.minPrice === min && value.maxPrice === max}
                         onChange={() => set({ minPrice: min, maxPrice: max })}
                       />
@@ -143,7 +146,7 @@ export function ListFilters({
                 <div className={s.opts}>
                   {[10, 20, 30, 50].map((d) => (
                     <label key={d} className={s.opt}>
-                      <input type="radio" name={`disc-${f.key}`} checked={value.minDiscount === d} onChange={() => set({ minDiscount: d })} />
+                      <input type="radio" name={`disc-${f.key}-${uid}`} checked={value.minDiscount === d} onChange={() => set({ minDiscount: d })} />
                       {d}% or more
                     </label>
                   ))}
@@ -157,7 +160,7 @@ export function ListFilters({
                 <div className={s.opts}>
                   {[4, 3].map((r) => (
                     <label key={r} className={s.opt}>
-                      <input type="radio" name={`rate-${f.key}`} checked={value.minRating === r} onChange={() => set({ minRating: r })} />
+                      <input type="radio" name={`rate-${f.key}-${uid}`} checked={value.minRating === r} onChange={() => set({ minRating: r })} />
                       {r}★ &amp; above
                     </label>
                   ))}
@@ -176,7 +179,7 @@ export function ListFilters({
                     ] as const
                   ).map(([v, label]) => (
                     <label key={v} className={s.opt}>
-                      <input type="radio" name={`diet-${f.key}`} checked={value.foodType === v} onChange={() => set({ foodType: v })} />
+                      <input type="radio" name={`diet-${f.key}-${uid}`} checked={value.foodType === v} onChange={() => set({ foodType: v })} />
                       {label}
                     </label>
                   ))}

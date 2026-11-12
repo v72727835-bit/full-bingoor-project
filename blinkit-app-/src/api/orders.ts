@@ -15,8 +15,8 @@ export async function placeOrder(input: {
 }
 
 /** The server's price for this basket to an address: the charge of each way to pay. */
-export async function fetchQuote(addressId: string): Promise<{ paymentFees?: Record<string, number>; days?: number }> {
-  const { data } = await api.get<ApiEnvelope<{ paymentFees?: Record<string, number>; days?: number }>>('/cart/quote', { params: { addressId, slot: 'instant' } });
+export async function fetchQuote(addressId: string): Promise<Partial<CartQuote> & { paymentFees?: Record<string, number>; days?: number }> {
+  const { data } = await api.get<ApiEnvelope<Partial<CartQuote> & { paymentFees?: Record<string, number>; days?: number }>>('/cart/quote', { params: { addressId, slot: 'instant' } });
   return data.data;
 }
 
@@ -49,9 +49,23 @@ export async function reorder(id: string): Promise<{ cart: CartView; skipped: { 
   return data.data;
 }
 
-/** The shopping minimum for the customer's distance (e.g. 199 nearby, 1199 far) against what is in the basket. */
-export async function fetchCartQuote(point?: { lat: number; lng: number } | null): Promise<{ subtotal: number; minOrder: number; meetsMinOrder: boolean }> {
-  const { data } = await api.get<ApiEnvelope<{ subtotal: number; minOrder: number; meetsMinOrder: boolean }>>('/cart/quote', {
+/** The server's priced cart for the delivery point: the same numbers the order is charged with. */
+export interface CartQuote {
+  subtotal: number;
+  minOrder: number;
+  meetsMinOrder: boolean;
+  handlingFee: number;
+  deliveryFee: number;
+  baseDeliveryFee: number;
+  addForFree: number;
+  twoHourFee: number;
+  total: number;
+  days?: number;
+}
+
+/** The shopping minimum for the customer's distance (e.g. 199 nearby, 1199 far) and the bill lines. */
+export async function fetchCartQuote(point?: { lat: number; lng: number } | null): Promise<CartQuote> {
+  const { data } = await api.get<ApiEnvelope<CartQuote>>('/cart/quote', {
     params: { slot: 'instant', ...(point ? { lat: point.lat, lng: point.lng } : {}) },
   });
   return data.data;

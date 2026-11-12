@@ -1,14 +1,17 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
 import { useTabs } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useHomeQuery } from '../store/catalogApi';
 import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
-import { fetchCartQuote } from '../api/orders';
+import { CartQuote, fetchCartQuote } from '../api/orders';
+import { TipPicker } from '../components/TipPicker';
+import { useTip } from '../store/tip';
+import { WEB_URL } from '../config';
 import { shortDelivery } from '../utils/delivery';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { CartGroup, CartItem } from '../types';
@@ -44,12 +47,13 @@ export function CartScreen({ active }: TabScreenProps) {
 
   // The shopping minimum for this customer's distance (e.g. Rs 199 nearby, Rs 1199 far), the same
   // rule the website shows first. Without a priced quote the shops' own minimums stand in.
-  const [minQuote, setMinQuote] = useState<{ subtotal: number; minOrder: number } | null>(null);
+  const [minQuote, setMinQuote] = useState<CartQuote | null>(null);
+  const tip = useTip();
   useEffect(() => {
     if (!active || cart.itemCount === 0) return;
     let live = true;
     fetchCartQuote(deliveryPointParams())
-      .then((q) => { if (live) setMinQuote({ subtotal: q.subtotal, minOrder: q.minOrder }); })
+      .then((q) => { if (live) setMinQuote(q); })
       .catch(() => { if (live) setMinQuote(null); });
     return () => { live = false; };
   }, [active, area, cart.subtotal, cart.itemCount]);
@@ -160,17 +164,25 @@ export function CartScreen({ active }: TabScreenProps) {
           </Txt>
 
           <BillRow label={`Item total (${cart.itemCount} ${cart.itemCount === 1 ? 'item' : 'items'})`} value={currency(cart.subtotal)} />
-          <BillRow
-            label="Delivery fee"
-            value={cart.deliveryFee === 0 ? 'FREE' : currency(cart.deliveryFee)}
-            highlight={cart.deliveryFee === 0}
-          />
-          {savings > 0 ? <BillRow label="Discount on MRP" value={`- ${currency(savings)}`} highlight /> : null}
+          {savings > 0 ? <BillRow label="Discount" value={currency(savings)} highlight /> : null}
+          <BillRow label="Handling charge" value={currency(minQuote?.handlingFee ?? 2)} />
+          {(() => {
+            const fee = minQuote ? minQuote.deliveryFee : cart.deliveryFee;
+            const was = minQuote && fee === 0 && minQuote.baseDeliveryFee > 0 ? currency(minQuote.baseDeliveryFee) : undefined;
+            return <BillRow label="Delivery fee" value={fee === 0 ? 'FREE' : currency(fee)} was={was} highlight={fee === 0} />;
+          })()}
+          {/* Under the delivery charge, in red: how far from free delivery. */}
+          {minQuote && minQuote.deliveryFee > 0 && minQuote.addForFree > 0 ? (
+            <Txt variant="labelSm" tone="danger" style={styles.freeHint}>
+              Shop for {currency(Math.ceil(minQuote.addForFree))} more to get FREE delivery
+            </Txt>
+          ) : null}
+          {tip > 0 ? <BillRow label="Tip for delivery partner" value={currency(tip)} /> : null}
 
           <View style={styles.billDivider} />
           <View style={styles.billRow}>
             <Txt variant="h3">To pay</Txt>
-            <Txt variant="h2">{currency(cart.total)}</Txt>
+            <Txt variant="h2">{currency((minQuote?.total ?? cart.total) + tip)}</Txt>
           </View>
 
           {savings > 0 ? (
@@ -190,6 +202,22 @@ export function CartScreen({ active }: TabScreenProps) {
               </Txt>
             </View>
           ) : null}
+        </View>
+
+        <View style={styles.bill}>
+          <TipPicker />
+        </View>
+
+        <View style={styles.bill}>
+          <Txt variant="label" weight="800" style={{ marginBottom: space.xs }}>
+            Cancellation policy
+          </Txt>
+          <Txt variant="caption" tone="muted">
+            Orders cannot be cancelled once packed for delivery. If an item is damaged, missing or the order is very late, you get a refund.{' '}
+            <Txt variant="caption" tone="brand" weight="700" onPress={() => void Linking.openURL(`${WEB_URL}/cancellation`)}>
+              Read terms and conditions
+            </Txt>
+          </Txt>
         </View>
 
         {/* The cart-points rule (admin panel): a top-up product before checkout. */}
@@ -367,12 +395,17 @@ function CartLine({
   );
 }
 
-function BillRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function BillRow({ label, value, highlight, was }: { label: string; value: string; highlight?: boolean; was?: string }) {
   return (
     <View style={styles.billRow}>
       <Txt variant="body" tone="muted" style={styles.billLabel} numberOfLines={2}>
         {label}
       </Txt>
+      {was ? (
+        <Txt variant="label" tone="faint" style={styles.was}>
+          {was}
+        </Txt>
+      ) : null}
       <Txt variant="label" tone={highlight ? 'success' : 'ink'}>
         {value}
       </Txt>
@@ -398,6 +431,8 @@ const styles = themed(({ c, elevation }) => ({
     backgroundColor: c.brandSurface,
   },
   topBanner: { marginHorizontal: gutter, marginBottom: space.lg },
+  was: { textDecorationLine: 'line-through', marginRight: space.xs },
+  freeHint: { marginTop: -space.xs, marginBottom: space.sm },
 
   group: {
     marginHorizontal: gutter,

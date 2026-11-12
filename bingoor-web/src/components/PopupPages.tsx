@@ -18,24 +18,54 @@ export function PopupPages() {
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The next show time is kept in localStorage, so the timer keeps running across page
+  // reloads and new tabs instead of starting again from zero on every page.
+  const every = Math.max(15, popup?.intervalSeconds ?? 210) * 1000;
+  const KEY = 'bingoor.popup.nextAt';
+  const arm = (delay: number) => {
+    if (timer.current) clearTimeout(timer.current);
+    try {
+      localStorage.setItem(KEY, String(Date.now() + delay));
+    } catch {
+      /* private mode: timer still works for this page */
+    }
+    timer.current = setTimeout(() => setOpen(true), delay);
+  };
+
   useEffect(() => {
     if (!pages.length) {
       setOpen(false);
       return;
     }
-    const every = Math.max(15, popup?.intervalSeconds ?? 210) * 1000;
-    timer.current = setTimeout(() => setOpen(true), every);
+    let delay = every;
+    try {
+      const saved = Number(localStorage.getItem('bingoor.popup.index'));
+      if (saved > 0) setIndex(saved % pages.length);
+      const at = Number(localStorage.getItem(KEY));
+      if (at > 0) delay = Math.max(1500, Math.min(every, at - Date.now()));
+    } catch {
+      /* ignore */
+    }
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setOpen(true), delay);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [pages.length, popup?.intervalSeconds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pages.length, every]);
 
   const close = () => {
     setOpen(false);
-    setIndex((i) => (pages.length ? (i + 1) % pages.length : 0));
-    if (timer.current) clearTimeout(timer.current);
-    const every = Math.max(15, popup?.intervalSeconds ?? 210) * 1000;
-    timer.current = setTimeout(() => setOpen(true), every);
+    setIndex((i) => {
+      const next = pages.length ? (i + 1) % pages.length : 0;
+      try {
+        localStorage.setItem('bingoor.popup.index', String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+    arm(every);
   };
 
   if (!open || !pages.length) return null;
