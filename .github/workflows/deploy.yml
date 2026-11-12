@@ -12,9 +12,7 @@ concurrency:
 
 jobs:
   deploy:
-    # Same runner choice as build-apks.yml: the self-hosted Windows runner unless the repository
-    # variable BINGOOR_RUNNER says otherwise (e.g. "ubuntu-latest" once Actions billing is fixed).
-    runs-on: ${{ fromJSON(vars.BINGOOR_RUNNER || '["self-hosted","windows","x64","bingoor"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - name: Deploy over SSH
@@ -23,7 +21,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          # The key lives in the job's temp folder (never the runner owner's ~/.ssh) and is removed after.
+          # The key lives in the job's temp folder and is removed after.
           d="$RUNNER_TEMP/ssh"
           mkdir -p "$d" && chmod 700 "$d"
           trap 'rm -rf "$d"' EXIT

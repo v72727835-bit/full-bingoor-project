@@ -3,10 +3,7 @@
 # (deploy/docker-deploy.sh, "apks"), so https://api.bingoor.com/downloads/bingoor-<app>.apk always
 # serves the latest build. A pull-request run only builds them (kept as a one-day artifact).
 #
-# Where it runs: the repository variable BINGOOR_RUNNER (JSON). Unset = the self-hosted Windows
-# runner ("bingoor-windows-runner"), because GitHub-hosted runners are refused while the account's
-# Actions billing is blocked. Set BINGOOR_RUNNER to "ubuntu-latest" (with the quotes) to go back to
-# GitHub's machines. The steps work on both.
+# Runs on GitHub's own machines (ubuntu-latest); nothing runs on a local PC.
 name: Build APKs
 
 on:
@@ -31,7 +28,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ${{ fromJSON(vars.BINGOOR_RUNNER || '["self-hosted","windows","x64","bingoor"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
       contents: write
@@ -46,15 +43,8 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
 
-      # The Windows PC has no Android SDK of its own: this installs it (once; later runs reuse it),
-      # accepts the licences and sets ANDROID_HOME. Gradle then fetches the exact platform,
-      # build-tools, NDK and CMake versions the apps ask for. GitHub's Ubuntu machines already have one.
-      - name: Android SDK
-        if: runner.os == 'Windows'
-        uses: android-actions/setup-android@v3
-
-      - name: Free disk space (GitHub-hosted Ubuntu)
-        if: runner.os == 'Linux'
+      # GitHub's runners are small; three Android builds fill the disk without this.
+      - name: Free disk space
         shell: bash
         run: |
           df -h /
@@ -70,37 +60,7 @@ jobs:
             echo "::endgroup::"
           done
 
-      # Windows: React Native's native (CMake) build breaks on long paths, and the runner's work
-      # folder is deep, so the checkout is mapped to a short drive letter first.
-      - name: Build APKs (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $drive = 'B:'
-          subst $drive /D 2>$null
-          subst $drive "$env:GITHUB_WORKSPACE"
-          if ($LASTEXITCODE -ne 0) { throw "could not map $drive" }
-          try {
-            $apps = @(
-              @{ name = 'customer';  dir = 'blinkit-app-' },
-              @{ name = 'rider';     dir = 'bingoor-backend\bingoor-mobile' },
-              @{ name = 'warehouse'; dir = 'bingoor-warehouse' }
-            )
-            foreach ($a in $apps) {
-              Write-Host "::group::gradlew assembleRelease ($($a.name))"
-              Set-Location "$drive\$($a.dir)\android"
-              .\gradlew.bat assembleRelease --no-daemon --stacktrace
-              if ($LASTEXITCODE -ne 0) { throw "$($a.name) build failed" }
-              Copy-Item app\build\outputs\apk\release\app-release.apk "$env:GITHUB_WORKSPACE\bingoor-$($a.name).apk" -Force
-              Write-Host "::endgroup::"
-            }
-          } finally {
-            Set-Location $env:GITHUB_WORKSPACE
-            subst $drive /D 2>$null
-          }
-
-      - name: Build APKs (Linux)
-        if: runner.os != 'Windows'
+      - name: Build APKs
         shell: bash
         run: |
           set -e
@@ -116,8 +76,8 @@ jobs:
         shell: bash
         run: ls -la bingoor-*.apk
 
-      # Pull requests: keep the APKs for a day to try them. Artifact storage can be full or
-      # unavailable on a blocked account; that must not fail the build.
+      # Pull requests: keep the APKs for a day to try them. A full artifact storage must not
+      # fail the build (main publishes straight from this job, no artifact needed).
       - uses: actions/upload-artifact@v4
         if: github.ref != 'refs/heads/main'
         continue-on-error: true
@@ -142,7 +102,7 @@ jobs:
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" apk-builds
 
       # Same key as deploy.yml. "apks" only copies the APKs: no rebuild, the sites stay up.
-      # The key lives in the job's temp folder (never the PC owner's ~/.ssh) and is removed after.
+      # The key lives in the job's temp folder and is removed after.
       - name: Publish them on api.bingoor.com/downloads
         if: github.ref == 'refs/heads/main'
         shell: bash
