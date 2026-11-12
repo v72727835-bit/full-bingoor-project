@@ -60,19 +60,22 @@ export function PopupPages() {
     }
   };
 
+  // One fixed 3:4 frame for every promo (big or small upload), with the cross on the
+  // frame's own corner - it no longer floats far above a small banner.
+  const frameW = Math.min(width - ms(48), 400, (height * 0.78 * 3) / 4);
+  const frameH = (frameW * 4) / 3;
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
       <View style={styles.backdrop}>
-        <Pressable style={styles.fill} onPress={open} accessibilityRole="imagebutton" accessibilityLabel="Promotion">
-          <Image
-            source={{ uri: page.image }}
-            style={{ width: Math.min(width, 520) - ms(32), height: height * 0.72, borderRadius: radius.lg }}
-            resizeMode="contain"
-          />
-        </Pressable>
-        <Pressable onPress={close} hitSlop={hitSlop} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
-          <Icon name="close" size={ms(22)} color="#fff" />
-        </Pressable>
+        <View style={{ width: frameW, height: frameH }}>
+          <Pressable style={styles.fill} onPress={open} accessibilityRole="imagebutton" accessibilityLabel="Promotion">
+            <Image source={{ uri: page.image }} style={{ width: frameW, height: frameH, borderRadius: radius.lg, backgroundColor: '#111' }} resizeMode="cover" />
+          </Pressable>
+          <Pressable onPress={close} hitSlop={hitSlop} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
+            <Icon name="close" size={ms(20)} color="#fff" />
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
@@ -83,8 +86,8 @@ const styles = themed(() => ({
   fill: { alignItems: 'center', justifyContent: 'center' },
   close: {
     position: 'absolute',
-    top: ms(48),
-    right: ms(20),
+    top: ms(8),
+    right: ms(8),
     width: ms(38),
     height: ms(38),
     borderRadius: ms(19),

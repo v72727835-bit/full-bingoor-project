@@ -105,6 +105,20 @@ function CheckoutInner() {
     setEmail((cur) => cur || (user as { email?: string } | null)?.email || '');
   }, [user]);
 
+  // Point 8 (declared before the effects below: a component that returns early
+  // must not leave this unset when an effect reads it): COD switched off after the admin's daily cut-off (IST). Trust the
+  // server flag and also recompute live so it flips at the cut-off minute.
+  const codCut = settings?.codCutoff;
+  const codTimeBlocked = (() => {
+    if (!codCut?.enabled) return false;
+    if (codCut.blocked) return true;
+    const [h, m] = (codCut.time || '19:00').split(':').map((n) => Number(n));
+    const cutoffMin = (Number.isFinite(h) ? h : 19) * 60 + (Number.isFinite(m) ? m : 0);
+    const local = new Date(Date.now() + 330 * 60_000);
+    return local.getUTCHours() * 60 + local.getUTCMinutes() >= cutoffMin;
+  })();
+  const codTimeMessage = codCut?.message || 'After 7 PM COD option is not available';
+
   // Pick the payment method the cart allows: a cash-only item needs COD, an online-only item needs online payment.
   useEffect(() => {
     const items = (cart?.groups ?? []).flatMap((g) => g.items);
@@ -112,7 +126,7 @@ function CheckoutInner() {
     const noOnline = items.some((i) => i.onlineAvailable === false);
     if (((noCod && !noOnline) || codTimeBlocked) && settings?.onlinePaymentOn) setPay('online');
     else if (noOnline && !noCod) setPay('cod');
-  }, [cart, settings?.onlinePaymentOn]);
+  }, [cart, settings?.onlinePaymentOn, codTimeBlocked]);
 
   // Blinkit-style: the order goes to where the customer is right now. A saved
   // address at the current location (within ~150 m) is picked for them; when
@@ -178,18 +192,6 @@ function CheckoutInner() {
   // carrying cash, so COD is refused however the cart is made up.
   const codTooFar = quote ? quote.codAllowed === false : false;
   const farCodMessage = quote?.codMessage || 'For long distance "COD" option is not available';
-  // Point 8: COD switched off after the admin's daily cut-off (IST). Trust the
-  // server flag and also recompute live so it flips at the cut-off minute.
-  const codCut = settings?.codCutoff;
-  const codTimeBlocked = (() => {
-    if (!codCut?.enabled) return false;
-    if (codCut.blocked) return true;
-    const [h, m] = (codCut.time || '19:00').split(':').map((n) => Number(n));
-    const cutoffMin = (Number.isFinite(h) ? h : 19) * 60 + (Number.isFinite(m) ? m : 0);
-    const local = new Date(Date.now() + 330 * 60_000);
-    return local.getUTCHours() * 60 + local.getUTCMinutes() >= cutoffMin;
-  })();
-  const codTimeMessage = codCut?.message || 'After 7 PM COD option is not available';
   const subtotalShort = quote ? !quote.meetsMinOrder : false;
 
   const place = async () => {

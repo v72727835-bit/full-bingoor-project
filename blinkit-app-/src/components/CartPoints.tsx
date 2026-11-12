@@ -38,11 +38,22 @@ export function CartPoints({ ready = true }: { ready?: boolean }) {
     let live = true;
     setAllError('');
     fetchPointsProducts()
-      .then((list) => { if (live) setAllItems(list); })
-      .catch(() => { if (live) { setAllItems([]); setAllError('Could not load products. Pull to retry.'); } });
-    return () => { live = false; };
+      .then(list => {
+        if (live) setAllItems(list);
+      })
+      .catch(() => {
+        if (live) {
+          setAllItems([]);
+          setAllError('Could not load products. Pull to retry.');
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, [allOpen, allItems]);
-  const sheetCardWidth = Math.floor((Math.min(width, 520) - gutter * 2 - space.md) / 2);
+  const sheetCardWidth = Math.floor(
+    (Math.min(width, 520) - gutter * 2 - space.md) / 2,
+  );
 
   useEffect(() => {
     if (!pts?.enabled) return;
@@ -71,10 +82,15 @@ export function CartPoints({ ready = true }: { ready?: boolean }) {
       setLeft(null);
       return;
     }
-    setLeft(AUTO_ADD_SECONDS);
-    const t = setInterval(() => setLeft((c) => (c === null ? null : Math.max(0, c - 1))), 1000);
+    setLeft(c => (c === null ? AUTO_ADD_SECONDS : c));
+    // While the customer is browsing the full list, the countdown waits for them.
+    if (allOpen) return;
+    const t = setInterval(
+      () => setLeft(c => (c === null ? null : Math.max(0, c - 1))),
+      1000,
+    );
     return () => clearInterval(t);
-  }, [removed]);
+  }, [removed, allOpen]);
 
   useEffect(() => {
     if (left !== 0) return;
@@ -83,105 +99,184 @@ export function CartPoints({ ready = true }: { ready?: boolean }) {
     if (id) void add(id);
   }, [left, pts, add]);
 
-  if (!ready || !pts?.enabled || pts.met || pts.suggestions.length === 0) return null;
+  // The "see all" sheet stays open even after a product is added (it is closed only with its cross).
+  const sheetEl = (
+    <Sheet
+      visible={allOpen}
+      onClose={() => setAllOpen(false)}
+      title="Add more to your order"
+    >
+      {!allItems ? (
+        <View style={styles.sheetLoading}>
+          <ActivityIndicator />
+        </View>
+      ) : allItems.length === 0 ? (
+        <Txt variant="body" tone="muted" center style={styles.sheetEmpty}>
+          {allError || 'No products to show right now.'}
+        </Txt>
+      ) : (
+        <View style={styles.sheetGrid}>
+          {allItems.map(item => (
+            <ProductCard
+              key={item._id}
+              product={item}
+              width={sheetCardWidth}
+              onPress={() => {
+                setAllOpen(false);
+                nav.navigate('ProductDetail', {
+                  id: item._id,
+                  name: item.name,
+                });
+              }}
+            />
+          ))}
+        </View>
+      )}
+    </Sheet>
+  );
+
+  if (!ready || !pts?.enabled || pts.met || pts.suggestions.length === 0)
+    return (
+      <>
+        {null}
+        {sheetEl}
+      </>
+    );
 
   const list = pts.suggestions;
   const count = list.length > 16 ? 3 : list.length > 8 ? 2 : 1;
   const size = Math.ceil(list.length / count);
-  const rows = Array.from({ length: count }, (_, i) => list.slice(i * size, (i + 1) * size)).filter((r) => r.length);
+  const rows = Array.from({ length: count }, (_, i) =>
+    list.slice(i * size, (i + 1) * size),
+  ).filter(r => r.length);
 
   return (
-    <View style={styles.box}>
-      {removed ? (
-        <View style={styles.warn} accessibilityRole="alert">
-          <Txt variant="label">
-            {`Don't delete this product, this is mandatory. If you delete this, then add at least any 1 product from the product list below, else within ${AUTO_ADD_SECONDS} seconds 1 product will be added automatically from the list below. Then you can place your order and make payment easily.`}
-            {left !== null ? <Txt variant="label" tone="danger">{`  Adding 1 product in ${left}s`}</Txt> : null}
-          </Txt>
-        </View>
-      ) : (
-        <Txt variant="label" style={styles.note}>
-          Add any one product from below to proceed to payment
-        </Txt>
-      )}
-      {rows.map((row, r) => (
-        <ScrollView key={r} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-          {row.map((sg) => (
-            <View key={sg.productId} style={styles.card}>
-              <SmartImage uri={sg.image ?? undefined} icon={sg.icon} style={styles.art} radius={radius.sm} />
-              <Txt variant="bodySm" numberOfLines={2} style={styles.name}>
-                {sg.name}
-              </Txt>
-              {sg.unit ? (
-                <Txt variant="caption" tone="muted">
-                  {sg.unit}
-                </Txt>
+    <>
+      <View style={styles.box}>
+        {removed ? (
+          <View style={styles.warn} accessibilityRole="alert">
+            <Txt variant="label">
+              {`Don't delete this product, this is mandatory. If you delete this, then add at least any 1 product from the product list below, else within ${AUTO_ADD_SECONDS} seconds 1 product will be added automatically from the list below. Then you can place your order and make payment easily.`}
+              {left !== null ? (
+                <Txt
+                  variant="label"
+                  tone="danger"
+                >{`  Adding 1 product in ${left}s`}</Txt>
               ) : null}
-              <Txt variant="label">{currency(sg.price)}</Txt>
-              <Pressable
-                onPress={() => void add(sg.productId)}
-                disabled={pending.has(sg.productId)}
-                accessibilityRole="button"
-                accessibilityLabel={`Add ${sg.name}`}
-                style={styles.add}
-              >
-                <Txt variant="label" tone="brand">
-                  ADD
-                </Txt>
-              </Pressable>
-            </View>
-          ))}
-        </ScrollView>
-      ))}
-
-      <Pressable
-        onPress={() => setAllOpen(true)}
-        accessibilityRole="button"
-        style={styles.seeAll}
-      >
-        <Txt variant="label" tone="brand">See all products</Txt>
-      </Pressable>
-
-      <Sheet visible={allOpen} onClose={() => setAllOpen(false)} title="Add more to your order">
-        {!allItems ? (
-          <View style={styles.sheetLoading}>
-            <ActivityIndicator />
+            </Txt>
           </View>
-        ) : allItems.length === 0 ? (
-          <Txt variant="body" tone="muted" center style={styles.sheetEmpty}>
-            {allError || 'No products to show right now.'}
-          </Txt>
         ) : (
-          <View style={styles.sheetGrid}>
-            {allItems.map((item) => (
-              <ProductCard
-                key={item._id}
-                product={item}
-                width={sheetCardWidth}
-                onPress={() => {
-                  setAllOpen(false);
-                  nav.navigate('ProductDetail', { id: item._id, name: item.name });
-                }}
-              />
-            ))}
-          </View>
+          <Txt variant="label" style={styles.note}>
+            Add any one product from below to proceed to payment
+          </Txt>
         )}
-      </Sheet>
-    </View>
+        {rows.map((row, r) => (
+          <ScrollView
+            key={r}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.row}
+          >
+            {row.map(sg => (
+              <View key={sg.productId} style={styles.card}>
+                <SmartImage
+                  uri={sg.image ?? undefined}
+                  icon={sg.icon}
+                  style={styles.art}
+                  radius={radius.sm}
+                />
+                <Txt variant="bodySm" numberOfLines={2} style={styles.name}>
+                  {sg.name}
+                </Txt>
+                {sg.unit ? (
+                  <Txt variant="caption" tone="muted">
+                    {sg.unit}
+                  </Txt>
+                ) : null}
+                <Txt variant="label">{currency(sg.price)}</Txt>
+                <Pressable
+                  onPress={() => void add(sg.productId)}
+                  disabled={pending.has(sg.productId)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${sg.name}`}
+                  style={styles.add}
+                >
+                  <Txt variant="label" tone="brand">
+                    ADD
+                  </Txt>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        ))}
+
+        <Pressable
+          onPress={() => setAllOpen(true)}
+          accessibilityRole="button"
+          style={styles.seeAll}
+        >
+          <Txt variant="label" tone="brand">
+            See all products
+          </Txt>
+        </Pressable>
+      </View>
+      {sheetEl}
+    </>
   );
 }
 
 const styles = themed(({ c }) => ({
-  box: { marginHorizontal: gutter, marginTop: space.md, padding: space.md, borderRadius: radius.md, backgroundColor: c.surface },
+  box: {
+    marginHorizontal: gutter,
+    marginTop: space.md,
+    padding: space.md,
+    borderRadius: radius.md,
+    backgroundColor: c.surface,
+  },
   note: { marginBottom: space.sm },
-  warn: { marginBottom: space.sm, padding: space.sm, borderRadius: radius.sm, borderWidth: 1, borderColor: c.danger, backgroundColor: c.dangerSurface },
+  warn: {
+    marginBottom: space.sm,
+    padding: space.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: c.danger,
+    backgroundColor: c.dangerSurface,
+  },
   row: { gap: space.sm, paddingBottom: space.sm },
-  card: { width: ms(120), padding: space.sm, borderRadius: radius.sm, borderWidth: 1, borderColor: c.border, gap: 2 },
+  card: {
+    width: ms(120),
+    padding: space.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: c.border,
+    gap: 2,
+  },
   art: { width: '100%', height: ms(84) },
   name: { minHeight: ms(34) },
-  add: { marginTop: space.xs, paddingVertical: ms(5), alignItems: 'center', borderRadius: radius.sm, borderWidth: 1.5, borderColor: c.brand },
-  seeAll: { alignSelf: 'flex-start', marginTop: space.xs, paddingVertical: ms(6), paddingHorizontal: space.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: c.brandBorder, backgroundColor: c.brandSurface },
+  add: {
+    marginTop: space.xs,
+    paddingVertical: ms(5),
+    alignItems: 'center',
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    borderColor: c.brand,
+  },
+  seeAll: {
+    alignSelf: 'flex-start',
+    marginTop: space.xs,
+    paddingVertical: ms(6),
+    paddingHorizontal: space.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: c.brandBorder,
+    backgroundColor: c.brandSurface,
+  },
   sheetLoading: { paddingVertical: ms(40), alignItems: 'center' },
   sheetEmpty: { paddingVertical: ms(30) },
-  sheetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, justifyContent: 'space-between' },
+  sheetGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.md,
+    justifyContent: 'space-between',
+  },
 }));

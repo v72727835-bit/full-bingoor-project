@@ -12,18 +12,24 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # Same runner choice as build-apks.yml: the self-hosted Windows runner unless the repository
+    # variable BINGOOR_RUNNER says otherwise (e.g. "ubuntu-latest" once Actions billing is fixed).
+    runs-on: ${{ fromJSON(vars.BINGOOR_RUNNER || '["self-hosted","windows","x64","bingoor"]') }}
     timeout-minutes: 40
     steps:
       - name: Deploy over SSH
+        shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # The key lives in the job's temp folder (never the runner owner's ~/.ssh) and is removed after.
+          d="$RUNNER_TEMP/ssh"
+          mkdir -p "$d" && chmod 700 "$d"
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$d/deploy_key"
+          chmod 600 "$d/deploy_key"
+          ssh-keyscan -H "$DEPLOY_HOST" > "$d/known_hosts" 2>/dev/null
           # The key is pinned to /usr/local/bin/bingoor-deploy on the server,
           # so no remote command is sent.
-          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ServerAliveInterval=30 "root@$DEPLOY_HOST"
+          ssh -i "$d/deploy_key" -o UserKnownHostsFile="$d/known_hosts" -o BatchMode=yes -o ServerAliveInterval=30 "root@$DEPLOY_HOST"

@@ -5,8 +5,8 @@
   "description": "Bingoor e-commerce backend - Public (customer) portal API",
   "main": "dist/server.js",
   "scripts": {
-    "test": "tsx --test tests/*.test.ts",
-    "test:integration": "tsx --test --test-concurrency=1 tests/*.integration.ts",
+    "test": "tsx --test \"tests/*.test.ts\"",
+    "test:integration": "tsx --test --test-concurrency=1 \"tests/*.integration.ts\"",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",

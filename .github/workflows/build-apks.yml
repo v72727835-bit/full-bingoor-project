@@ -1,7 +1,12 @@
 # Builds the Bingoor customer, rider and warehouse APKs.
-# Every run keeps the APKs as a downloadable artifact for one day. A run on main also force-pushes them to
-# the `apk-builds` branch and asks the server to publish them (deploy/docker-deploy.sh, "apks"),
-# so https://api.bingoor.com/downloads/bingoor-<app>.apk always serves the latest build.
+# A run on main force-pushes them to the `apk-builds` branch and asks the server to publish them
+# (deploy/docker-deploy.sh, "apks"), so https://api.bingoor.com/downloads/bingoor-<app>.apk always
+# serves the latest build. A pull-request run only builds them (kept as a one-day artifact).
+#
+# Where it runs: the repository variable BINGOOR_RUNNER (JSON). Unset = the self-hosted Windows
+# runner ("bingoor-windows-runner"), because GitHub-hosted runners are refused while the account's
+# Actions billing is blocked. Set BINGOOR_RUNNER to "ubuntu-latest" (with the quotes) to go back to
+# GitHub's machines. The steps work on both.
 name: Build APKs
 
 on:
@@ -13,7 +18,6 @@ on:
       - bingoor-backend/bingoor-mobile/**
       - bingoor-warehouse/**
       - .github/workflows/build-apks.yml
-  # On a pull request the APKs are only built (and kept as artifacts), never published.
   pull_request:
     paths:
       - blinkit-app-/**
@@ -27,18 +31,10 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - app: customer
-            dir: blinkit-app-
-          - app: rider
-            dir: bingoor-backend/bingoor-mobile
-          - app: warehouse
-            dir: bingoor-warehouse
+    runs-on: ${{ fromJSON(vars.BINGOOR_RUNNER || '["self-hosted","windows","x64","bingoor"]') }}
+    timeout-minutes: 120
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,56 +46,94 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
 
-      # GitHub-hosted runners are small and the Android build matrix can fill the disk quickly.
-      # Remove large preinstalled tooling before Gradle compiles all three apps.
-      - name: Free disk space
+      # The Windows PC has no Android SDK of its own: this installs it (once; later runs reuse it),
+      # accepts the licences and sets ANDROID_HOME. Gradle then fetches the exact platform,
+      # build-tools, NDK and CMake versions the apps ask for. GitHub's Ubuntu machines already have one.
+      - name: Android SDK
+        if: runner.os == 'Windows'
+        uses: android-actions/setup-android@v3
+
+      - name: Free disk space (GitHub-hosted Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
         run: |
-          echo "Disk before cleanup:"
           df -h /
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/local/lib/node_modules/@angular /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/share/powershell
-          sudo apt-get clean || true
-          sudo docker image prune -af > /dev/null || true
-          echo "Disk after cleanup:"
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/share/swift || true
           df -h /
 
-      - name: npm install
-        working-directory: ${{ matrix.dir }}
-        run: npm install --no-audit --no-fund
-
-      - name: gradlew assembleRelease
-        working-directory: ${{ matrix.dir }}/android
+      - name: npm install (all three apps)
+        shell: bash
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/bingoor-${{ matrix.app }}.apk"
+          for dir in blinkit-app- bingoor-backend/bingoor-mobile bingoor-warehouse; do
+            echo "::group::npm install $dir"
+            (cd "$dir" && npm install --no-audit --no-fund)
+            echo "::endgroup::"
+          done
 
+      # Windows: React Native's native (CMake) build breaks on long paths, and the runner's work
+      # folder is deep, so the checkout is mapped to a short drive letter first.
+      - name: Build APKs (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $drive = 'B:'
+          subst $drive /D 2>$null
+          subst $drive "$env:GITHUB_WORKSPACE"
+          if ($LASTEXITCODE -ne 0) { throw "could not map $drive" }
+          try {
+            $apps = @(
+              @{ name = 'customer';  dir = 'blinkit-app-' },
+              @{ name = 'rider';     dir = 'bingoor-backend\bingoor-mobile' },
+              @{ name = 'warehouse'; dir = 'bingoor-warehouse' }
+            )
+            foreach ($a in $apps) {
+              Write-Host "::group::gradlew assembleRelease ($($a.name))"
+              Set-Location "$drive\$($a.dir)\android"
+              .\gradlew.bat assembleRelease --no-daemon --stacktrace
+              if ($LASTEXITCODE -ne 0) { throw "$($a.name) build failed" }
+              Copy-Item app\build\outputs\apk\release\app-release.apk "$env:GITHUB_WORKSPACE\bingoor-$($a.name).apk" -Force
+              Write-Host "::endgroup::"
+            }
+          } finally {
+            Set-Location $env:GITHUB_WORKSPACE
+            subst $drive /D 2>$null
+          }
+
+      - name: Build APKs (Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -e
+          build() {
+            (cd "$2/android" && chmod +x gradlew && ./gradlew assembleRelease --no-daemon --stacktrace)
+            cp "$2/android/app/build/outputs/apk/release/app-release.apk" "$GITHUB_WORKSPACE/bingoor-$1.apk"
+          }
+          build customer blinkit-app-
+          build rider bingoor-backend/bingoor-mobile
+          build warehouse bingoor-warehouse
+
+      - name: APK sizes
+        shell: bash
+        run: ls -la bingoor-*.apk
+
+      # Pull requests: keep the APKs for a day to try them. Artifact storage can be full or
+      # unavailable on a blocked account; that must not fail the build.
       - uses: actions/upload-artifact@v4
+        if: github.ref != 'refs/heads/main'
+        continue-on-error: true
         with:
-          name: bingoor-${{ matrix.app }}
-          path: bingoor-${{ matrix.app }}.apk
-          # The publish job below picks these up within minutes, and the latest APKs also live on the
-          # apk-builds branch and api.bingoor.com/downloads. A 30-day keep filled the repository's
-          # artifact storage (3 APKs per run) and made every later run fail at this step.
+          name: bingoor-apks
+          path: bingoor-*.apk
           retention-days: 1
-
-  publish:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
 
       # One commit, force-pushed, so old APKs do not pile up in the repository history.
       - name: Push the APKs to the apk-builds branch
+        if: github.ref == 'refs/heads/main'
+        shell: bash
         run: |
-          ls -la bingoor-*.apk
+          out="$RUNNER_TEMP/apk-builds"
+          rm -rf "$out" && mkdir -p "$out" && cp bingoor-*.apk "$out/"
+          cd "$out"
           git init -q -b apk-builds
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -108,7 +142,10 @@ jobs:
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" apk-builds
 
       # Same key as deploy.yml. "apks" only copies the APKs: no rebuild, the sites stay up.
+      # The key lives in the job's temp folder (never the PC owner's ~/.ssh) and is removed after.
       - name: Publish them on api.bingoor.com/downloads
+        if: github.ref == 'refs/heads/main'
+        shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -117,8 +154,10 @@ jobs:
             echo "::warning::No deploy secrets: the APKs are on the apk-builds branch and are published on the next deploy."
             exit 0
           fi
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ServerAliveInterval=30 "root@$DEPLOY_HOST" apks
+          d="$RUNNER_TEMP/ssh"
+          mkdir -p "$d" && chmod 700 "$d"
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$d/deploy_key"
+          chmod 600 "$d/deploy_key"
+          ssh-keyscan -H "$DEPLOY_HOST" > "$d/known_hosts" 2>/dev/null
+          ssh -i "$d/deploy_key" -o UserKnownHostsFile="$d/known_hosts" -o BatchMode=yes -o ServerAliveInterval=30 "root@$DEPLOY_HOST" apks

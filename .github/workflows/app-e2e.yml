@@ -20,6 +20,9 @@ concurrency:
 
 jobs:
   e2e:
+    # Needs Docker services and an emulator, so only GitHub's Ubuntu machines can run it. Skipped
+    # while builds use the self-hosted Windows runner (repository variable BINGOOR_RUNNER unset).
+    if: vars.BINGOOR_RUNNER == '"ubuntu-latest"'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     strategy:

@@ -6,7 +6,7 @@ import { NotifyMeSheet } from './NotifyMeSheet';
 import { VariantPickerSheet } from './VariantPickerSheet';
 import { tapAdd } from '../utils/haptics';
 import { useWishlist } from '../context/WishlistContext';
-import { colors, currency, fillParent, hitSlop, ms, radius, space, themed } from '../theme';
+import { colors, currency, hitSlop, ms, radius, space, themed } from '../theme';
 import { ProductSummary } from '../types';
 import { StarLine } from '../ui/Rating';
 import { SmartImage } from '../ui/SmartImage';
@@ -80,13 +80,7 @@ function ProductCardBase({ product, width, onPress, deliveryText = '19 min', sty
           </View>
         ) : null}
 
-        {soldOut ? (
-          <View style={styles.veil}>
-            <Txt variant="caption" center style={styles.veilText}>
-              Out of stock
-            </Txt>
-          </View>
-        ) : null}
+        {/* Out of stock: the image stays sharp (like the website); the Notify me button says it. */}
 
       </View>
 
@@ -250,17 +244,6 @@ const styles = themed(({ c }) => ({
     backgroundColor: c.surface,
   },
   foodDot: { width: ms(6), height: ms(6), borderRadius: ms(3) },
-
-  veil: { ...fillParent, backgroundColor: c.mode === 'dark' ? 'rgba(0,0,0,0.62)' : 'rgba(255,255,255,0.72)', alignItems: 'center', justifyContent: 'center' },
-  veilText: {
-    backgroundColor: c.ink,
-    color: c.surface,
-    fontWeight: '800',
-    paddingHorizontal: space.sm,
-    paddingVertical: ms(3),
-    borderRadius: radius.xs,
-    overflow: 'hidden',
-  },
 
   actionRow: {
     position: 'absolute',

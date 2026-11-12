@@ -90,12 +90,12 @@ export function productRules(
   const id = idOf(category);
   const mode: PaymentMode = paymentMode === 'cod' || paymentMode === 'online' ? paymentMode : 'both';
   const aisleCod = !cache || !id ? true : !cache.codOff.has(id);
-  const explicitMode = paymentMode === 'cod' || paymentMode === 'online' || paymentMode === 'both';
   return {
     deliveryDays: cache && id && cache.sixDay.has(id) ? cache.settings.sixDay.days : null,
-    // An explicit product setting wins; category defaults apply to legacy
-    // products without a payment setting.
-    codAvailable: explicitMode ? mode !== 'online' : aisleCod,
+    // A product set to "online only" never takes cash and "COD only" always does.
+    // "both" is the schema default every product has, so it must not override the
+    // admin's "no cash on delivery" aisles - otherwise that tick never applies.
+    codAvailable: mode === 'online' ? false : mode === 'cod' ? true : aisleCod,
     onlineAvailable: mode !== 'cod',
     paymentMode: mode,
   };

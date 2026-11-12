@@ -8,6 +8,7 @@ import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, currency, gutter, hitSlop, ms, radius, space, themed, useTheme } from '../theme';
+import { BrandFilter } from '../components/BrandFilter';
 import { useCategoryQuery, useProductsQuery } from '../store/catalogApi';
 import { useDeliveryPointKey } from '../store/deliveryPoint';
 import type { Category, ProductSort, ProductSummary } from '../types';
@@ -44,6 +45,7 @@ export function CategoryBrowseScreen() {
   const [childSlug, setChildSlug] = useState<string | undefined>(params.childSlug);
   const [sort, setSort] = useState<ProductSort>('popular');
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [brand, setBrand] = useState<string | undefined>();
   const listRef = useRef<FlatList<ProductSummary>>(null);
 
   /* Two columns of products fit beside the rail even on a small phone. The
@@ -65,7 +67,9 @@ export function CategoryBrowseScreen() {
   // (fall back to the parent if it has no children or the page failed).
   const activeSlug = childSlug ?? ((page && !page.children.length) || pageFailed ? params.slug : undefined);
   const area = useDeliveryPointKey();
-  const products = useProductsQuery({ category: activeSlug, limit: 40, sort, inStock: inStockOnly || undefined, at: area }, { skip: !activeSlug });
+  // A brand picked in one aisle may not exist in the next one.
+  useEffect(() => setBrand(undefined), [activeSlug]);
+  const products = useProductsQuery({ category: activeSlug, limit: 40, sort, inStock: inStockOnly || undefined, brand, at: area }, { skip: !activeSlug });
   // currentData is only ever this aisle's list, never the previous child's.
   const items: ProductSummary[] = products.currentData?.items ?? [];
   const loadingItems = !activeSlug || (products.isFetching && !products.currentData);
@@ -183,6 +187,7 @@ export function CategoryBrowseScreen() {
                 <Icon name={inStockOnly ? 'checkmark-circle' : 'ellipse-outline'} size={ms(13)} color={inStockOnly ? colors.brandInk : colors.inkMuted} />
                 <Txt variant="labelSm" style={[styles.chipText, inStockOnly && styles.chipTextOn]}>In stock</Txt>
               </Pressable>
+              <BrandFilter category={activeSlug} value={brand} onChange={setBrand} />
               {SORTS.map((option) => {
                 const on = sort === option.key;
                 return (

@@ -91,6 +91,8 @@ export interface ProductSummary {
   slug: string;
   brand?: string;
   images: string[];
+  /** Optional product video: an uploaded file or a YouTube / Vimeo link. */
+  video?: string;
   /** Bundled artwork key, used whenever `images` is empty. */
   icon?: string;
   /** Short chips under the name: 'Cotton', 'Spicy', 'SPF 50'. */

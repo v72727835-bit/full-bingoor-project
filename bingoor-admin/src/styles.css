@@ -1271,7 +1271,14 @@ select option {
   text-align: center;
   padding: 12px;
 }
-.login-brand-word { font-size: 30px; font-weight: 800; letter-spacing: -0.6px; }
+.login-brand-word { font-size: 34px; font-weight: 800; letter-spacing: -0.6px; }
+/* Point: logo on one side, the login form on the other (Instagram-style). */
+.login-wrap { gap: 64px; }
+.login-brand { min-width: 280px; }
+.login-brand-logo { width: 120px; height: 120px; border-radius: 28px; }
+.login-title { margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+.login-or { display: flex; align-items: center; gap: 10px; margin: 18px 0 4px; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
+.login-or::before, .login-or::after { content: ''; flex: 1; height: 1px; background: var(--border-strong); }
 .login-brand-tag { color: var(--ink-soft); font-size: 14px; }
 .login-card {
   width: 100%;
@@ -1790,7 +1797,7 @@ select option {
 .seller-popup button { border: 0; background: rgba(255, 255, 255, 0.2); color: #fff; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; line-height: 1; cursor: pointer; }
 .banner-warn { padding: 10px 14px; border-radius: 10px; background: #fff4d6; color: #7a5200; font-weight: 600; }
 .info-tip { cursor: help; color: #16924a; font-weight: 700; }
-.login-switch { display: block; margin: 14px auto 0; border: 0; background: none; color: #16924a; font-weight: 600; cursor: pointer; }
+.login-switch { display: block; width: 100%; margin: 10px 0 0; padding: 10px; border: 1.5px solid #16924a; border-radius: 10px; background: none; color: #16924a; font-weight: 700; cursor: pointer; }
 
 /* Warehouse panel: menu chips replace the sidebar on phones */
 .wh-mobile-nav { display: none; }

@@ -1,3 +1,4 @@
+import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation } from '@react-navigation/native';
 import React, { useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
@@ -141,10 +142,11 @@ export function SignupScreen() {
               setGenerated(true);
             }}
             accessibilityRole="button"
-            style={styles.generate}
+            style={({ pressed }) => [styles.generate, pressed && { opacity: 0.75 }]}
           >
-            <Txt variant="labelSm" tone="brand">
-              {generated ? 'Generate another' : 'Generate a strong password'}
+            <Ionicons name="key-outline" size={ms(16)} color={colors.brand} />
+            <Txt variant="label" tone="brand" weight="700">
+              {generated ? 'Generate another password' : 'Generate a strong password'}
             </Txt>
           </Pressable>
           {generated ? (
@@ -206,7 +208,18 @@ const styles = themed(({ c }) => ({
   meterSegment: { flex: 1, height: ms(4), borderRadius: radius.pill, marginRight: space.xs },
   meterLabel: { marginLeft: space.sm, minWidth: ms(58), textAlign: 'right' },
   submit: { marginTop: space.sm },
-  generate: { alignSelf: 'flex-start', paddingVertical: space.xs, marginBottom: space.sm },
+  generate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.xs,
+    paddingVertical: ms(10),
+    marginBottom: space.sm,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: c.brand,
+    backgroundColor: c.brandSurface,
+  },
   generatedNote: { marginBottom: space.md },
   legal: { marginTop: space.lg, paddingHorizontal: space.md },
   footer: {

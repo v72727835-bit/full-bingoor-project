@@ -29,18 +29,12 @@ export default function LoginPage() {
   return (
     <div className="login-wrap">
       <aside className="login-brand">
-        <img className="logo-mark" src="/logo-mark.png" alt="Bingoor" width={52} height={52} />
+        <img className="logo-mark login-brand-logo" src="/logo-mark.png" alt="Bingoor" width={120} height={120} />
         <div className="login-brand-word">Bingoor</div>
         <div className="login-brand-tag">Quick-commerce control panel</div>
       </aside>
       <form className="login-card" onSubmit={submit}>
-        <div className="login-logo">
-          <img className="logo-mark" src="/logo-mark.png" alt="Bingoor" width={36} height={36} />
-          <div className="logo-text">
-            <b style={{ fontSize: 18 }}>Bingoor</b>
-            <span>{seller ? 'Warehouse Panel' : 'Super Admin Panel'}</span>
-          </div>
-        </div>
+        <h1 className="login-title">{seller ? 'Seller login' : 'Admin login'}</h1>
         <div className="login-sub">{seller ? 'Sign in with the warehouse login Bingoor gave you to manage products, orders and riders.' : 'Sign in to manage products, orders, riders and offers.'}</div>
         <ErrorBanner message={error} />
         <Field label="Email or phone">
@@ -64,8 +58,9 @@ export default function LoginPage() {
         <Button type="submit" disabled={loading} style={{ width: '100%', marginTop: 6 }}>
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
+        <div className="login-or"><span>OR</span></div>
         <button type="button" className="login-switch" onClick={() => { setSeller((v) => !v); setError(''); }}>
-          {seller ? 'Admin sign in' : 'Warehouse sign in'}
+          {seller ? 'Admin login' : 'Seller login'}
         </button>
       </form>
     </div>
