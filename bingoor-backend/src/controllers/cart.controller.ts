@@ -4,7 +4,7 @@ import { Product } from '../models/Product';
 import { Shop } from '../models/Shop';
 import { User } from '../models/User';
 import { getCartView, guestCartView, lineIssue, resolveCart, ResolvedGroup } from '../services/cart.service';
-import { orderDeliveryDays, paymentFee, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
+import { orderDeliveryDays, paymentFee, paymentOptions, quoteCart, Slot } from '../services/pricing.service';
 import { codMessage, loadSettings, longDistanceCodMessage, productRules } from '../services/settings.service';
 import { haversineKm, round2 } from '../utils/helpers';
 import { ApiError } from '../utils/ApiError';
@@ -130,49 +130,29 @@ export const quote = asyncHandler(async (req, res) => {
 async function quoteFor(groups: ResolvedGroup[], point: { lat: number; lng: number } | undefined, slot: Slot) {
   const { settings } = await loadSettings();
 
-  // ISSUE-07: fees must be computed PER SHOP, exactly like checkout
-  // (runPlaceOrder). A multi-shop cart is charged one handling + delivery +
-  // two-hour fee per shop, so quoting a single combined fee under-charged the
-  // customer and never matched the amount sent to Razorpay. For a single-shop
-  // cart (the common case) this is identical to the old behaviour.
-  const perGroup = groups.map((g) => {
+  // One basket, one set of rules: the customer never sees which warehouse fills
+  // which item, so the minimum order, free delivery and fees are judged on the
+  // whole cart (checkout, runPlaceOrder, uses the same quoteCart).
+  const legs = groups.map((g) => {
     const subtotal = g.lines.reduce((s, l) => (lineIssue(g, l) ? s : s + l.product.price * l.quantity), 0);
     const c = g.shop.location?.coordinates;
     const km = point && c ? haversineKm(point.lat, point.lng, c[1], c[0]) : null;
-    const q = quoteDelivery(settings, { subtotal, distanceKm: km, slot });
-    return { shop: String(g.shop._id), name: g.shop.name, ...q };
+    return { subtotal, distanceKm: km };
   });
-
-  const sum = (pick: (q: (typeof perGroup)[number]) => number) => round2(perGroup.reduce((s, q) => s + pick(q), 0));
-  const subtotal = sum((q) => q.subtotal);
-  const handlingFee = sum((q) => q.handlingFee);
-  const deliveryFee = sum((q) => q.deliveryFee);
-  const twoHourFee = sum((q) => q.twoHourFee);
-  const total = sum((q) => q.total);
-  // Distances/bands differ per shop; report the worst case to the customer.
-  const distances = perGroup.map((q) => q.distanceKm).filter((d): d is number => d !== null);
-  const distanceKm = distances.length ? Math.max(...distances) : null;
+  const q = quoteCart(settings, { groups: legs, slot });
+  const { subtotal, handlingFee, deliveryFee, twoHourFee, total, distanceKm, redOrder, longDistance, addForFree, freeAbove, minOrder, meetsMinOrder, baseDeliveryFee } = q;
   // #31: the cart's ETA must also honour a category's fixed "6 day" delivery,
-  // exactly like the placed order does (order.controller runPlaceOrder), so a
-  // slow-category item does not show "19 min" in the cart and then ship in days.
-  // Per order (shop group): a 6-day aisle only slows an order that holds nothing
-  // but 6-day aisles; mixed with other items the customer's location decides.
-  const days = groups.reduce((d, g, i) => {
+  // exactly like the placed order does: a 6-day aisle only slows an order that
+  // holds nothing but 6-day aisles; mixed with other items the location decides.
+  const days = groups.reduce((d, g) => {
     const lineDays = g.lines.map((l) => productRules(l.product.category).deliveryDays ?? 0);
-    return Math.max(d, orderDeliveryDays(perGroup[i]?.days ?? 0, lineDays));
+    return Math.max(d, orderDeliveryDays(q.days, lineDays));
   }, 0);
-  const redOrder = perGroup.some((q) => q.redOrder);
-  const longDistance = perGroup.some((q) => q.longDistance);
-  const addForFree = sum((q) => q.addForFree);
-  const freeAbove = perGroup[0]?.freeAbove ?? 0;
-  const minOrder = perGroup.reduce((m, q) => Math.max(m, q.minOrder), 0);
-  const meetsMinOrder = perGroup.every((q) => q.meetsMinOrder);
-  const baseDeliveryFee = sum((q) => q.baseDeliveryFee);
 
   // Two separate reasons COD can be off: something in the basket, or the
   // customer being past the last distance band. Distance is reported first,
   // since it is the one they cannot fix by editing their cart.
-  const distanceCodAllowed = perGroup.every((q) => q.codAllowed);
+  const distanceCodAllowed = q.codAllowed;
   const productsAllowCod = groups.every((g) =>
     g.lines.every((l) => productRules(l.product.category, l.product.paymentMode).codAvailable),
   );
@@ -198,8 +178,6 @@ async function quoteFor(groups: ResolvedGroup[], point: { lat: number; lng: numb
     total,
     paymentFees,
     ...(message ? { codMessage: message } : {}),
-    // Per-shop breakdown so multi-shop checkout can show each store's fees.
-    groups: perGroup,
   };
 }
 

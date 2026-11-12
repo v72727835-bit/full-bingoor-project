@@ -22,7 +22,7 @@ import { ProductCard } from '../components/ProductCard';
 import { ProductVideo } from '../components/ProductVideo';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { useTabs } from '../navigation/TabsContext';
+import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, currency, gutter, hitSlop, ms, radius, space, themed } from '../theme';
 import { useHomeQuery, useProductQuery } from '../store/catalogApi';
@@ -52,7 +52,7 @@ export function ProductDetailScreen() {
   const { width } = useWindowDimensions();
   const railWidth = useRailCardWidth(0.42, 180);
   const toast = useToast();
-  const { goToTab } = useTabs();
+  const goToTab = useGoToTab();
 
   const { quantityOf, add, setQuantity, remove, pending, cart } = useCart();
   const { isSaved, toggle } = useWishlist();

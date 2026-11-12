@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CartDock } from '../components/CartDock';
 import { OrderProgressPopup } from '../components/OrderProgressPopup';
@@ -33,7 +33,10 @@ const OrdersTab = React.memo(OrdersScreen);
 const ProfileTab = React.memo(ProfileScreen);
 
 export function MainTabs() {
-  const { active, goToTab } = useTabs();
+  const { active: selected, goToTab } = useTabs();
+  // The bar lights up the tapped tab at once; the screens swap right after, in a
+  // render React may interrupt, so a tap never waits for the heavy screen.
+  const active = useDeferredValue(selected);
   const { cart } = useCart();
   const [barHeight, setBarHeight] = useState(0);
   const { data: settings } = usePublicSettingsQuery();
@@ -87,7 +90,7 @@ export function MainTabs() {
       </View>
       <View onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
         <OrderProgressPopup hidden={active !== 'home' && active !== 'browse' && active !== 'festival'} />
-        <TabBar tabs={tabs} active={active} onSelect={goToTab} />
+        <TabBar tabs={tabs} active={selected} onSelect={goToTab} />
       </View>
       {/* Positioned against the whole screen rather than hung off the tab bar:
           Android does not deliver taps to a child drawn outside its parent. */}
@@ -111,4 +114,6 @@ function Pane({ visible, children }: { visible: boolean; children: React.ReactNo
 
 const styles = themed(({ c }) => ({
   root: { flex: 1, backgroundColor: c.surfaceSunken },
-  hidden: { display: 'none' },}));
+  // Not display:none - on the new architecture that unmounts the native views, so
+  // every return to Home rebuilt hundreds of views. Moved off screen they stay ready.
+  hidden: { opacity: 0, transform: [{ translateX: -100000 }] },}));

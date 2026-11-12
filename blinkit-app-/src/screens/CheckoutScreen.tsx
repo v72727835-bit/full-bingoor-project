@@ -10,7 +10,7 @@ import { WEB_URL } from '../config';
 import { tokenStore } from '../storage/tokens';
 import { fetchAddresses } from '../api/user';
 import { useCart } from '../context/CartContext';
-import { useTabs } from '../navigation/TabsContext';
+import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useHomeQuery, usePublicSettingsQuery } from '../store/catalogApi';
 import { useDeliveryPointKey } from '../store/deliveryPoint';
@@ -21,7 +21,6 @@ import { AppHeader } from '../ui/AppHeader';
 import { Button } from '../ui/Button';
 import { Banner, EmptyState, FullScreenLoader } from '../ui/Feedback';
 import { Screen } from '../ui/Screen';
-import { SmartImage } from '../ui/SmartImage';
 import { Pill } from '../ui/Surface';
 import { Txt } from '../ui/Text';
 import { TextField } from '../ui/TextField';
@@ -33,20 +32,21 @@ const LABEL_ICON = { home: 'home-outline', work: 'briefcase-outline', other: 'lo
 
 /** Turns the server's machine-readable checkout blockers into plain English. */
 function describeProblem(p: CheckoutProblem): string {
-  const where = p.name ? `"${p.name}"` : p.shop ?? 'An item';
-  if (p.reason === 'shop_closed') return `${p.shop ?? 'A shop'} is closed right now.`;
+  const where = p.name ? `"${p.name}"` : 'An item';
+  // Warehouses are never named to the customer: the basket is one shop.
+  if (p.reason === 'shop_closed') return 'Some items cannot be delivered right now. Remove them or try again later.';
   if (p.reason === 'out_of_stock') return `${where} just went out of stock.`;
   if (p.reason === 'insufficient_stock') return `${where} does not have enough stock left.`;
   if (p.reason === 'unavailable') return `${where} is no longer available.`;
   if (p.reason === 'points_short') return 'Add 1 product from the list below your cart to continue.';
   if (p.reason === 'cod_unavailable') return `${where}: cash on delivery is not available. Choose Pay online or remove it.`;
   if (p.reason === 'online_unavailable') return `${where}: online payment is not available. Choose Cash on delivery or remove it.`;
-  if (p.reason === 'cod_long_distance') return `${p.shop ?? 'A shop'} is far from your address, so cash on delivery is not available. Choose Pay online.`;
+  if (p.reason === 'cod_long_distance') return 'Your address is far away, so cash on delivery is not available. Choose Pay online.';
   if (p.reason.startsWith('min_order_')) {
-    return `${p.shop ?? 'A shop'} needs a minimum order of ${currency(Number(p.reason.replace('min_order_', '')) || 0)}.`;
+    return `Shop for at least ${currency(Number(p.reason.replace('min_order_', '')) || 0)} to place this order.`;
   }
   if (p.reason.startsWith('out_of_delivery_range_')) {
-    return `${p.shop ?? 'A shop'} does not deliver to this address (${p.reason.replace('out_of_delivery_range_', '')}).`;
+    return `We do not deliver to this address (${p.reason.replace('out_of_delivery_range_', '')}).`;
   }
   return `${where}: ${p.reason.replace(/_/g, ' ')}`;
 }
@@ -72,7 +72,7 @@ const pctText = (o: PayOptionDef, amount: number) => `${pctOf(o, amount)}% of th
 export function CheckoutScreen() {
   const navigation = useNavigation<AppNav>();
   const { settle, cart, refresh } = useCart();
-  const { goToTab } = useTabs();
+  const goToTab = useGoToTab();
   const toast = useToast();
 
   const [addresses, setAddresses] = useState<Address[] | null>(null);
@@ -480,28 +480,20 @@ export function CheckoutScreen() {
           <Txt variant="h3" style={styles.sectionTitle}>
             Order summary
           </Txt>
-          {cart.groups.map((group) => (
-            <View key={group.shop.id} style={styles.summaryGroup}>
-              <View style={styles.summaryHead}>
-                <SmartImage uri={group.shop.logo} icon="shopping-cart" style={styles.summaryLogo} radius={radius.xs} />
-                <Txt variant="label" numberOfLines={1} style={styles.summaryShop}>
-                  {group.shop.name}
+          {/* One basket, no warehouse names: every item in one list. */}
+          <View style={styles.summaryGroup}>
+            {cart.groups.flatMap((group) => group.items).map((item) => (
+              <View key={item.productId} style={styles.summaryItem}>
+                <Txt variant="bodySm" tone="muted" style={styles.summaryQty}>
+                  {item.quantity} {'×'}
                 </Txt>
-                <Txt variant="label">{currency(group.total)}</Txt>
+                <Txt variant="bodySm" tone="body" style={styles.summaryName} numberOfLines={2}>
+                  {item.name}
+                </Txt>
+                <Txt variant="bodySm">{currency(item.lineTotal)}</Txt>
               </View>
-              {group.items.map((item) => (
-                <View key={item.productId} style={styles.summaryItem}>
-                  <Txt variant="bodySm" tone="muted" style={styles.summaryQty}>
-                    {item.quantity} {'×'}
-                  </Txt>
-                  <Txt variant="bodySm" tone="body" style={styles.summaryName} numberOfLines={2}>
-                    {item.name}
-                  </Txt>
-                  <Txt variant="bodySm">{currency(item.lineTotal)}</Txt>
-                </View>
-              ))}
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
 
         {/* -------------------------------------------------- tip --- */}

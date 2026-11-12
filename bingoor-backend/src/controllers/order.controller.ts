@@ -5,7 +5,7 @@ import { CUSTOMER_CANCELLABLE, IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { User } from '../models/User';
 import { cartPointsTotal, getCartView, lineIssue, resolveCart } from '../services/cart.service';
-import { codTimeBlocked, orderDeliveryDays, paymentFeePct, paymentOptions, quoteDelivery, Slot } from '../services/pricing.service';
+import { codTimeBlocked, orderDeliveryDays, paymentFeePct, paymentOptions, quoteCart, quoteDelivery, Slot } from '../services/pricing.service';
 import { sendOrderWhatsApp } from '../services/whatsapp.service';
 import { loadSettings, productRules } from '../services/settings.service';
 import { createRazorpayOrder, razorpayEnabled, razorpayKeys, razorpayWebhookSecret, refundRazorpayPayment, verifyRazorpaySignature } from '../services/razorpay.service';
@@ -100,7 +100,7 @@ async function runPlaceOrder(
 
   /* ---- validate everything before touching stock ---- */
   const problems: { shop?: string; productId?: string; name?: string; reason: string }[] = [];
-  let owed = 0;
+  const legs: { subtotal: number; distanceKm: number | null }[] = [];
   for (const g of groups) {
     if (!g.shop.isActive || !g.shop.isOpen) {
       problems.push({ shop: g.shop.name, reason: 'shop_closed' });
@@ -120,22 +120,19 @@ async function runPlaceOrder(
         problems.push({ shop: g.shop.name, productId: String(l.product._id), name: l.product.name, reason: 'online_unavailable' });
       }
     }
-    if (subtotal < g.shop.minOrderAmount) {
-      problems.push({ shop: g.shop.name, reason: `min_order_${g.shop.minOrderAmount}` });
-    }
-    const km = distanceTo(g.shop, address.location);
-    const quote = quoteDelivery(settings, { subtotal, distanceKm: km, slot });
-    if (!quote.meetsMinOrder) problems.push({ shop: g.shop.name, reason: `min_order_${quote.minOrder}` });
-    // Beyond the last distance band COD is refused (too far to send a rider out
-    // with cash). The /cart/quote already reports this; enforce it at checkout
-    // too so a client can't place a COD order the quote said was unavailable.
-    if (paymentMethod === 'cod' && !quote.codAllowed) {
-      // `cod_long_distance` is the reason the web and the customer app already
-      // translate into "far from your address - choose Pay online".
-      problems.push({ shop: g.shop.name, reason: 'cod_long_distance' });
-    }
-    owed += subtotal + quote.deliveryFee + quote.twoHourFee + quote.handlingFee;
+    legs.push({ subtotal, distanceKm: distanceTo(g.shop, address.location) });
   }
+  // One basket, one set of rules (the same quoteCart as /cart/quote): the minimum
+  // order and the fees go by the whole cart, not by each warehouse filling it.
+  const cartQuote = quoteCart(settings, { groups: legs, slot });
+  if (!cartQuote.meetsMinOrder) problems.push({ reason: `min_order_${cartQuote.minOrder}` });
+  // Beyond the last distance band COD is refused (too far to send a rider out
+  // with cash). The /cart/quote already reports this; enforce it at checkout
+  // too so a client can't place a COD order the quote said was unavailable.
+  // `cod_long_distance` is the reason the web and the customer app already
+  // translate into "far from your address - choose Pay online".
+  if (paymentMethod === 'cod' && !cartQuote.codAllowed) problems.push({ reason: 'cod_long_distance' });
+  const owed = cartQuote.total;
   // #36: the chosen way to pay can carry a charge (a percent of the whole bill).
   const payOpt = paymentOptions(settings).find((o) => o.key === payOption);
   if (payOpt && !payOpt.enabled) problems.push({ reason: `pay_option_off_${payOption}` });
@@ -166,7 +163,10 @@ async function runPlaceOrder(
     }));
     const sellerIds = [...new Set(items.filter((i) => i.seller).map((i) => String(i.seller)))];
     const subtotal = round2(items.reduce((s, i) => s + i.lineTotal, 0));
-    const quote = quoteDelivery(settings, { subtotal, distanceKm: distanceTo(g.shop, address.location), slot });
+    const own = quoteDelivery(settings, { subtotal, distanceKm: distanceTo(g.shop, address.location), slot });
+    // The basket's fees are charged once, on the first order of the checkout (like the tip).
+    const quote = { ...own, deliveryFee: idx === 0 ? cartQuote.deliveryFee : 0, twoHourFee: idx === 0 ? cartQuote.twoHourFee : 0,
+      handlingFee: idx === 0 ? cartQuote.handlingFee : 0, days: cartQuote.days, redOrder: cartQuote.redOrder, longDistance: cartQuote.longDistance };
     const deliveryFee = quote.deliveryFee + quote.twoHourFee;
     const payFee = round2(((subtotal + deliveryFee + quote.handlingFee) * feePct) / 100);
     // The tip rides on the first order of the checkout only.

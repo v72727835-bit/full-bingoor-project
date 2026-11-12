@@ -231,13 +231,20 @@ function CartInner() {
 
       <div className="side-grid">
         <div className="stack" style={{ gap: 16 }}>
-          {cart.groups.map((g) => (
+          {/* One basket: the warehouses filling it stay behind the scenes, so every item is in one list. */}
+          {[cart.groups.length > 1 ? {
+            ...cart.groups[0],
+            shop: { ...cart.groups[0].shop, isOpen: cart.groups.every((x) => x.shop.isOpen) },
+            items: cart.groups.flatMap((x) => x.items),
+            subtotal: Math.round(cart.groups.reduce((n, x) => n + x.subtotal, 0) * 100) / 100,
+            meetsMinOrder: true,
+          } : cart.groups[0]].filter(Boolean).map((g) => (
             <section key={g.shop.id} className={`card ${s.shopCard}`}>
               <header className={s.shopHead}>
                 <span className={s.shopIcon}>
                   <Icon name="store" size={17} />
                 </span>
-                <span className={`${s.shopName} clamp-1`}>{cart.groups.length > 1 ? `Delivery ${cart.groups.indexOf(g) + 1}` : 'Your items'}</span>
+                <span className={`${s.shopName} clamp-1`}>Your items</span>
                 {g.shop.isOpen ? null : <Badge tone="bad">Closed</Badge>}
               </header>
 
@@ -274,10 +281,10 @@ function CartInner() {
                 {!g.meetsMinOrder ? (
                   <span className={s.minWarn}>
                     <Icon name="info" size={14} />
-                    This shop has a minimum order of ₹{g.shop.minOrderAmount}
+                    Minimum order of ₹{g.shop.minOrderAmount}
                   </span>
                 ) : (
-                  <span className="body-sm">Shop subtotal</span>
+                  <span className="body-sm">Item total</span>
                 )}
                 <span className="num" style={{ fontWeight: 700 }}>
                   ₹{g.subtotal}

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bingoor delivery map</title>
-<style>html,body,#map{height:100%;margin:0;font:14px system-ui}#tools{position:absolute;z-index:1000;left:12px;right:12px;bottom:10px;background:white;padding:8px;border-radius:14px;box-shadow:0 2px 12px #0003;max-height:40%;overflow:auto}#search{position:absolute;z-index:1000;left:12px;right:12px;top:10px;display:flex;gap:6px;background:white;padding:8px;border-radius:12px;box-shadow:0 2px 12px #0003}#query{flex:1;max-width:none}button{padding:8px 10px;border:0;border-radius:8px;background:#14863d;color:white;margin:3px;font-size:13px}#status{margin:4px;color:#333}#pano{display:none;position:absolute;inset:0;z-index:1100}#close{display:none;position:absolute;top:12px;right:12px;z-index:1200}input{padding:9px;border:1px solid #bbb;border-radius:8px;font-size:14px}</style></head>
-<body><div id="map"></div><div id="pano"></div><button id="close">Close Street View</button><div id="search"><input id="query" placeholder="Search street, area, city or PIN" aria-label="Search street, area, city or PIN code"><button id="find">Search</button></div><div id="tools"><div id="status" role="status">Loading map…</div><button id="retry" hidden>Retry Google Maps</button><button id="save">Confirm this pin</button><button id="street">Delivery Street View</button><button id="pickup-street">Pickup Street View</button></div>
+<style>html,body,#map{height:100%;margin:0;font:14px system-ui}#tools{position:absolute;z-index:1000;left:12px;right:12px;bottom:10px;background:white;padding:8px;border-radius:14px;box-shadow:0 2px 12px #0003;max-height:40%;overflow:auto}#search{position:absolute;z-index:1000;left:12px;right:12px;top:10px;display:flex;gap:6px;background:white;padding:8px;border-radius:12px;box-shadow:0 2px 12px #0003}#query{flex:1;max-width:none}button{padding:8px 10px;border:0;border-radius:8px;background:#14863d;color:white;margin:3px;font-size:13px}#status{margin:4px;color:#333}#pano{display:none;position:absolute;inset:0;z-index:1100}#close{display:none;position:absolute;top:12px;right:12px;z-index:1200}input{padding:9px;border:1px solid #bbb;border-radius:8px;font-size:14px}#status{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}@media (max-height:460px){#search{top:6px;padding:5px}#search input{padding:6px}#search button,#tools button{padding:6px 8px;font-size:12px}#tools{bottom:6px;padding:5px}#pin .tip span{display:none}}#pin{display:none;position:absolute;z-index:900;left:50%;bottom:50%;width:230px;margin:0 0 -3px -115px;pointer-events:none;flex-direction:column;align-items:center}#pin .box{display:flex;flex-direction:column;align-items:center;transition:transform .18s ease-out}#pin.lift .box{transform:translateY(-16px)}#pin.nudge .box{animation:nudge .9s ease-in-out 2}@keyframes nudge{0%,100%{transform:translateY(0)}35%{transform:translateY(-14px)}60%{transform:translateY(0)}80%{transform:translateY(-5px)}}#pin .tip{position:relative;display:grid;gap:1px;padding:7px 12px;border-radius:8px;background:#1c2230;color:#fff;text-align:center;font-size:11px;line-height:1.35;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.25)}#pin .tip b{font-size:12.5px}#pin .tip:after{content:'';position:absolute;left:50%;bottom:-5px;width:10px;height:10px;background:#1c2230;transform:translateX(-50%) rotate(45deg)}#pin .head{width:22px;height:22px;margin-top:8px;border-radius:50%;background:#e8175d;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}#pin .stick{width:3px;height:18px;background:#8a3a9b}#pin .base{width:14px;height:6px;border-radius:50%;background:rgba(138,58,155,.45);transition:transform .18s}#pin.lift .base{transform:scale(1.6);opacity:.7}</style></head>
+<body><div id="map"></div><div id="pin" aria-hidden="true"><div class="box"><div class="tip"><b>Order will be delivered here</b><span>Move the map to your exact location</span></div><span class="head"></span><span class="stick"></span></div><span class="base"></span></div><div id="pano"></div><button id="close">Close Street View</button><div id="search"><input id="query" placeholder="Search street, area, city or PIN" aria-label="Search street, area, city or PIN code"><button id="find">Search</button></div><div id="tools"><div id="status" role="status">Loading map…</div><button id="retry" hidden>Retry Google Maps</button><button id="save">Confirm this pin</button><button id="street">Delivery Street View</button><button id="pickup-street">Pickup Street View</button></div>
 <script>
 /* Shared, public map surface for both phone apps and the admin. No account tokens enter this page. */
 const q=new URLSearchParams(location.search), edit=q.get('mode')==='pick';
@@ -15,27 +15,55 @@ function notify(p){if(window.ReactNativeWebView)window.ReactNativeWebView.postMe
 function say(s){status.textContent=s}
 document.getElementById('save').hidden=!edit;document.getElementById('search').hidden=!edit;document.getElementById('pickup-street').hidden=!pickup;
 let geoTimer;
+/* Street, area, city, state and PIN for a pin, the same way the website reads them:
+   the most specific Google result first, gaps filled from the broader ones. */
+function partsOf(r){
+ const get=(...types)=>r.address_components.find(c=>types.some(t=>c.types.includes(t)))?.long_name||'';
+ return {house:[get('premise','subpremise'),get('street_number')].filter(Boolean).join(', '),road:get('route'),
+  area:[get('sublocality_level_2','neighborhood'),get('sublocality_level_1','sublocality')].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(', '),
+  city:get('locality','administrative_area_level_3','administrative_area_level_2'),state:get('administrative_area_level_1'),pincode:get('postal_code').replace(/\D/g,'').slice(0,6)};
+}
+let geoTurn=0;
 async function reverseNotify(selected){
- let address={};
- if(googleReady){try{const result=await new google.maps.Geocoder().geocode({location:selected});const a=result.results[0];if(a){const part=t=>a.address_components.find(c=>c.types.includes(t))?.long_name||'';address={line2:[part('route'),part('sublocality_level_1')].filter(Boolean).join(', '),city:part('locality')||part('administrative_area_level_2'),state:part('administrative_area_level_1'),pincode:part('postal_code')}}}catch{}}
+ const turn=++geoTurn;let address={};
+ if(googleReady){try{const {results}=await new google.maps.Geocoder().geocode({location:selected});if(results?.length){const p=partsOf(results[0]);for(const r of results.slice(1)){const m=partsOf(r);for(const k of ['road','area','city','state','pincode'])p[k]||=m[k]}
+  address={line1:p.house||undefined,line2:[p.road,p.area].filter(Boolean).join(', ')||results[0].formatted_address.split(',').slice(0,2).join(',').trim(),city:p.city,state:p.state,pincode:p.pincode,formatted:results[0].formatted_address}}}catch{}}
+ if(turn!==geoTurn)return;/* an older lookup finishing late must not undo a newer pin */
+ if(address.formatted)say(address.formatted);
  notify({type:'pin',...selected,address});
 }
-function move(p){destination={lat:p.lat,lng:p.lng};pin.setPosition(destination);say('Selected pin: '+p.lat.toFixed(5)+', '+p.lng.toFixed(5));if(edit){clearTimeout(geoTimer);geoTimer=setTimeout(()=>reverseNotify({...destination}),500)}}
+let moving=false;
+function nudge(){const el=document.getElementById('pin');el.classList.remove('nudge');void el.offsetWidth;el.classList.add('nudge')}
+/* Pick mode: the pin stays in the middle and the customer moves the map under it. */
+function move(p,pan=true){destination={lat:p.lat,lng:p.lng};
+ if(!edit){pin?.setPosition(destination);return}
+ if(gmap&&pan){moving=true;gmap.panTo(destination);if(gmap.getZoom()<17)gmap.setZoom(17);nudge()}
+ say('Finding the address…');clearTimeout(geoTimer);geoTimer=setTimeout(()=>reverseNotify({...destination}),350)}
 function fail(){googleReady=false;say('Google Maps could not load. Check your connection or the configured Google Maps key, then retry.');document.getElementById('retry').hidden=false;for(const id of ['save','find','street','pickup-street'])document.getElementById(id).disabled=true}
 window.gm_authFailure=fail;
 document.getElementById('retry').onclick=()=>location.reload();
 for(const id of ['save','find','street','pickup-street'])document.getElementById(id).disabled=true;
 function drawGoogle(){
- gmap=new google.maps.Map(document.getElementById('map'),{center:destination,zoom:16,mapTypeControl:false,fullscreenControl:false,streetViewControl:true,controlSize:30,cameraControlOptions:{position:google.maps.ControlPosition.RIGHT_CENTER},zoomControlOptions:{position:google.maps.ControlPosition.RIGHT_CENTER},streetViewControlOptions:{position:google.maps.ControlPosition.RIGHT_CENTER}});/* controls sit mid-right so the bottom arrow is never hidden under the tools card */
+ /* greedy: one finger moves the map (no "use two fingers" lock inside the apps). */
+ gmap=new google.maps.Map(document.getElementById('map'),{center:destination,zoom:edit?17:16,gestureHandling:'greedy',clickableIcons:false,mapTypeControl:false,fullscreenControl:false,streetViewControl:true,controlSize:30,cameraControlOptions:{position:google.maps.ControlPosition.RIGHT_CENTER},zoomControlOptions:{position:google.maps.ControlPosition.RIGHT_CENTER},streetViewControlOptions:{position:google.maps.ControlPosition.RIGHT_CENTER}});/* controls sit mid-right so the bottom arrow is never hidden under the tools card */
  const pinIcon={path:'M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.4 7.3 11.6a1 1 0 0 0 1.4 0C13 21.4 20 15.4 20 10c0-4.4-3.6-8-8-8z',fillColor:'#14863d',fillOpacity:1,strokeColor:'#ffffff',strokeWeight:2,scale:1.8,anchor:new google.maps.Point(12,22),labelOrigin:new google.maps.Point(12,10)};
- pin=new google.maps.Marker({map:gmap,position:destination,draggable:edit,title:edit?'Delivery pin':'Delivery address',icon:pinIcon,label:edit?{text:'\u25cf',color:'#ffffff',fontSize:'9px'}:undefined});
- if(edit){gmap.addListener('click',e=>move(e.latLng.toJSON()));pin.addListener('dragend',e=>move(e.latLng.toJSON()))}
+ if(edit){
+  /* The website's pin, fixed in the middle: it lifts while the map moves and drops on the new spot. */
+  const el=document.getElementById('pin');el.style.display='flex';nudge();
+  gmap.addListener('dragstart',()=>{el.classList.remove('nudge');el.classList.add('lift');say('Release the map to set the pin')});
+  gmap.addListener('dragend',()=>el.classList.remove('lift'));
+  gmap.addListener('click',e=>move(e.latLng.toJSON()));
+  /* After a finger drag the pin is wherever the middle of the map is now; after panTo the exact
+     coordinate given is kept (a saved pin keeps its precision). */
+  gmap.addListener('idle',()=>{if(moving){moving=false;return}const c=gmap.getCenter().toJSON();if(Math.abs(c.lat-destination.lat)>1e-7||Math.abs(c.lng-destination.lng)>1e-7)move(c,false)});
+ }else pin=new google.maps.Marker({map:gmap,position:destination,title:'Delivery address',icon:pinIcon});
  if(pickup)new google.maps.Marker({map:gmap,position:pickup,label:'P',title:'Pickup warehouse'});
  if(rider)riderPin=new google.maps.Marker({map:gmap,position:rider,label:'R',title:'Live rider'});
  const bounds=new google.maps.LatLngBounds();[destination,pickup,rider].filter(Boolean).forEach(p=>bounds.extend(p));if(pickup||rider)gmap.fitBounds(bounds,70);
  googleReady=true;for(const id of ['save','find','street','pickup-street'])document.getElementById(id).disabled=false;say(edit?'Move the pin to your delivery entrance.':'Live delivery map');drawRoute();
- if(edit&&q.get('confirm')==='1')reverseNotify({...destination});
+ if(edit&&(q.get('confirm')==='1'||pendingMove)){pendingMove=false;reverseNotify({...destination})}
 }
+let pendingMove=false;
 function drawRoute(){
  if(!googleReady||edit||!(rider||pickup))return;
  const turn=++routeTurn;lastRoute=Date.now();
@@ -47,6 +75,8 @@ function drawRoute(){
  });
 }
 function update(data){
+ /* The app found the phone's location: move the pin there and fill the address. */
+ if(data.type==='moveTo'&&edit&&valid(data)){if(googleReady)move({lat:data.lat,lng:data.lng});else{destination={lat:data.lat,lng:data.lng};pendingMove=true}return}
  if(data.type!=='positions'||!valid(data.rider))return;rider=data.rider;
  if(gmap){
   if(riderPin){

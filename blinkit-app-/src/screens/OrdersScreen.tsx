@@ -7,7 +7,7 @@ import { fetchOrders, reorder } from '../api/orders';
 import { ORDER_META, OrderStatusChip } from '../components/OrderStatusChip';
 import { useCart } from '../context/CartContext';
 import type { TabScreenProps } from '../navigation/TabsContext';
-import { useTabs } from '../navigation/TabsContext';
+import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { Order } from '../types';
@@ -24,7 +24,7 @@ type Filter = 'active' | 'past';
 
 export function OrdersScreen({ active }: TabScreenProps) {
   const navigation = useNavigation<AppNav>();
-  const { goToTab } = useTabs();
+  const goToTab = useGoToTab();
   const { applyCart } = useCart();
   const toast = useToast();
 

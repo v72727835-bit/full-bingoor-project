@@ -3,7 +3,7 @@ import React, { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { ProductCard } from '../components/ProductCard';
 import { useWishlist } from '../context/WishlistContext';
-import { useTabs } from '../navigation/TabsContext';
+import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { colors, space } from '../theme';
 import { AppHeader } from '../ui/AppHeader';
@@ -14,7 +14,7 @@ import { useGrid } from '../utils/layout';
 
 export function WishlistScreen() {
   const navigation = useNavigation<AppNav>();
-  const { goToTab } = useTabs();
+  const goToTab = useGoToTab();
   const { items, loading, refresh } = useWishlist();
   const grid = useGrid(158, space.md);
   const [refreshing, setRefreshing] = useState(false);

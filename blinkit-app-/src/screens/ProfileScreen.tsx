@@ -9,7 +9,7 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { usePublicSettingsQuery } from '../store/catalogApi';
 import type { TabScreenProps } from '../navigation/TabsContext';
-import { useTabs } from '../navigation/TabsContext';
+import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { colors, gutter, ms, radius, space, themed, useTheme } from '../theme';
 import type { ThemePreference } from '../theme';
@@ -34,7 +34,7 @@ export function ProfileScreen(_props: TabScreenProps) {
   const { user, signOut } = useAuth();
   const { cart } = useCart();
   const { items: saved } = useWishlist();
-  const { goToTab } = useTabs();
+  const goToTab = useGoToTab();
   const toast = useToast();
 
   const confirmSignOut = () =>

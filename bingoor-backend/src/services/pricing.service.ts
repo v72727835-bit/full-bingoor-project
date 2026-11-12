@@ -158,3 +158,20 @@ export function codTimeBlocked(
 export function orderDeliveryDays(quoteDays: number, lineDays: number[]): number {
   return lineDays.length > 0 && lineDays.every((d) => d > 0) ? Math.max(quoteDays, ...lineDays) : quoteDays;
 }
+
+/**
+ * One quote for the whole basket, however many warehouses fill it. The customer
+ * sees one shop: the minimum order, free-delivery amount and fees are judged on
+ * the cart total (e.g. Rs 199 across everything, not Rs 199 per warehouse). The
+ * band is chosen by the farthest warehouse in the basket, so the promise and fee
+ * are never better than the slowest leg. Fees are charged once.
+ */
+export function quoteCart(
+  settings: Pick<ISettings, 'pricing' | 'twoHourCharge'> | null,
+  input: { groups: { subtotal: number; distanceKm: number | null }[]; slot: Slot },
+): Quote {
+  const subtotal = round2(input.groups.reduce((s, g) => s + g.subtotal, 0));
+  const known = input.groups.map((g) => g.distanceKm).filter((d): d is number => d !== null);
+  const distanceKm = known.length ? Math.max(...known) : null;
+  return quoteDelivery(settings, { subtotal, distanceKm, slot: input.slot });
+}

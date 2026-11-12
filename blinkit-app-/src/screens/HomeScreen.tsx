@@ -9,7 +9,7 @@ import { NoticeBell } from '../components/NoticeBell';
 import { useAuth } from '../context/AuthContext';
 import type { AppNav } from '../navigation/types';
 import type { TabScreenProps } from '../navigation/TabsContext';
-import { useTabs } from '../navigation/TabsContext';
+import { useGoToTab } from '../navigation/TabsContext';
 import { gutter, hitSlop, ms, radius, space, themed, useTheme } from '../theme';
 import { catalogApi, useHomeQuery } from '../store/catalogApi';
 import { useDeliveryPointKey } from '../store/deliveryPoint';
@@ -40,7 +40,7 @@ const ALL: Category = { _id: 'all', name: 'All', slug: 'all', icon: 'shopping-ba
 export function HomeScreen({ active }: TabScreenProps) {
   const nav = useNavigation<AppNav>();
   const { user } = useAuth();
-  const { goToTab } = useTabs();
+  const goToTab = useGoToTab();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const grid = useGrid();

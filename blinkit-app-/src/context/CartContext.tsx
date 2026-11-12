@@ -20,7 +20,8 @@ interface CartApi {
   loading: boolean;
   /** Product ids awaiting server confirmation; quantity controls stay interactive. */
   pending: Set<string>;
-  refresh: () => Promise<void>;
+  /** `silent`: re-check without the pull-to-refresh spinner (on entering the cart tab). */
+  refresh: (opts?: { silent?: boolean }) => Promise<void>;
   settle: () => Promise<void>;
   quantityOf: (productId: string) => number;
   add: (productId: string, quantity?: number, productName?: string, product?: ProductSummary) => Promise<void>;
@@ -103,21 +104,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     if (!user) {
       setCart(EMPTY);
       return;
     }
     const session = epoch.current;
     const revision = counter.current;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     try {
       const next = await cartApi.fetchCart();
-      if (mounted.current && session === epoch.current && revision === counter.current && !operations.current.length) { confirmed.current = next; setCart(next); }
+      if (mounted.current && session === epoch.current && revision === counter.current && !operations.current.length) {
+        // Unchanged cart: keep the same object so nothing re-renders.
+        const same = JSON.stringify(next) === JSON.stringify(confirmed.current);
+        confirmed.current = next;
+        if (!same) setCart(next);
+      }
     } catch {
       // A failed refresh should not wipe a cart the user can still see
     } finally {
-      if (mounted.current) setLoading(false);
+      if (mounted.current && !opts?.silent) setLoading(false);
     }
   }, [user?._id]);
 

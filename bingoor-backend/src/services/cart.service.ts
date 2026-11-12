@@ -109,8 +109,10 @@ export function buildCartView(groups: ResolvedGroup[]) {
 
     groupSubtotal = round2(groupSubtotal);
     const fee = groupSubtotal > 0 ? deliveryFeeFor(g.shop, groupSubtotal) : 0;
-    const meetsMinOrder = groupSubtotal >= g.shop.minOrderAmount;
-    if (!meetsMinOrder || !g.shop.isOpen) hasIssues = true;
+    // No per-warehouse minimum: the customer shops one store and the minimum order is
+    // judged on the whole basket (/cart/quote, quoteCart). A warehouse is never named.
+    const meetsMinOrder = true;
+    if (!g.shop.isOpen) hasIssues = true;
     subtotal += groupSubtotal;
     deliveryFee += fee;
 
