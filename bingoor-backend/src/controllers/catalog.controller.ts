@@ -120,12 +120,22 @@ async function shopsServing(lat: number, lng: number) {
 }
 
 /**
- * Ids of the shops that deliver to a point. Returns null when no point was given
- * (show everything), or the list - possibly empty - when one was.
+ * The one warehouse that serves a point. A customer is served by their single
+ * nearest warehouse (the nearest open one that covers them; if none is open, the
+ * nearest that covers them, so they see it is closed). Every product they see,
+ * and so every order they place, belongs to that warehouse - which is how the
+ * order reaches that warehouse's rider, the nearest to the customer, rather than
+ * always landing on one warehouse because two cover the same spot.
+ *
+ * Returns null when no point was given (show everything), an empty list when a
+ * point was given but no warehouse covers it, or the one serving warehouse's id.
  */
 async function servingShopIds(lat?: number, lng?: number): Promise<Types.ObjectId[] | null> {
   if (lat === undefined || lng === undefined) return null;
-  return (await shopsServing(lat, lng)).map((sh) => sh._id);
+  const serving = await shopsServing(lat, lng); // nearest first
+  if (!serving.length) return [];
+  const nearest = serving.find((sh) => sh.isOpen) ?? serving[0];
+  return [nearest._id];
 }
 
 /**
