@@ -160,8 +160,12 @@ const csv = (v: string) => v.split(',').map((x) => x.trim()).filter(Boolean);
 /** The full product form: category path, names, prices, stock, photos, food type, tags and size group. */
 function ProductForm({ product, cats, warehouses, onClose, onSaved }: { product: Product | null; cats: Cat[]; warehouses: Wh[]; onClose: () => void; onSaved: () => void }) {
   const byId = useMemo(() => new Map(cats.map((c) => [c._id, c])), [cats]);
-  const initialChild = product ? (typeof product.category === 'object' ? product.category._id : product.category) : '';
-  const initialSub = byId.get(initialChild)?.parent ?? '';
+  // A product's category can be a child (level 3) or a sub (level 2, when it has no
+  // children). Walk up from whichever level it is so Edit pre-fills the right boxes.
+  const savedCatId = product ? (typeof product.category === 'object' ? product.category._id : product.category) : '';
+  const savedCat = byId.get(savedCatId);
+  const initialChild = savedCat?.level === 3 ? savedCatId : '';
+  const initialSub = savedCat?.level === 3 ? (savedCat.parent ?? '') : savedCat?.level === 2 ? savedCatId : '';
   const initialMain = byId.get(initialSub)?.parent ?? '';
   const [main, setMain] = useState(initialMain);
   const [sub, setSub] = useState(initialSub);
@@ -208,13 +212,16 @@ function ProductForm({ product, cats, warehouses, onClose, onSaved }: { product:
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!child) return setError('Choose the main, sub and child category first.');
+    // The product belongs to the child category, or to the sub category when it has
+    // no children. So a sub category like "Dry Fruits" with no child still takes products.
+    const category = child || sub;
+    if (!category) return setError('Choose the main and sub category first.');
     if (!product && warehouses.length > 1 && !warehouse) return setError('Choose the warehouse this product is stocked in.');
     if (mrp < price) return setError('MRP cannot be lower than the selling price.');
     setBusy(true);
     setError('');
     const body = {
-      category: child,
+      category,
       name: f.name, nameHi: f.nameHi, brand: f.brand, description: f.description,
       price, mrp, unit: f.unit, stock: Number(f.stock) || 0, foodType: f.foodType,
       paymentMode: f.paymentMode, hsn: f.hsn.trim(), gstRate: f.gstRate === '' ? null : Number(f.gstRate),
@@ -258,9 +265,9 @@ function ProductForm({ product, cats, warehouses, onClose, onSaved }: { product:
               {subs.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
             </select>
           </Field>
-          <Field label="Child category">
-            <select value={child} onChange={(e) => setChild(e.target.value)} disabled={!sub}>
-              <option value="">Select…</option>
+          <Field label={children.length ? 'Child category' : 'Child category (none — saves under the sub category)'}>
+            <select value={child} onChange={(e) => setChild(e.target.value)} disabled={!sub || !children.length}>
+              <option value="">{children.length ? 'Select…' : 'No child category'}</option>
               {children.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
             </select>
           </Field>

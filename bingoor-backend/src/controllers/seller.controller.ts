@@ -130,8 +130,9 @@ export const createMyProduct = asyncHandler(async (req, res) => {
     price: number; mrp: number; unit: string; stock: number; attributes: string[]; foodType: '' | 'veg' | 'nonveg';
     tags: string[]; variantGroup?: string; variantLabel?: string;
   };
-  const category = await Category.findOne({ _id: body.category, level: 3, isActive: true }).select('_id').lean();
-  if (!category) throw new ApiError(400, 'Choose the child category your product belongs to.');
+  // A product sits on a leaf: a child category, or a sub category that has no children.
+  const category = await Category.findOne({ _id: body.category, level: { $in: [2, 3] }, isActive: true }).select('_id').lean();
+  if (!category) throw new ApiError(400, 'Choose the category your product belongs to.');
   // Sellers cannot set a sort code or points: the admin does. New listings fall in A-Z order.
   const mine = (me.sellerWarehouses ?? []).map(String);
   if (!mine.length) throw new ApiError(409, 'No warehouse is assigned to you yet. Ask Bingoor support to assign one.');
@@ -157,8 +158,8 @@ export const bulkCreateMyProducts = asyncHandler(async (req, res) => {
 export const updateMyProduct = asyncHandler(async (req, res) => {
   const patch = req.body as Record<string, unknown>;
   if (patch.category) {
-    const category = await Category.findOne({ _id: patch.category, level: 3, isActive: true }).select('_id').lean();
-    if (!category) throw new ApiError(400, 'Choose the child category your product belongs to.');
+    const category = await Category.findOne({ _id: patch.category, level: { $in: [2, 3] }, isActive: true }).select('_id').lean();
+    if (!category) throw new ApiError(400, 'Choose the category your product belongs to.');
   }
   const product = await Product.findOneAndUpdate({ _id: req.params.id, ...(await myProductScope(req.user!.id)) }, { $set: patch }, { new: true, runValidators: true }).lean();
   if (!product) throw new ApiError(404, 'Listing not found or access denied');
