@@ -431,15 +431,19 @@ export const home = asyncHandler(async (req, res) => {
   // Point 1/2/6: with a location, show the real promise for that distance;
   // without one, keep the admin's default. The nearest serving shop's distance
   // drives the delivery days through the same pricing bands checkout uses.
+  // The near-band promise is always in minutes (19 min within 15 km), not a vague
+  // "Fast delivery" label, so the header shows a real time when the customer is close.
+  const deliveryMins = Number(/(\d+)\s*min/i.exec(defaultText)?.[1]) || 19;
   let deliveryText = defaultText;
+  let deliveryDays = 0;
   if (lat !== undefined && lng !== undefined) {
     const nearestKm = (await shopsServing(lat, lng))[0]?.km ?? null;
     if (nearestKm !== null) {
       const q = quoteDelivery(homeSettings, { subtotal: 0, distanceKm: nearestKm, slot: 'instant' });
-      deliveryText = q.days >= 2 ? `${q.days} days delivery` : q.days === 1 ? 'Next day delivery' : defaultText;
+      deliveryDays = q.days;
+      deliveryText = q.days >= 2 ? `${q.days} days delivery` : q.days === 1 ? 'Next day delivery' : `${deliveryMins} minutes`;
     }
   }
-  const deliveryMins = Number(/(\d+)\s*min/i.exec(deliveryText)?.[1]) || 19;
 
   // One tab per group, never two with the same label, even if the data drifts.
   const seen = new Set<string>();
@@ -453,6 +457,8 @@ export const home = asyncHandler(async (req, res) => {
   );
   ok(res, {
     deliveryMins,
+    /** Delivery days for the customer's distance band: 0 = same day / minutes, 1 = next day, 3 = long distance. */
+    deliveryDays,
     /** The home-page delivery promise as the admin wrote it ("19 minutes", "2 hours", "Next day delivery"). */
     deliveryText,
     /** False when a location was sent and no shop delivers there yet. */

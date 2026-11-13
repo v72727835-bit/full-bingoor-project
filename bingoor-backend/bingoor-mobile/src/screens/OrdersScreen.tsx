@@ -38,9 +38,6 @@ export default function OrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [routeId, setRouteId] = useState<string | null>(null);
-  // Which accepted orders the rider has already collected from the warehouse.
-  // Before pickup the card points to the warehouse; after it, to the customer.
-  const [pickedUp, setPickedUp] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState<string | null>(null);
   const [delivery, setDelivery] = useState<RiderOrder | null>(null);
   const [otp, setOtp] = useState('');
@@ -204,7 +201,7 @@ export default function OrdersScreen() {
 
   // Everything scrolls together, so on a small phone the order card is never squeezed under the header.
   return <View style={{ flex: 1 }}>
-    <FlatList data={loading ? [] : visible} keyExtractor={(item) => item._id} ListHeaderComponent={header} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void load(true); void loadProfile(); if (tab === 'history') void loadHistory(); }} tintColor={colors.primary} />} contentContainerStyle={styles.list} ListEmptyComponent={loading ? undefined : <View style={styles.empty}><Ionicons name={tab === 'history' ? 'checkmark-done-circle-outline' : 'bicycle-outline'} size={50} color={colors.primary} /><Text style={styles.emptyTitle}>{tab === 'available' ? 'No new orders' : tab === 'active' ? 'No active deliveries' : 'No delivery history'}</Text><Text style={styles.emptyText}>New updates will appear here automatically.</Text></View>} renderItem={({ item, index }) => <FadeSlide delay={Math.min(index, 6) * 55}><View style={styles.cardWrap}><OrderCard onShowRoute={() => { setRouteId(item._id); setTab('active'); }} order={item} saving={saving === item._id} riderLocation={riderLocation} pickedUp={pickedUp.has(item._id)} onPickedUp={() => setPickedUp((s) => new Set(s).add(item._id))} onAccept={() => accept(item)} onDeliver={() => openDelivery(item)} onCancel={() => void cancel(item)} /></View></FadeSlide>} />
+    <FlatList data={loading ? [] : visible} keyExtractor={(item) => item._id} ListHeaderComponent={header} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void load(true); void loadProfile(); if (tab === 'history') void loadHistory(); }} tintColor={colors.primary} />} contentContainerStyle={styles.list} ListEmptyComponent={loading ? undefined : <View style={styles.empty}><Ionicons name={tab === 'history' ? 'checkmark-done-circle-outline' : 'bicycle-outline'} size={50} color={colors.primary} /><Text style={styles.emptyTitle}>{tab === 'available' ? 'No new orders' : tab === 'active' ? 'No active deliveries' : 'No delivery history'}</Text><Text style={styles.emptyText}>New updates will appear here automatically.</Text></View>} renderItem={({ item, index }) => <FadeSlide delay={Math.min(index, 6) * 55}><View style={styles.cardWrap}><OrderCard onShowRoute={() => { setRouteId(item._id); setTab('active'); }} order={item} saving={saving === item._id} riderLocation={riderLocation} onAccept={() => accept(item)} onDeliver={() => openDelivery(item)} onCancel={() => void cancel(item)} /></View></FadeSlide>} />
     {/* Always on screen while a parcel is out: the card's own button can sit below the map, out of sight on small phones. */}
     {activeOrder ? <View style={styles.deliverBar}><View style={{ flex: 1, marginRight: 10 }}><Text style={styles.deliverBarTitle} numberOfLines={1}>Delivering #{activeOrder.orderNumber}</Text><Text style={styles.muted} numberOfLines={1}>{activeOrder.paymentMethod === 'cod' ? `Collect ${money(activeOrder.total)} in cash` : 'Paid online'} · ask for the OTP</Text></View><Button title="Enter delivery OTP" onPress={() => openDelivery(activeOrder)} disabled={!!saving} style={{ paddingHorizontal: 16 }} /></View> : null}
     <Modal visible={!!delivery} transparent animationType="slide" onRequestClose={() => { if (!saving) setDelivery(null); }}><KeyboardAvoidingView style={styles.modalBackdrop} behavior="padding"><View style={styles.modal}><Text style={styles.modalTitle}>Confirm delivery</Text><Text style={styles.modalSub}>Order #{delivery?.orderNumber} · {delivery?.shop?.name ?? 'Warehouse'}{'\n'}Ask the customer to open this same order and share its 4-digit delivery OTP.</Text>{deliveryError ? <ErrorBanner message={deliveryError} /> : null}<TextInput value={otp} onChangeText={(value) => { setOtp(value.replace(/\D/g, '').slice(0, 4)); setDeliveryError(''); }} editable={!saving} keyboardType="number-pad" placeholder="••••" placeholderTextColor="#94A3B8" style={styles.otp} autoFocus /><Button title="Mark as delivered" onPress={() => void deliver()} loading={saving === delivery?._id} disabled={otp.length !== 4 || !!saving} /><Text style={styles.modalSub}>No OTP from the customer? You can still mark it delivered.</Text><Button title="Mark delivered directly" variant="outline" disabled={!!saving} onPress={() => void deliverDirect()} style={{ marginTop: 10 }} /><Button title="Cancel" variant="outline" disabled={!!saving} onPress={() => setDelivery(null)} style={{ marginTop: 10 }} /></View></KeyboardAvoidingView></Modal>
@@ -259,7 +256,7 @@ function callCustomer(order: RiderOrder) {
   if (phone) void Linking.openURL(`tel:${phone}`);
 }
 
-function OrderCard({ order, saving, riderLocation, pickedUp, onPickedUp, onAccept, onDeliver, onCancel, onShowRoute }: { order: RiderOrder; saving: boolean; riderLocation: { latitude: number; longitude: number } | null; pickedUp: boolean; onPickedUp: () => void; onAccept: () => void; onDeliver: () => void; onCancel: () => void; onShowRoute: () => void }) {
+function OrderCard({ order, saving, riderLocation, onAccept, onDeliver, onCancel, onShowRoute }: { order: RiderOrder; saving: boolean; riderLocation: { latitude: number; longitude: number } | null; onAccept: () => void; onDeliver: () => void; onCancel: () => void; onShowRoute: () => void }) {
   // The distance is not shown before the order is accepted: riders were
   // cherry-picking the short runs and leaving the far ones for nobody.
   const accepted = !isNew(order);
@@ -297,24 +294,16 @@ function OrderCard({ order, saving, riderLocation, pickedUp, onPickedUp, onAccep
       {order.status !== 'ready_for_pickup' ? <Text style={styles.packNote}>The warehouse is packing it - accept now and pick it up when it is ready.</Text> : null}
     </View>
       : order.status === 'out_for_delivery' ? <>
-        {/* Two stops in order: first to the warehouse to collect the parcel,
-            then, once picked up, to the customer's door. The big button is
-            always the next thing to do, so the rider never has to guess. */}
-        {!pickedUp ? <>
-          <Text style={styles.stepNote}>Step 1 of 2 · Go to the warehouse and collect this order.</Text>
-          <View style={styles.actionRow}>
-            <Pressable onPress={() => openPickupDirections(order)} style={styles.actionBtn} accessibilityRole="button" accessibilityLabel="Navigate to warehouse"><Ionicons name="navigate" size={18} color={colors.primary} /><Text style={styles.actionText}>Navigate to warehouse</Text></Pressable>
-            <Pressable onPress={() => callCustomer(order)} style={styles.actionBtn} accessibilityRole="button" accessibilityLabel="Call customer"><Ionicons name="call" size={18} color={colors.primary} /><Text style={styles.actionText}>Call customer</Text></Pressable>
-          </View>
-          <Button title="Picked up - go to customer" onPress={onPickedUp} disabled={saving} style={{ marginTop: 10 }} />
-        </> : <>
-          <Text style={styles.stepNote}>Step 2 of 2 · Deliver to the customer.</Text>
-          <View style={styles.actionRow}>
-            <Pressable onPress={() => openDirections(order)} style={styles.actionBtn} accessibilityRole="button" accessibilityLabel="Navigate to customer"><Ionicons name="navigate" size={18} color={colors.primary} /><Text style={styles.actionText}>Navigate to customer</Text></Pressable>
-            <Pressable onPress={() => callCustomer(order)} style={styles.actionBtn} accessibilityRole="button" accessibilityLabel="Call customer"><Ionicons name="call" size={18} color={colors.primary} /><Text style={styles.actionText}>Call customer</Text></Pressable>
-          </View>
-          <Button title="Delivered order" onPress={onDeliver} disabled={saving} style={{ marginTop: 10 }} />
-        </>}
+        {/* On accept the rider gets both stops at once and goes wherever they
+            want: to the warehouse to collect the parcel, or to the customer.
+            They pick the order up at the warehouse, then deliver. */}
+        <Text style={styles.stepNote}>Collect from the warehouse, then deliver to the customer.</Text>
+        <View style={styles.actionRow}>
+          <Pressable onPress={() => openPickupDirections(order)} style={styles.actionBtn} accessibilityRole="button" accessibilityLabel="Navigate to warehouse"><Ionicons name="navigate" size={18} color={colors.primary} /><Text style={styles.actionText}>Navigate to warehouse</Text></Pressable>
+          <Pressable onPress={() => openDirections(order)} style={styles.actionBtn} accessibilityRole="button" accessibilityLabel="Navigate to customer"><Ionicons name="navigate" size={18} color={colors.primary} /><Text style={styles.actionText}>Navigate to customer</Text></Pressable>
+        </View>
+        <Pressable onPress={() => callCustomer(order)} style={[styles.actionBtn, { marginTop: 10 }]} accessibilityRole="button" accessibilityLabel="Call customer"><Ionicons name="call" size={18} color={colors.primary} /><Text style={styles.actionText}>Call customer</Text></Pressable>
+        <Button title="Delivered order" onPress={onDeliver} disabled={saving} style={{ marginTop: 10 }} />
         <Button title="Cancel order" variant="outline" onPress={onCancel} disabled={saving} style={{ marginTop: 10 }} />
       </>
       : order.status === 'delivered' ? <View style={styles.payRow}><Ionicons name="checkmark-circle" size={16} color={colors.success} /><Text style={[styles.payText, { color: colors.success }]}>Delivered{order.deliveredAt ? ` · ${new Date(order.deliveredAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</Text></View>

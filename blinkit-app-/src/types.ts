@@ -253,6 +253,8 @@ export type HomeSection =
 
 export interface HomeData {
   deliveryMins: number;
+  /** Delivery days for the customer's distance: 0 = same day / minutes, 1 = next day, 3 = long distance. */
+  deliveryDays?: number;
   /** The home delivery promise as the admin typed it: "19 minutes", "2 hours", "Next day delivery". */
   deliveryText?: string;
   /** False when no shop delivers to the customer's pinned address yet. */

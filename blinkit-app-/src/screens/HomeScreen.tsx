@@ -156,9 +156,15 @@ export function HomeScreen({ active }: TabScreenProps) {
             bingoor.com
           </Txt>
           <View style={styles.timeRow}>
-            <Icon name="flash" size={ms(20)} color={c.headerAccent} />
+            {/* The promise follows the customer's distance: within 15 km it is
+                "19 min", 15-30 km "Next day delivery", beyond "3 days delivery". */}
+            <Icon name={(data?.deliveryDays ?? 0) > 0 ? 'calendar-outline' : 'flash'} size={ms(20)} color={c.headerAccent} />
             <Txt variant="h1" tone="onHeader" numberOfLines={1}>
-              {shortDelivery(data)}
+              {(data?.deliveryDays ?? 0) >= 2
+                ? `${data?.deliveryDays} days delivery`
+                : (data?.deliveryDays ?? 0) === 1
+                ? 'Next day delivery'
+                : `${data?.deliveryMins ?? 19} min`}
             </Txt>
           </View>
         </Pressable>
