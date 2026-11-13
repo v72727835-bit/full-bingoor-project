@@ -72,7 +72,10 @@ export function DeliveryMap({ destination, pickup, rider, onPick, focusKey = 0, 
       }}
       onMessage={(event) => {
         try {
-          if (!event.nativeEvent.url.startsWith(`${WEB_URL}/mobile-map.html`)) return;
+          // The WebView only ever loads our own map page, so the message is
+          // trusted by content, not by the event url - on some Android WebViews
+          // that url is empty for an injected postMessage, which silently
+          // dropped every pin and left the address fields blank.
           const data = JSON.parse(event.nativeEvent.data);
           if (data.type === 'pin' && Number.isFinite(data.lat) && Number.isFinite(data.lng)
             && Math.abs(data.lat) <= 90 && Math.abs(data.lng) <= 180) {
