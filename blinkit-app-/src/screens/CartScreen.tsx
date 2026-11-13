@@ -58,6 +58,10 @@ export function CartScreen({ active }: TabScreenProps) {
   }, [active, area, cart.subtotal, cart.itemCount]);
   const minMet = minQuote ? minQuote.subtotal >= minQuote.minOrder : cart.groups.every((g) => g.meetsMinOrder);
   const minShort = minQuote ? Math.max(0, Math.ceil(minQuote.minOrder - minQuote.subtotal)) : 0;
+  // The delivery time at the top of the cart follows the customer's distance: the
+  // server's quote carries the days for their band (0 = same day / minutes, 1 =
+  // next day, 3 = long distance). A whole basket of 6-day aisles can only be slower.
+  const etaDays = Math.max(slowDays, minQuote?.days ?? 0);
 
   // Prices and stock move while the user is elsewhere, so re-check on entry.
   useEffect(() => {
@@ -106,11 +110,13 @@ export function CartScreen({ active }: TabScreenProps) {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void refresh()} colors={[colors.brand]} />}
       >
         {/* The delivery promise is what a customer checks before paying, so it
-            leads the page, centred and large rather than tucked in a subtitle. */}
+            leads the page, centred and large rather than tucked in a subtitle.
+            It follows the customer's distance, the same as the website and
+            checkout: near = minutes, 15-30 km = next day, beyond = a few days. */}
         <View style={styles.eta}>
-          <Ionicons name="flash" size={ms(17)} color={colors.brand} />
+          <Ionicons name={etaDays > 0 ? 'calendar-outline' : 'flash'} size={ms(17)} color={colors.brand} />
           <Txt variant="h3" tone="brand" numberOfLines={1}>
-            Delivery in {slowDays ? `${slowDays} days` : shortDelivery(home)}
+            {etaDays >= 2 ? `Delivery in ${etaDays} days` : etaDays === 1 ? 'Next day delivery' : `Delivery in ${shortDelivery(home)}`}
           </Txt>
         </View>
 
