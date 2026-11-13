@@ -5,7 +5,7 @@ import { ScrollView, StatusBar, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, gutter, ms, radius, space, themed } from '../theme';
 import { Button, IconName } from '../ui/Button';
-import { Logo } from '../ui/Logo';
+import { LogoMark } from '../ui/Logo';
 import { Txt } from '../ui/Text';
 import type { AuthNav } from '../navigation/types';
 
@@ -24,7 +24,10 @@ export function OnboardingScreen() {
 
       <SafeAreaView edges={['top']} style={styles.hero}>
         <View style={styles.heroInner}>
-          <Logo size={46} onDark />
+          {/* Just the tile (it already reads "bingoor"): the row logo put a navy
+              wordmark on this navy hero, which was invisible but still pushed the
+              tile off-centre. The tile alone sits dead-centre. */}
+          <LogoMark size={64} onDark />
           <Txt variant="display" tone="onBrand" center style={styles.heroTitle}>
             Your neighbourhood,{'\n'}delivered
           </Txt>
