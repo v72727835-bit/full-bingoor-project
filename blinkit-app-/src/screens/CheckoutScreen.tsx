@@ -13,7 +13,7 @@ import { useCart } from '../context/CartContext';
 import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useHomeQuery, usePublicSettingsQuery } from '../store/catalogApi';
-import { useDeliveryPointKey } from '../store/deliveryPoint';
+import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
 import { shortDelivery } from '../utils/delivery';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { Address, CheckoutProblem, PayKey, PayOptionDef, PaymentMethod } from '../types';
@@ -176,7 +176,16 @@ export function CheckoutScreen() {
     try {
       const list = await fetchAddresses();
       setAddresses(list);
-      setSelectedId(list.find((a) => a.isDefault)?._id ?? list[0]?._id ?? null);
+      // Deliver to the location set in the header, not always "home": pick the
+      // saved address whose pin matches the current delivery point (the place the
+      // customer is shopping for), then the default, then the first. So an order
+      // placed for another location goes there, and the rider navigates there.
+      const point = deliveryPointParams();
+      const r = (n: number) => Math.round(n * 1000) / 1000;
+      const atPoint = point
+        ? list.find((a) => a.location && r(a.location.lat) === r(point.lat) && r(a.location.lng) === r(point.lng))
+        : undefined;
+      setSelectedId((atPoint ?? list.find((a) => a.isDefault) ?? list[0])?._id ?? null);
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err));
