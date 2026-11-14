@@ -434,7 +434,7 @@ function ProductForm({
           standardCategories: (product.standardCategories ?? []).map(String),
           isActive: product.isActive,
         }
-      : EMPTY_FORM,
+      : { ...EMPTY_FORM, shop: 'all' }, // a new product goes to every warehouse by default
   );
   const [stdRows, setStdRows] = useState<StandardCategory[]>([]);
   useEffect(() => {
@@ -488,7 +488,8 @@ function ProductForm({
         name: form.name,
         brand: form.brand || undefined,
         description: form.description || undefined,
-        shop: form.shop,
+        // "all" stocks the product in every warehouse; a specific id, just that one.
+        ...(form.shop === 'all' ? { allWarehouses: true } : { shop: form.shop }),
         category: form.category,
         price: Number(form.price),
         mrp: Number(form.mrp) || Number(form.price),
@@ -559,6 +560,8 @@ function ProductForm({
           <Field label="Warehouse">
             <select value={form.shop} onChange={(e) => set('shop', e.target.value)} required disabled={optionsLoading || shops.length === 0}>
               <option value="">{optionsLoading ? 'Loading warehouses…' : shops.length === 0 ? 'No warehouses available' : 'Select warehouse…'}</option>
+              {/* Super admin: one listing in every warehouse at once. */}
+              {!product && shops.length > 0 ? <option value="all">All warehouses</option> : null}
               {shops.map((s) => (
                 <option key={s._id} value={s._id}>
                   {s.name}

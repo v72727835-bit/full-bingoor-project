@@ -249,11 +249,24 @@ async function assertLeafCategory(id: string) {
 }
 
 export const createProduct = asyncHandler(async (req, res) => {
-  const shop = await Shop.findById(req.body.shop).select('_id').lean();
-  if (!shop) throw new ApiError(400, 'Shop not found');
   await assertLeafCategory(req.body.category);
+  const { shop, allWarehouses, ...rest } = req.body as { shop?: string; allWarehouses?: boolean } & Record<string, unknown>;
 
-  const product = await Product.create(req.body);
+  // The super admin can stock a product in every warehouse at once: one separate
+  // listing per warehouse (each has its own stock), so it reaches every customer.
+  if (allWarehouses) {
+    const shops = await Shop.find({ isActive: true }).select('_id').lean();
+    if (!shops.length) throw new ApiError(400, 'No warehouse exists yet. Create a warehouse first.');
+    // Sequential so each listing gets its own unique slug.
+    const products = [];
+    for (const s of shops) products.push(await Product.create({ ...rest, shop: s._id }));
+    return created(res, { count: products.length, products });
+  }
+
+  if (!shop) throw new ApiError(400, 'Choose a warehouse, or tick "All warehouses".');
+  const one = await Shop.findById(shop).select('_id').lean();
+  if (!one) throw new ApiError(400, 'Shop not found');
+  const product = await Product.create({ ...rest, shop });
   created(res, product);
 });
 

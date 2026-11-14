@@ -225,7 +225,9 @@ const paymentModeField = z.enum(['both', 'cod', 'online']);
 const geoPoint = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) });
 
 export const adminProductBody = z.object({
-  shop: objectId,
+  shop: objectId.optional(),
+  /** Super admin: stock this product in every warehouse at once (one listing each). */
+  allWarehouses: z.coerce.boolean().optional(),
   category: objectId,
   name: z.string().trim().min(2).max(150),
   brand: z.string().trim().max(60).optional(),
