@@ -344,11 +344,15 @@ function RiderTracking({ order }: { order: Order }) {
     );
   }
   const away = home ? km(at, home) : null;
+  // A scooter in town averages ~20 km/h, plus a minute to find the door.
+  const mins = away === null ? null : Math.max(1, Math.round((away / 20) * 60) + 1);
+  const eta = away === null ? 'On the way to you' : away < 0.15 ? 'Rider is at your door' : `Arriving in about ${mins} min`;
   return (
     <section className={`card ${s.track}`}>
       <div className={s.trackHead}>
         <div>
           <span className="eyebrow">Live tracking</span>
+          <p className={s.trackText} style={{ fontWeight: 800 }}>{eta}</p>
           <p className={s.trackText}>
             {order.rider?.name ?? 'Your rider'} is {away === null ? 'on the way' : away < 0.15 ? 'at your door' : `${away.toFixed(1)} km away`}
           </p>

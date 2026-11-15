@@ -1,7 +1,7 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Dimensions, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { getErrorMessage } from '../api/client';
 import { cancelOrder, fetchOrder } from '../api/orders';
 import { DeliveryMap } from '../components/DeliveryMap';
@@ -416,6 +416,10 @@ const styles = themed(({ c }) => ({
   otpValue: { letterSpacing: 8, marginTop: space.xs },
 
   riderRow: { flexDirection: 'row', alignItems: 'center' },
+  trackScreen: { flex: 1, backgroundColor: c.surface },
+  trackBar: { flexDirection: 'row', alignItems: 'center', paddingTop: (Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 44) + space.xs, paddingBottom: space.sm, paddingHorizontal: space.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, backgroundColor: c.surface },
+  trackClose: { width: ms(38), height: ms(38), alignItems: 'center', justifyContent: 'center' },
+  trackFoot: { padding: gutter, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border, backgroundColor: c.surface },
   track: { marginTop: space.md, gap: space.sm },
   trackText: { marginTop: space.sm },
   riderAvatar: {
@@ -491,6 +495,7 @@ function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: numb
  * closer; the button opens the live pin in Google Maps.
  */
 function LiveTracking({ order }: { order: Order }) {
+  const [trackOpen, setTrackOpen] = useState(false);
   const at = order.riderLocation;
   const home = order.address.location;
   if (!at) {
@@ -515,8 +520,11 @@ function LiveTracking({ order }: { order: Order }) {
     ? `https://www.google.com/maps/dir/?api=1&origin=${at.lat},${at.lng}&destination=${home.lat},${home.lng}&travelmode=driving`
     : `https://www.google.com/maps?q=${at.lat},${at.lng}`;
   return (
+    <>
     <View>
-      <DeliveryMap destination={home} rider={at} />
+      <Pressable onPress={() => setTrackOpen(true)} accessibilityRole="button" accessibilityLabel="Open the full tracking map">
+        <DeliveryMap destination={home} rider={at} />
+      </Pressable>
       <Txt variant="caption" tone="muted">{at.at ? `Last location update: ${formatDateTime(at.at)}` : 'Latest reported rider location'}</Txt>
     <View style={styles.track}>
       <View style={styles.trackText}>
@@ -529,8 +537,31 @@ function LiveTracking({ order }: { order: Order }) {
           </Txt>
         ) : null}
       </View>
-      <Button label="Track on map" icon="navigate-outline" variant="secondary" size="sm" onPress={() => void Linking.openURL(mapUrl)} />
+      <Button label="Track on full map" icon="navigate-outline" variant="secondary" size="sm" onPress={() => setTrackOpen(true)} />
     </View>
     </View>
+    {/* The full tracking map opens inside the app: the rider's live pin, your
+        address, the route between them and how soon it arrives. */}
+    <Modal visible={trackOpen} animationType="slide" onRequestClose={() => setTrackOpen(false)}>
+      <View style={styles.trackScreen}>
+        <View style={styles.trackBar}>
+          <Pressable onPress={() => setTrackOpen(false)} hitSlop={10} style={styles.trackClose} accessibilityRole="button" accessibilityLabel="Close map">
+            <Ionicons name="arrow-back" size={24} color={colors.ink} />
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Txt variant="h4" numberOfLines={1}>{headline}</Txt>
+            {distance ? <Txt variant="caption" tone="muted" numberOfLines={1}>{order.rider?.name ? `${order.rider.name} · ${distance}` : `Rider · ${distance}`}</Txt> : null}
+          </View>
+        </View>
+        <DeliveryMap destination={home} rider={at} height={Dimensions.get('window').height - ms(190)} />
+        <View style={styles.trackFoot}>
+          <Txt variant="caption" tone="muted" numberOfLines={2} style={{ marginBottom: space.sm }}>
+            {[order.address.line1, order.address.line2, order.address.city].filter(Boolean).join(', ')}
+          </Txt>
+          <Button label="Open in Google Maps" variant="secondary" size="sm" onPress={() => void Linking.openURL(mapUrl)} />
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
