@@ -5,7 +5,7 @@
 <body><div id="map"></div><div id="pin" aria-hidden="true"><div class="box"><div class="tip"><b>Order will be delivered here</b><span>Move the map to your exact location</span></div><span class="head"></span><span class="stick"></span></div><span class="base"></span></div><div id="pano"></div><button id="close">Close Street View</button><div id="search"><input id="query" placeholder="Search street, area, city or PIN" aria-label="Search street, area, city or PIN code"><button id="find">Search</button></div><div id="tools"><div id="status" role="status">Loading map…</div><button id="retry" hidden>Retry Google Maps</button><button id="save">Confirm this pin</button><button id="street">Delivery Street View</button><button id="pickup-street">Pickup Street View</button></div>
 <script>
 /* Shared, public map surface for both phone apps and the admin. No account tokens enter this page. */
-const q=new URLSearchParams(location.search), edit=q.get('mode')==='pick';
+const q=new URLSearchParams(location.search), edit=q.get('mode')==='pick', navMode=q.get('nav');/* nav: 'customer' or 'warehouse' = in-app turn route from the rider to that stop */
 const valid=p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180;
 const read=k=>{try{const p=JSON.parse(q.get(k));return valid(p)?p:null}catch{return null}};
 let destination=read('destination')||{lat:25.3,lng:82.99},pickup=read('pickup'),rider=read('rider');
@@ -59,19 +59,22 @@ function drawGoogle(){
  }else pin=new google.maps.Marker({map:gmap,position:destination,title:'Delivery address',icon:pinIcon});
  if(pickup)new google.maps.Marker({map:gmap,position:pickup,label:'P',title:'Pickup warehouse'});
  if(rider)riderPin=new google.maps.Marker({map:gmap,position:rider,label:'R',title:'Live rider'});
- const bounds=new google.maps.LatLngBounds();[destination,pickup,rider].filter(Boolean).forEach(p=>bounds.extend(p));if(pickup||rider)gmap.fitBounds(bounds,70);
+ if(navMode&&rider){const t=navMode==='warehouse'?pickup:destination;const b=new google.maps.LatLngBounds();[rider,t].filter(Boolean).forEach(p=>b.extend(p));if(t)gmap.fitBounds(b,80);}else{const bounds=new google.maps.LatLngBounds();[destination,pickup,rider].filter(Boolean).forEach(p=>bounds.extend(p));if(pickup||rider)gmap.fitBounds(bounds,70);}
  googleReady=true;for(const id of ['save','find','street','pickup-street'])document.getElementById(id).disabled=false;say(edit?'Move the pin to your delivery entrance.':'Live delivery map');drawRoute();
  if(edit&&(q.get('confirm')==='1'||pendingMove)){pendingMove=false;reverseNotify({...destination})}
 }
 let pendingMove=false;
 function drawRoute(){
- if(!googleReady||edit||!(rider||pickup))return;
+ if(!googleReady||edit)return;
+ const dest=navMode==='warehouse'?pickup:destination;
+ const origin=navMode?rider:(rider||pickup);
+ if(!dest||!origin)return;
  const turn=++routeTurn;lastRoute=Date.now();
- new google.maps.DirectionsService().route({origin:rider||pickup,destination,travelMode:google.maps.TravelMode.DRIVING},(result,code)=>{
+ new google.maps.DirectionsService().route({origin,destination:dest,travelMode:google.maps.TravelMode.DRIVING},(result,code)=>{
   if(turn!==routeTurn)return;
-  if(code!=='OK'){say('Road route unavailable. Pins show the latest reported positions.');return}
+  if(code!=='OK'){say('Road route unavailable. The pin shows where to go.');return}
   if(!route)route=new google.maps.DirectionsRenderer({map:gmap,suppressMarkers:true,preserveViewport:true});route.setDirections(result);
-  const leg=result.routes[0].legs[0];say('Road distance '+leg.distance.text+' · Estimated '+leg.duration.text);notify({type:'eta',seconds:leg.duration.value,meters:leg.distance.value});
+  const leg=result.routes[0].legs[0];say((navMode==='warehouse'?'To warehouse · ':navMode==='customer'?'To customer · ':'')+leg.distance.text+' · '+leg.duration.text);notify({type:'eta',seconds:leg.duration.value,meters:leg.distance.value});
  });
 }
 function update(data){
@@ -84,7 +87,7 @@ function update(data){
    const step=now=>{const t=Math.min(1,(now-at)/1400),ease=1-(1-t)*(1-t);riderPin.setPosition({lat:start.lat+(end.lat-start.lat)*ease,lng:start.lng+(end.lng-start.lng)*ease});if(t<1)glide=requestAnimationFrame(step)};
    glide=requestAnimationFrame(step);
   }else riderPin=new google.maps.Marker({map:gmap,position:rider,label:'R',title:'Live rider'});
-  if(Date.now()-lastRoute>30000)drawRoute();
+  if(navMode){gmap.panTo(rider);if(Date.now()-lastRoute>12000)drawRoute();}else if(Date.now()-lastRoute>30000)drawRoute();
  }
 
 }
