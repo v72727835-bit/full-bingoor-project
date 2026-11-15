@@ -135,13 +135,22 @@ export function AddressFormScreen() {
     setLocating(true);
     const turn = ++locationTurn.current;
     try {
-      const point = await getPhoneLocation();
+      const { lat, lng, accuracy } = await getPhoneLocation();
       if (turn !== locationTurn.current) return;
+      const point = { lat, lng };
       // The map moves its pin here and answers with the street, city, state and PIN (onPick).
       setMapPoint(point);
       setFocusKey((k) => k + 1);
       setLocation(point);
       setErrors((e) => ({ ...e, location: '' }));
+      // Indoors the phone often falls back to a coarse Wi-Fi/cell fix that can be a
+      // street or two off. Warn the customer to drag the pin exactly onto their door,
+      // so the order does not go to the wrong place.
+      if (Number.isFinite(accuracy) && accuracy > 80) {
+        setFormError('Your location is approximate (about ' + Math.round(accuracy) + ' m off). Move the map so the pin sits exactly on your door before saving.');
+      } else {
+        setFormError(null);
+      }
     } catch (err) {
       if (turn === locationTurn.current) {
         const problem = problemFromError(err);
@@ -259,7 +268,7 @@ export function AddressFormScreen() {
           {/* While a finger is on the map the page does not scroll, so the map moves instead. */}
           <View
             style={[styles.mapBox, errors.location ? styles.mapBoxError : null]}
-            onTouchStart={() => setMapTouch(true)}
+            onTouchStart={() => { setMapTouch(true); setFormError(null); }}
             onTouchEnd={() => setMapTouch(false)}
             onTouchCancel={() => setMapTouch(false)}
           >

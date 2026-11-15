@@ -43,20 +43,23 @@ const problemOf = (e: unknown): LocationProblem => {
 /**
  * Try a recent precise GPS fix first, then the network/Wi-Fi fallback indoors.
  * The map lets the customer confirm or adjust either result before saving.
+ * `accuracy` is the radius of uncertainty in metres (bigger = less precise):
+ * the precise fix is a few metres, the indoor network fallback can be hundreds,
+ * so callers warn the customer to check the pin when it is large.
  */
-export async function getPhoneLocation(): Promise<{ lat: number; lng: number }> {
+export async function getPhoneLocation(): Promise<{ lat: number; lng: number; accuracy: number }> {
   if (!(await askLocationPermission())) throw new Error('denied' satisfies LocationProblem);
   let first: LocationProblem;
   try {
     const pos = await read(true, 15_000);
-    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
   } catch (e) {
     first = problemOf(e);
     if (first === 'denied') throw new Error(first);
   }
   try {
     const pos = await read(false, 10_000);
-    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
   } catch (e) {
     const second = problemOf(e);
     throw new Error(second === 'timeout' && first === 'off' ? 'off' : second);
