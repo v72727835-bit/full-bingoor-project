@@ -191,8 +191,8 @@ export const guestCart = asyncHandler(async (req, res) => {
   // The same product twice adds up, and each line is capped like a real cart.
   const merged = new Map<string, number>();
   for (const i of items) merged.set(i.productId, Math.min(MAX_QTY_PER_ITEM, (merged.get(i.productId) ?? 0) + i.quantity));
-  const { groups, view } = await guestCartView([...merged].map(([product, quantity]) => ({ product, quantity })));
   const point = lat !== undefined && lng !== undefined ? { lat, lng } : undefined;
+  const { groups, view } = await guestCartView([...merged].map(([product, quantity]) => ({ product, quantity })), point);
   ok(res, { ...view, quote: await quoteFor(groups, point, slot) });
 });
 

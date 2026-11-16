@@ -179,6 +179,8 @@ function ProductForm({ product, cats, warehouses, onClose, onSaved }: { product:
     attributes: (product?.attributes ?? []).join(', '), tags: (product?.tags ?? []).join(', '),
     variantGroup: product?.variantGroup ?? '', variantLabel: product?.variantLabel ?? '',
   });
+  /** Point: more sizes (variants) of the same item, each with its own price, MRP and stock. */
+  const [extraSizes, setExtraSizes] = useState<{ label: string; price: string; mrp: string; stock: string }[]>([]);
   const [images, setImages] = useState<string[]>(product?.images ?? []);
   const [video, setVideo] = useState(product?.video ?? '');
   const [uploading, setUploading] = useState(false);
@@ -218,6 +220,12 @@ function ProductForm({ product, cats, warehouses, onClose, onSaved }: { product:
     if (!category) return setError('Choose the main and sub category first.');
     if (!product && warehouses.length > 1 && !warehouse) return setError('Choose the warehouse this product is stocked in.');
     if (mrp < price) return setError('MRP cannot be lower than the selling price.');
+    const extras = extraSizes.filter((x) => x.label.trim() || x.price);
+    if (extras.some((x) => !x.label.trim() || !(Number(x.price) > 0))) return setError('Every extra size needs its label (e.g. 1 kg) and a price - or remove that row.');
+    if (extras.some((x) => (Number(x.mrp) || Number(x.price)) < Number(x.price))) return setError('An extra size has an MRP lower than its price.');
+    // All sizes share one group so customers see "ADD · N options" and pick a size.
+    const group = f.variantGroup.trim() || (extras.length ? `${f.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}-${Date.now().toString(36).slice(-4)}` : '');
+    const ownLabel = f.variantLabel.trim() || (extras.length ? f.unit : '');
     setBusy(true);
     setError('');
     const body = {
@@ -226,12 +234,18 @@ function ProductForm({ product, cats, warehouses, onClose, onSaved }: { product:
       price, mrp, unit: f.unit, stock: Number(f.stock) || 0, foodType: f.foodType,
       paymentMode: f.paymentMode, hsn: f.hsn.trim(), gstRate: f.gstRate === '' ? null : Number(f.gstRate),
       attributes: csv(f.attributes), tags: csv(f.tags), images, video: video.trim(),
-      ...(f.variantGroup ? { variantGroup: f.variantGroup } : {}),
-      ...(f.variantLabel ? { variantLabel: f.variantLabel } : {}),
+      ...(group ? { variantGroup: group } : {}),
+      ...(ownLabel ? { variantLabel: ownLabel } : {}),
     };
     try {
+      const shopOf = product ? (typeof product.shop === 'string' ? product.shop : product.shop?._id) : undefined;
+      const target = shopOf || warehouse || (warehouses.length === 1 ? warehouses[0]._id : undefined);
+      const createBody = { ...body, nameHi: f.nameHi || undefined, brand: f.brand || undefined, description: f.description || undefined, warehouse: target };
       if (product) await sellerUpdateProduct(product._id, body);
-      else await sellerCreateProduct({ ...body, nameHi: f.nameHi || undefined, brand: f.brand || undefined, description: f.description || undefined, warehouse: warehouse || (warehouses.length === 1 ? warehouses[0]._id : undefined) });
+      else await sellerCreateProduct(createBody);
+      for (const x of extras) {
+        await sellerCreateProduct({ ...createBody, unit: x.label.trim(), variantLabel: x.label.trim(), price: Number(x.price), mrp: Number(x.mrp) || Number(x.price), stock: Number(x.stock) || 0 });
+      }
       onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -321,6 +335,23 @@ function ProductForm({ product, cats, warehouses, onClose, onSaved }: { product:
         <div className="field-row">
           <Field label="Size group (same text on all sizes)"><input value={f.variantGroup} onChange={(e) => set('variantGroup', e.target.value)} placeholder="e.g. aashirvaad-atta" /></Field>
           <Field label="This size's label"><input value={f.variantLabel} onChange={(e) => set('variantLabel', e.target.value)} placeholder="e.g. 5 kg" /></Field>
+        </div>
+        <div className="card card-pad" style={{ margin: '4px 0 14px' }}>
+          <div className="stat-label" style={{ marginBottom: 6 }}>Add variants (other sizes of this item)</div>
+          <div className="cell-muted" style={{ fontSize: 12.5, marginBottom: 8 }}>Each size is saved as its own listing with its own price, MRP and stock, grouped with this one.</div>
+          {extraSizes.map((x, i) => {
+            const upd = (patch: Partial<typeof x>) => setExtraSizes((cur) => cur.map((y, j) => (j === i ? { ...y, ...patch } : y)));
+            return (
+              <div className="field-row" key={i}>
+                <Field label="Size"><input value={x.label} onChange={(e) => upd({ label: e.target.value })} placeholder="1 kg" /></Field>
+                <Field label="Price (₹)"><input type="number" min="0" value={x.price} onChange={(e) => upd({ price: e.target.value })} /></Field>
+                <Field label="MRP (₹)"><input type="number" min="0" value={x.mrp} onChange={(e) => upd({ mrp: e.target.value })} /></Field>
+                <Field label="Stock"><input type="number" min="0" value={x.stock} onChange={(e) => upd({ stock: e.target.value })} /></Field>
+                <Button type="button" variant="ghost" onClick={() => setExtraSizes((cur) => cur.filter((_, j) => j !== i))}>Remove</Button>
+              </div>
+            );
+          })}
+          <Button type="button" variant="secondary" onClick={() => setExtraSizes((cur) => [...cur, { label: '', price: '', mrp: '', stock: '' }])}>+ Add variant</Button>
         </div>
         <Field label="Photos (up to 6, each up to 200 KB)">
           <input type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={pick} disabled={uploading || images.length >= 6} />

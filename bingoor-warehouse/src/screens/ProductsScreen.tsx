@@ -90,6 +90,8 @@ function ProductForm({ product, onClose, onSaved }: { product: Product | null; o
   const [gstRate, setGstRate] = useState<string>(product?.gstRate === undefined || product?.gstRate === null ? '' : String(product.gstRate));
   const [paymentMode, setPaymentMode] = useState<'both' | 'cod' | 'online'>(product?.paymentMode ?? 'both');
   const [foodType, setFoodType] = useState<'' | 'veg' | 'nonveg'>(product?.foodType ?? '');
+  /** Point: more sizes (variants) of this item, each saved as its own listing in the same group. */
+  const [extras, setExtras] = useState<{ label: string; price: string; mrp: string; stock: string }[]>([]);
   const [images, setImages] = useState<string[]>(product?.images ?? []);
   const [video, setVideo] = useState<string>(product?.video ?? '');
   const [category, setCategory] = useState<string>(product ? idOf(product.category) : '');
@@ -135,10 +137,14 @@ function ProductForm({ product, onClose, onSaved }: { product: Product | null; o
     if (!f.price || Number.isNaN(Number(f.price))) return setError('Enter the selling price.');
     if (!product && warehouses.length > 1 && !warehouse) return setError('Choose the warehouse this product is stocked in.');
     const price = Number(f.price);
+    const more = extras.filter((x) => x.label.trim() || x.price);
+    if (more.some((x) => !x.label.trim() || !(Number(x.price) > 0))) return setError('Every extra size needs its label (e.g. 1 kg) and a price, or remove it.');
+    const group = f.variantGroup.trim() || (more.length ? `${f.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}-${Date.now().toString(36).slice(-4)}` : '');
+    const ownLabel = f.variantLabel.trim() || (more.length ? f.unit.trim() || '1 pc' : '');
     const body: Record<string, unknown> = {
       category, name: f.name.trim(), nameHi: f.nameHi.trim(), brand: f.brand.trim(), description: f.description.trim(), images,
       price, mrp: Number(f.mrp) || price, unit: f.unit.trim() || '1 pc', stock: Math.max(0, Math.floor(Number(f.stock) || 0)),
-      foodType, attributes: list(f.attributes), tags: list(f.tags), variantGroup: f.variantGroup.trim(), variantLabel: f.variantLabel.trim(),
+      foodType, attributes: list(f.attributes), tags: list(f.tags), variantGroup: group, variantLabel: ownLabel,
       hsn: f.hsn.trim(), gstRate: gstRate === '' ? null : Number(gstRate), paymentMode, video: video || '',
     };
     setBusy(true);
@@ -150,6 +156,13 @@ function ProductForm({ product, onClose, onSaved }: { product: Product | null; o
         if (!body.variantLabel) delete body.variantLabel;
         if (!body.nameHi) delete body.nameHi;
         await createProduct(body);
+      }
+      const shopId = product ? (typeof product.shop === 'string' ? product.shop : product.shop?._id) : warehouse;
+      for (const x of more) {
+        const copy: Record<string, unknown> = { ...body, unit: x.label.trim(), variantLabel: x.label.trim(), price: Number(x.price), mrp: Number(x.mrp) || Number(x.price), stock: Math.max(0, Math.floor(Number(x.stock) || 0)) };
+        if (shopId) copy.warehouse = shopId;
+        if (!copy.nameHi) delete copy.nameHi;
+        await createProduct(copy);
       }
       onSaved();
     } catch (e) { setError(getErrorMessage(e)); setBusy(false); }
@@ -199,6 +212,26 @@ function ProductForm({ product, onClose, onSaved }: { product: Product | null; o
             <View style={{ flex: 1 }}><Input label="Variant group" value={f.variantGroup} onChangeText={(v) => set('variantGroup', v)} placeholder="e.g. Aashirvaad Atta" /></View>
             <View style={{ flex: 1 }}><Input label="Variant label" value={f.variantLabel} onChangeText={(v) => set('variantLabel', v)} placeholder="e.g. 5 kg" /></View>
           </View>
+          <Text style={{ fontSize: 13, fontWeight: '600', marginBottom: 6 }}>Other sizes (variants)</Text>
+          {extras.map((x, i) => {
+            const upd = (patch: Partial<typeof x>) => setExtras((cur) => cur.map((y, j) => (j === i ? { ...y, ...patch } : y)));
+            return (
+              <View key={i} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}><Input label="Size" value={x.label} onChangeText={(v) => upd({ label: v })} placeholder="1 kg" /></View>
+                  <View style={{ flex: 1 }}><Input label="Stock" value={x.stock} onChangeText={(v) => upd({ stock: v })} keyboardType="numeric" /></View>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}><Input label="Price ₹" value={x.price} onChangeText={(v) => upd({ price: v })} keyboardType="decimal-pad" /></View>
+                  <View style={{ flex: 1 }}><Input label="MRP ₹" value={x.mrp} onChangeText={(v) => upd({ mrp: v })} keyboardType="decimal-pad" /></View>
+                </View>
+                <Pressable onPress={() => setExtras((cur) => cur.filter((_, j) => j !== i))} hitSlop={8}><Text style={{ color: colors.danger ?? '#DC2626', fontWeight: '700' }}>Remove this size</Text></Pressable>
+              </View>
+            );
+          })}
+          <Pressable onPress={() => setExtras((cur) => [...cur, { label: '', price: '', mrp: '', stock: '' }])} style={{ marginBottom: 14 }}>
+            <Text style={{ color: colors.primary, fontWeight: '800' }}>+ Add variant (another size)</Text>
+          </Pressable>
           <Text style={{ fontSize: 13, fontWeight: '600', marginBottom: 6 }}>Photos ({images.length}/10)</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
             {images.map((u) => (

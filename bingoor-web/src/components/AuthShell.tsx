@@ -5,7 +5,7 @@ import { Icon, IconName } from './Icon';
 import s from './AuthShell.module.css';
 
 const POINTS: { icon: IconName; text: string }[] = [
-  { icon: 'bolt', text: 'Delivered in minutes from shops near you' },
+  { icon: 'bolt', text: 'Delivered in minutes from a warehouse near you' },
   { icon: 'wallet', text: 'Pay by cash on delivery or online — your choice' },
   { icon: 'repeat', text: 'Reorder anything from your history in one tap' },
 ];
@@ -27,7 +27,7 @@ export function AuthShell({
       <aside className={s.pitch}>
         <div className={s.logo}>
           <img src="/logo-mark.png" alt="" width={38} height={38} className={s.mark} />
-          <span className={s.word}>Bingoor</span>
+          <span className={s.word}>bingoor.com</span>
         </div>
         <h2 className={s.pitchTitle}>Everyday essentials, at your door in minutes.</h2>
         <ul className={s.points}>
@@ -43,6 +43,7 @@ export function AuthShell({
       </aside>
 
       <section className={s.form}>
+        <p style={{ margin: '0 0 4px', fontWeight: 800, color: 'var(--brand-text)', letterSpacing: 0.2 }}>bingoor.com</p>
         <h1 className="h1" style={{ marginBottom: 6 }}>
           {title}
         </h1>

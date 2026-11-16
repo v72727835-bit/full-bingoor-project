@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchCategory } from '../../../api/catalog';
 import { POINT_EVENT } from '../../../lib/deliveryPoint';
 import { useLanguage } from '../../../context/LanguageContext';
+import { useCart } from '../../../context/CartContext';
 import { fitClass } from '../../../lib/art';
 import { Category } from '../../../lib/types';
 import { BackButton } from '../../../components/BackButton';
@@ -22,6 +23,9 @@ export default function CategoryPage() {
   const { name } = useLanguage();
   const [category, setCategory] = useState<Category | null>(null);
   const router = useRouter();
+  // The site header is hidden on phones here, so this bar carries the cart count.
+  const { cart } = useCart();
+  const cartCount = cart?.itemCount ?? 0;
 
   // On a phone this page has its own title bar, so the site header steps aside.
   useEffect(() => {
@@ -62,8 +66,17 @@ export default function CategoryPage() {
           <Icon name="chevron-left" size={22} />
         </button>
         <h1 className={s.mTitle}>{heading ? name(heading) : '…'}</h1>
-        <Link href="/cart" className={s.mBack} aria-label="Cart">
+        <Link
+          href="/cart"
+          className={`${s.mBack} ${s.mCart}`}
+          aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount > 1 ? 's' : ''}` : 'Cart'}
+        >
           <Icon name="cart" size={22} />
+          {cartCount > 0 ? (
+            <span key={cartCount} className={`num ${s.mCartBadge}`} aria-hidden>
+              {cartCount > 99 ? '99+' : cartCount}
+            </span>
+          ) : null}
         </Link>
       </div>
       <div className={s.mSearch}>
@@ -85,7 +98,7 @@ export default function CategoryPage() {
           {category ? (
             <>
               <h1 className="h1">{name(category)}</h1>
-              <p className="body-sm">From shops near you, delivered in minutes</p>
+              <p className="body-sm">From a warehouse near you, delivered in minutes</p>
             </>
           ) : (
             <>

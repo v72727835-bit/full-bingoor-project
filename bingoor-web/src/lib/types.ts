@@ -46,6 +46,7 @@ export interface RawProduct {
   reviews?: RawReview[];
   related?: RawProduct[];
   relatedOther?: { category: { name: string; slug: string }; items: RawProduct[] } | null;
+  relatedRows?: { title: string; category: { name: string; slug: string }; items: RawProduct[] }[];
 }
 
 export interface RawVariant {
@@ -177,6 +178,8 @@ export interface Product {
   reviews?: Review[];
   related?: Product[];
   relatedOther?: { category: { name: string; slug: string }; items: Product[] } | null;
+  /** Up to 6 rows: 2 from this aisle, 4 from other child aisles of the same parent. */
+  relatedRows?: { title: string; category: { name: string; slug: string }; items: Product[] }[];
 }
 
 export interface ProductVariant {
@@ -445,6 +448,8 @@ export interface UserProfile {
   phone: string;
   email?: string;
   avatar?: string;
+  /** The customer's GST number, printed under their name on bills. */
+  gstin?: string;
 }
 
 /* ---------------- festival tab, care chat, notifications ---------------- */

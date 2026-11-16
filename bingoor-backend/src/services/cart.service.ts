@@ -3,7 +3,9 @@ import { env } from '../config/env';
 import { Cart } from '../models/Cart';
 import { IProduct, Product } from '../models/Product';
 import { IShop } from '../models/Shop';
-import { round2 } from '../utils/helpers';
+import { haversineKm, round2 } from '../utils/helpers';
+import { User } from '../models/User';
+import { pointsTarget } from './pricing.service';
 import { loadSettings, productRules } from './settings.service';
 
 export type ProductLean = IProduct & { _id: Types.ObjectId };
@@ -156,14 +158,26 @@ export function cartPointsTotal(groups: ResolvedGroup[]): number {
  * checkout is open (`met`), a row of top-up products, and the one product
  * that is added for them when they are short.
  */
-async function pointsView(groups: ResolvedGroup[]) {
+/** The delivery distance a basket is judged on: the farthest warehouse in it from the point. */
+export function basketKm(groups: ResolvedGroup[], point?: { lat?: number; lng?: number } | null): number | null {
+  if (!point?.lat || !point?.lng) return null;
+  const kms = groups
+    .map((g) => g.shop.location?.coordinates)
+    .filter((c): c is [number, number] => !!c && c.length >= 2)
+    .map((c) => haversineKm(point.lat!, point.lng!, c[1], c[0]));
+  return kms.length ? Math.max(...kms) : null;
+}
+
+async function pointsView(groups: ResolvedGroup[], distanceKm: number | null = null) {
   const { settings } = await loadSettings();
   const rule = settings.cartPoints;
-  if (!rule?.enabled) return { enabled: false, met: true, suggestions: [], autoAddId: null };
+  // The points needed depend on how far the customer is (see pointsTarget).
+  const target = pointsTarget(settings, distanceKm);
+  if (!rule?.enabled || target <= 0) return { enabled: !!rule?.enabled, met: true, suggestions: [], autoAddId: null };
 
   const inCart = new Set(groups.flatMap((g) => g.lines.map((l) => String(l.product._id))));
   const total = cartPointsTotal(groups);
-  const needed = Math.max(0, rule.target - total);
+  const needed = Math.max(0, target - total);
   if (needed === 0) return { enabled: true, met: true, suggestions: [], autoAddId: null };
 
   // The top-up pool = products the admin ticked on the product form
@@ -209,15 +223,22 @@ async function pointsView(groups: ResolvedGroup[]) {
   };
 }
 
-export async function getCartView(userId: string) {
+export async function getCartView(userId: string, point?: { lat?: number; lng?: number } | null) {
   const groups = await resolveCart(userId);
-  return { ...buildCartView(groups), points: await pointsView(groups) };
+  // Without a point from the app, judge the distance from the customer's default address.
+  let at = point;
+  if (!at?.lat || !at?.lng) {
+    const user = await User.findById(userId).select('addresses').lean();
+    const def = user?.addresses?.find((a) => a.isDefault) ?? user?.addresses?.[0];
+    at = def?.location ?? null;
+  }
+  return { ...buildCartView(groups), points: await pointsView(groups, basketKm(groups, at)) };
 }
 
 /** The same view for a visitor who has not signed in yet: their basket lives in the browser / phone. */
-export async function guestCartView(items: { product: string; quantity: number }[]) {
+export async function guestCartView(items: { product: string; quantity: number }[], point?: { lat: number; lng: number }) {
   const { groups } = await resolveItems(items);
-  return { groups, view: { ...buildCartView(groups), points: await pointsView(groups) } };
+  return { groups, view: { ...buildCartView(groups), points: await pointsView(groups, basketKm(groups, point)) } };
 }
 
 /** #35 "See all": every product the admin picked for the cart rows, in sort-code order. */

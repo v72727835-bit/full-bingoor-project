@@ -487,8 +487,30 @@ export function ProductDetailScreen() {
           </Txt>
         </View>
 
+        {/* ------------------------------------------ related (6 rows) -- */}
+        {product.relatedRows?.map((row, i) => (
+          <View style={styles.relatedSection} key={`${row.category.slug}-${i}`}>
+            <SectionHeader title={row.title} subtitle={i === 0 ? 'Similar items you may like' : 'Another range you may like'} />
+            <FlatList
+              horizontal
+              data={row.items}
+              keyExtractor={(p) => p._id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.relatedRail}
+              ItemSeparatorComponent={() => <View style={{ width: space.md }} />}
+              renderItem={({ item }) => (
+                <ProductCard
+                  product={item}
+                  width={railWidth}
+                  onPress={() => navigation.push('ProductDetail', { id: item._id, name: item.name })}
+                />
+              )}
+            />
+          </View>
+        ))}
+
         {/* ------------------------------------------------- related -- */}
-        {product.related?.length ? (
+        {!product.relatedRows && product.related?.length ? (
           <View style={styles.relatedSection}>
             <SectionHeader title="You might also like" subtitle="Similar items from nearby shops" />
             <FlatList
@@ -510,7 +532,7 @@ export function ProductDetailScreen() {
         ) : null}
 
         {/* ----------------------------------------- related (other) -- */}
-        {product.relatedOther?.items?.length ? (
+        {!product.relatedRows && product.relatedOther?.items?.length ? (
           <View style={styles.relatedSection}>
             <SectionHeader
               title={`More from ${product.relatedOther.category.name}`}
@@ -593,7 +615,7 @@ export function ProductDetailScreen() {
                 icon="cart-outline"
                 block={false}
                 onPress={() => {
-                  navigation.navigate('MainTabs');
+                  navigation.popTo('MainTabs');
                   goToTab('cart');
                 }}
                 style={styles.cartBtn}

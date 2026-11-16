@@ -17,7 +17,7 @@ export interface AddressInput {
   isDefault?: boolean;
 }
 
-export async function updateProfile(input: { name?: string; email?: string }): Promise<User> {
+export async function updateProfile(input: { name?: string; email?: string; gstin?: string }): Promise<User> {
   const { data } = await api.patch<ApiEnvelope<User>>('/me', input);
   return data.data;
 }

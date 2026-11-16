@@ -11,6 +11,18 @@ export const phone = z
   .pipe(z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number'));
 
 const password = z.string().min(8, 'Password must be at least 8 characters').max(72);
+/**
+ * An app-store / download link from the admin panel. A link typed without
+ * "https://" (e.g. apps.apple.com/...) opened as a page on our own site and the
+ * button "did nothing", so the scheme is added here.
+ */
+const appLink = z
+  .string()
+  .trim()
+  .max(500)
+  .transform((v) => (v && !/^[a-z][a-z0-9+.-]*:/i.test(v) ? `https://${v.replace(/^\/+/, '')}` : v))
+  .refine((v) => !v || /^https?:\/\//i.test(v), 'The link must start with https://');
+
 const boolFromQuery = z.enum(['true', 'false']).transform((v) => v === 'true');
 
 /* ---------- common ---------- */
@@ -55,6 +67,12 @@ export const updateProfileBody = z
     name: z.string().trim().min(2).max(80),
     email: z.string().trim().toLowerCase().email(),
     avatar: z.string().url(),
+    /** GSTIN (15 characters, e.g. 09ABCDE1234F1Z5), or '' to remove it. */
+    gstin: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^(\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z])?$/, 'Enter a valid 15-character GST number, e.g. 09ABCDE1234F1Z5'),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update');
@@ -470,7 +488,7 @@ export const adminSettingsBody = z
       })
       .partial(),
     appLinks: z
-      .object({ android: z.string().trim().max(500), ios: z.string().trim().max(500), rider: z.string().trim().max(500), warehouse: z.string().trim().max(500) })
+      .object({ android: appLink, ios: appLink, rider: appLink, warehouse: appLink })
       .partial(),
     gst: z.object({ defaultRate: z.coerce.number().min(0).max(28), deliveryRate: z.coerce.number().min(0).max(28), homeState: z.string().trim().max(60) }).partial(),
     company: z
@@ -503,12 +521,14 @@ export const adminSettingsBody = z
               fee: z.coerce.number().min(0).max(1000),
               nextDay: z.boolean().default(false),
               redOrder: z.boolean().default(false),
+              points: z.union([z.null(), z.coerce.number().int().min(0).max(5000)]).optional(),
             }),
           )
           .max(10),
         beyondDays: z.coerce.number().int().min(1).max(30),
         beyondMinOrder: z.coerce.number().min(0).max(100000),
         beyondFee: z.coerce.number().min(0).max(1000).optional(),
+        beyondPoints: z.union([z.null(), z.coerce.number().int().min(0).max(5000)]).optional(),
         beyondCodDisabled: z.coerce.boolean(),
         beyondCodMessage: z.string().trim().min(1).max(200),
         beyondCategories: z.array(objectId).max(300),

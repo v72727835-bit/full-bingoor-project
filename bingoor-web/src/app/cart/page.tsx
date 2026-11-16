@@ -216,7 +216,7 @@ function CartInner() {
       {quote && !quote.meetsMinOrder ? (
         <Alert tone="bad">
           {quote.subtotal < quote.minOrder
-            ? `Shop at least ₹${quote.minOrder} to check out — add ₹${Math.ceil(quote.minOrder - quote.subtotal)} more.`
+            ? `कम से कम ₹${quote.minOrder} की खरीदारी करें - ₹${Math.ceil(quote.minOrder - quote.subtotal)} का सामान और जोड़ें। (Shop at least ₹${quote.minOrder} to check out — add ₹${Math.ceil(quote.minOrder - quote.subtotal)} more.)`
             : // The basket is big enough, but one warehouse's part of it is not.
               `Each delivery needs at least ₹${quote.minOrder}. Add more from the delivery marked below, or remove it.`}
         </Alert>
@@ -358,7 +358,13 @@ function CartInner() {
             <Row label={t('delivery')} value={cart.deliveryFee === 0 ? t('free') : `₹${cart.deliveryFee}`} good={cart.deliveryFee === 0} />
           )}
           {/* Blinkit-style: how far from free delivery, right under the delivery charge. */}
-          {freeGap > 0 ? <p className={s.freeHint}>Shop for ₹{freeGap} more to get FREE delivery</p> : null}
+          {freeGap > 0 ? (
+            <p className={s.freeHint}>
+              ₹{freeGap} की और खरीदारी पर डिलीवरी फ्री
+              <br />
+              Shop for ₹{freeGap} more to get FREE delivery
+            </p>
+          ) : null}
           {quote && quote.twoHourFee > 0 ? <Row label="2 hour delivery" value={`₹${quote.twoHourFee}`} /> : null}
           <hr className="divider" style={{ margin: '12px 0' }} />
           {tip > 0 ? <Row label="Tip for delivery partner" value={`₹${tip}`} /> : null}

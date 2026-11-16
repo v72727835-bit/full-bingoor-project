@@ -164,7 +164,7 @@ export function HomeScreen({ active }: TabScreenProps) {
                 ? `${data?.deliveryDays} days delivery`
                 : (data?.deliveryDays ?? 0) === 1
                 ? 'Next day delivery'
-                : `${data?.deliveryMins ?? 19} min`}
+                : shortDelivery(data) || `${data?.deliveryMins ?? 19} min`}
             </Txt>
           </View>
         </Pressable>

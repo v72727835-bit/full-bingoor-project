@@ -40,14 +40,14 @@ const sans = localFont({
 export const metadata: Metadata = {
   title: { default: 'Bingoor — groceries in minutes', template: '%s · Bingoor' },
   description:
-    'Order groceries, fruits, vegetables and daily essentials from shops near you in Robertsganj. Delivered in minutes.',
+    'Order groceries, fruits, vegetables and daily essentials from warehouses near you in Robertsganj. Delivered in minutes.',
   verification: { google: 'pa2y3QPm5N-a73igEhsBXfpYET_TnxTBSBXOEaECB1U' },
   manifest: '/manifest.json',
   icons: { icon: '/icons/icon-32.png', apple: '/icons/icon-180.png' },
   appleWebApp: { capable: true, title: 'Bingoor', statusBarStyle: 'black-translucent' },
   openGraph: {
     title: 'Bingoor — groceries in minutes',
-    description: 'Everyday essentials from shops in your neighbourhood.',
+    description: 'Everyday essentials from warehouses in your neighbourhood.',
     type: 'website',
   },
 };

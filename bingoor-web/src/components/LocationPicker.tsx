@@ -38,13 +38,12 @@ export async function reverse(lat: number, lng: number): Promise<Partial<PickedP
 
 /**
  * Half-screen map to place the delivery pin: search a PIN code, landmark or
- * street, tap the map or drag the pin to the exact doorstep, or jump to the
+ * street, move the map under the fixed pin to the exact doorstep, or jump to the
  * phone's own position with "Use my current location".
  */
 export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: number }; onPick: (p: PickedPlace) => void }) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('leaflet').Map | null>(null);
-  const pinRef = useRef<import('leaflet').Marker | null>(null);
   const leaflet = useRef<typeof import('leaflet') | null>(null);
   const settings = useSettings();
   const mapsCfgRef = useRef(settings?.maps);
@@ -54,9 +53,13 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
   const [searching, setSearching] = useState(false);
   const [note, setNote] = useState('');
 
+  // Last point handed to onPick, so the map's own moveend after a jump
+  // (search, GPS) does not look the same address up twice.
+  const lastRef = useRef<{ lat: number; lng: number } | null>(null);
+
   const place = useCallback(
     async (lat: number, lng: number, move = true) => {
-      pinRef.current?.setLatLng([lat, lng]);
+      lastRef.current = { lat, lng };
       if (move) mapRef.current?.setView([lat, lng], Math.max(mapRef.current.getZoom(), 16));
       onPick({ lat, lng });
       onPick({ lat, lng, ...(await reverse(lat, lng)) });
@@ -76,22 +79,21 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
       const start = value ?? (here ? { lat: here.lat, lng: here.lng } : START);
       const map = L.map(box.current, { zoomControl: true, attributionControl: true }).setView([start.lat, start.lng], value || here ? 17 : 13);
       await addBaseLayer(L, map, mapsCfgRef.current);
-      // Blinkit / Zepto style: a stick pin with "Order will be delivered here" above it.
-      // It bounces when the map opens, so the customer sees it can be moved.
-      const icon = L.divIcon({
-        className: s.pinWrap,
-        html: `<div class="${s.pinBox}"><div class="${s.tip}"><b>Order will be delivered here</b><span>Move the pin to your exact location</span></div><span class="${s.head}"></span><span class="${s.stick}"></span><span class="${s.base}"></span></div>`,
-        iconSize: [230, 112],
-        iconAnchor: [115, 108],
+      // The pin stays fixed in the middle of the map and the map moves under it
+      // (Blinkit / Zepto style). Dragging a small marker with a finger was
+      // unreliable on phones, so the spot under the pin is what gets saved.
+      map.on('moveend', () => {
+        const c = map.getCenter();
+        const last = lastRef.current;
+        if (last && Math.abs(last.lat - c.lat) < 1e-6 && Math.abs(last.lng - c.lng) < 1e-6) return;
+        place(c.lat, c.lng, false);
       });
-      const pin = L.marker([start.lat, start.lng], { draggable: true, icon }).addTo(map);
-      pin.on('dragend', () => {
-        const p = pin.getLatLng();
-        place(p.lat, p.lng, false);
-      });
-      map.on('click', (e) => place(e.latlng.lat, e.latlng.lng, false));
+      // A tap moves that spot under the pin.
+      map.on('click', (e) => map.panTo(e.latlng));
       mapRef.current = map;
-      pinRef.current = pin;
+      // The map opened on the customer's own spot: that is already a valid
+      // pin, so save it without making them nudge the map first.
+      if (!value && here) place(start.lat, start.lng, false);
     })();
     return () => {
       dead = true;
@@ -169,12 +171,23 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
       ) : null}
       <div className={s.mapBox}>
         <div ref={box} className={s.map} />
+        <div className={s.centerPin} aria-hidden>
+          <div className={s.pinBox}>
+            <div className={s.tip}>
+              <b>Order will be delivered here</b>
+              <span>Move the map to your exact location</span>
+            </div>
+            <span className={s.head} />
+            <span className={s.stick} />
+            <span className={s.base} />
+          </div>
+        </div>
         <button type="button" className={s.locateBtn} onClick={locate} aria-label="Go to my current location" title="My current location">
           <Icon name="pin" size={18} />
         </button>
       </div>
       <div className={s.foot}>
-        <span className="body-sm">Drag the pin, or tap the map, to your doorstep.</span>
+        <span className="body-sm">Move the map so the pin sits on your doorstep.</span>
         <Button type="button" variant="outline" size="sm" icon="pin" onClick={locate}>
           Use my current location
         </Button>

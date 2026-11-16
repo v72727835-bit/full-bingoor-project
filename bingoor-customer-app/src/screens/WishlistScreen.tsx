@@ -71,7 +71,7 @@ export function WishlistScreen() {
             message="Tap the heart on any product to keep it here for later. Saved items stay on your account across devices."
             actionLabel="Browse products"
             onAction={() => {
-              navigation.navigate('MainTabs');
+              navigation.popTo('MainTabs');
               goToTab('home');
             }}
           />

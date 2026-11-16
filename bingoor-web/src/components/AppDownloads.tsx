@@ -16,7 +16,10 @@ const V = process.env.NEXT_PUBLIC_BUILD_ID ? `?v=${process.env.NEXT_PUBLIC_BUILD
  * latest APK on our server; a link the admin saved under app links wins.
  */
 export function AppDownloads() {
-  const links = useSettings()?.appLinks ?? {};
+  const saved = useSettings()?.appLinks ?? {};
+  // A saved link without "https://" would open as a page on bingoor.com, so add it.
+  const fix = (u?: string) => (u && !/^[a-z][a-z0-9+.-]*:/i.test(u.trim()) ? `https://${u.trim().replace(/^\/+/, '')}` : u?.trim());
+  const links = { android: fix(saved.android), rider: fix(saved.rider), warehouse: fix(saved.warehouse) };
   const apps = [
     {
       key: 'customer',
@@ -52,7 +55,7 @@ export function AppDownloads() {
         </div>
         <div className={s.grid}>
           {apps.map((a) => (
-            <a key={a.key} href={a.href} className={s.card} rel="noopener">
+            <a key={a.key} href={a.href} className={s.card} rel="noopener" {...(a.href.includes('/downloads/') ? { download: `bingoor-${a.key}.apk` } : { target: '_blank' })}>
               <img src={`/apps/${a.key}.png`} alt="" width={56} height={56} className={s.icon} />
               <span className={s.text}>
                 <small className={s.who}>{a.who}</small>

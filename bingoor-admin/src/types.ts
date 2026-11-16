@@ -316,10 +316,11 @@ export interface Settings {
   twoHourCharge: { enabled: boolean; amount: number };
   pricing: {
     handlingFee: number;
-    bands: { upToKm: number; minOrder: number; freeAbove: number; fee: number; nextDay: boolean; redOrder: boolean }[];
+    bands: { upToKm: number; minOrder: number; freeAbove: number; fee: number; nextDay: boolean; redOrder: boolean; points?: number | null }[];
     beyondDays: number;
     beyondMinOrder: number;
     beyondFee?: number;
+    beyondPoints?: number | null;
     beyondCodDisabled: boolean;
     beyondCodMessage: string;
     /** Point 37: the only categories a customer past the last row sees; empty = all. */

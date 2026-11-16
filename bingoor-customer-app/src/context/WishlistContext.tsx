@@ -3,6 +3,7 @@ import { getErrorMessage } from '../api/client';
 import * as userApi from '../api/user';
 import { ProductSummary } from '../types';
 import { useToast } from '../ui/Toast';
+import { tapAdd } from '../utils/haptics';
 import { useAuth } from './AuthContext';
 
 interface WishlistApi {
@@ -55,6 +56,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const toggle = useCallback(
     async (product: Pick<ProductSummary, '_id' | 'name'>) => {
       const saved = ids.has(product._id);
+      tapAdd(); // the same short buzz as ADD, on save and on remove
       setIds((prev) => {
         const next = new Set(prev);
         if (saved) next.delete(product._id);

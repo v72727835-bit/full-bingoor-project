@@ -106,6 +106,7 @@ export function SectionHeader({
   actionLabel,
   onAction,
   onDark,
+  ink,
   right,
   style,
   padded = true,
@@ -116,6 +117,9 @@ export function SectionHeader({
   onAction?: () => void;
   /** Light ink for headings that sit on the brand band. */
   onDark?: boolean;
+  /** Pure white ink for a dark band whose colour does not follow the theme
+   *  header (the deals strip is navy in light mode too). */
+  ink?: 'white';
   /** Extra element under the subtitle, e.g. a countdown. */
   right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -133,18 +137,21 @@ export function SectionHeader({
     action: { flexDirection: 'row', alignItems: 'center', gap: ms(2), marginTop: space.sm, paddingVertical: ms(2) },
   }));
   const { c } = useTheme();
-  const linkColor = onDark ? c.onHeader : c.brandText;
+  const white = ink === 'white';
+  const titleColor = white ? '#FFFFFF' : undefined;
+  const subColor = white ? 'rgba(255,255,255,0.82)' : onDark ? c.onHeaderMuted : c.inkMuted;
+  const linkColor = white ? '#FFFFFF' : onDark ? c.onHeader : c.brandText;
   return (
     <View style={[s.wrap, padded && s.padded, style]}>
       <View style={s.titleRow}>
-        <View style={[s.rule, onDark && s.ruleOnDark]} />
-        <Txt variant="h2" center tone={onDark ? 'onHeader' : 'ink'} numberOfLines={2} style={s.title} accessibilityRole="header">
+        <View style={[s.rule, (onDark || white) && s.ruleOnDark]} />
+        <Txt variant="h2" center tone={onDark ? 'onHeader' : 'ink'} numberOfLines={2} style={[s.title, titleColor ? { color: titleColor } : null]} accessibilityRole="header">
           {title}
         </Txt>
-        <View style={[s.rule, onDark && s.ruleOnDark]} />
+        <View style={[s.rule, (onDark || white) && s.ruleOnDark]} />
       </View>
       {subtitle ? (
-        <Txt variant="bodySm" center numberOfLines={2} style={[s.sub, { color: onDark ? c.onHeaderMuted : c.inkMuted }]}>
+        <Txt variant="bodySm" center numberOfLines={2} style={[s.sub, { color: subColor }]}>
           {subtitle}
         </Txt>
       ) : null}

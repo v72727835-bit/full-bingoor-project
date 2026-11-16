@@ -123,7 +123,7 @@ export function CartScreen({ active }: TabScreenProps) {
         {!minMet && minQuote ? (
           <Banner
             tone="warning"
-            message={`Shop at least ${currency(minQuote.minOrder)} to check out - add ${currency(minShort)} more.`}
+            message={`कम से कम ${currency(minQuote.minOrder)} की खरीदारी करें - ${currency(minShort)} का सामान और जोड़ें।\nShop at least ${currency(minQuote.minOrder)} to check out - add ${currency(minShort)} more.`}
             style={styles.topBanner}
           />
         ) : null}
@@ -143,9 +143,9 @@ export function CartScreen({ active }: TabScreenProps) {
             style={styles.topBanner}
           />
         ) : awayFromFree > 0 ? (
-          <Banner tone="info" message={`Add ${currency(awayFromFree)} more to get free delivery.`} style={styles.topBanner} />
+          <Banner tone="info" message={`फ्री डिलीवरी के लिए ${currency(awayFromFree)} का सामान और जोड़ें।\nAdd ${currency(awayFromFree)} more to get free delivery.`} style={styles.topBanner} />
         ) : (
-          <Banner tone="success" message="Your order gets free delivery." style={styles.topBanner} />
+          <Banner tone="success" message={'आपके ऑर्डर पर डिलीवरी फ्री है।\nYour order gets free delivery.'} style={styles.topBanner} />
         )}
 
         {/* One basket: whichever warehouse fills an item stays behind the scenes, and the
@@ -174,7 +174,8 @@ export function CartScreen({ active }: TabScreenProps) {
           {/* Under the delivery charge, in red: how far from free delivery. */}
           {minQuote && minQuote.deliveryFee > 0 && minQuote.addForFree > 0 ? (
             <Txt variant="labelSm" tone="danger" style={styles.freeHint}>
-              Shop for {currency(Math.ceil(minQuote.addForFree))} more to get FREE delivery
+              {`${currency(Math.ceil(minQuote.addForFree))} की और खरीदारी पर डिलीवरी फ्री`}
+              {'\n'}Shop for {currency(Math.ceil(minQuote.addForFree))} more to get FREE delivery
             </Txt>
           ) : null}
           {tip > 0 ? <BillRow label="Tip for delivery partner" value={currency(tip)} /> : null}

@@ -36,6 +36,7 @@ function Heading({
   titleHi,
   subtitle,
   onDark,
+  ink,
   actionLabel,
   onAction,
   right,
@@ -44,6 +45,7 @@ function Heading({
   titleHi?: string;
   subtitle?: string;
   onDark?: boolean;
+  ink?: 'white';
   actionLabel?: string;
   onAction?: () => void;
   right?: React.ReactNode;
@@ -55,6 +57,7 @@ function Heading({
       title={lang === 'hi' && titleHi ? titleHi : title}
       subtitle={subtitle}
       onDark={onDark}
+      ink={ink}
       right={right}
       actionLabel={actionLabel}
       onAction={onAction}
@@ -295,15 +298,17 @@ export function HomeSectionView({
         <View
           style={[
             styles.strip,
+            deals ? styles.dealsStrip : null,
             deals ? { backgroundColor: colors.dealsFrom } : null,
             !deals && section.tint ? { backgroundColor: tint(section.tint) } : null,
           ]}
         >
           <Heading
-            title={section.title}
+            title={section.title || (deals ? 'Deals of the day' : undefined)}
             titleHi={section.titleHi}
             subtitle={section.subtitle}
             onDark={deals}
+            ink={deals ? 'white' : undefined}
             right={deals ? <MidnightCountdown /> : undefined}
             actionLabel={section.seeAllSlug ? 'See all' : undefined}
             onAction={section.seeAllSlug ? () => handlers.onSeeAll(section.seeAllSlug!, section.title ?? '') : undefined}
@@ -314,7 +319,7 @@ export function HomeSectionView({
             keyExtractor={(p) => p._id}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.railPad}
-            style={styles.railTop}
+            style={deals ? styles.railTopTight : styles.railTop}
             ListFooterComponent={
               section.seeAllSlug ? (
                 <Pressable
@@ -423,9 +428,13 @@ const styles = themed(({ c }) => ({
   dealCard: {
     backgroundColor: c.surface,
     borderRadius: radius.lg,
-    padding: ms(6),
-    paddingBottom: space.sm,
+    padding: ms(4),
+    paddingBottom: ms(6),
   },
+
+  dealsStrip: { paddingTop: space.lg, paddingBottom: space.lg },
+
+  railTopTight: { marginTop: space.md },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: space.lg, paddingHorizontal: gutter },
 

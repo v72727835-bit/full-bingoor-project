@@ -23,6 +23,22 @@ const SHOP_CARD_FIELDS =
 const CAT_FIELDS = 'name nameHi slug icon image tint parent level';
 
 /** Adds the computed bits every product card shows. */
+/**
+ * A product stocked in several warehouses is one listing per warehouse in the
+ * database. Without a delivery location (so no single warehouse to pick) a
+ * customer must still see it once: keep the first copy of each name + size + aisle.
+ */
+function oneListingPerItem<T extends { name?: string; unit?: string; category?: unknown }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((p) => {
+    const cat = p.category && typeof p.category === 'object' && '_id' in (p.category as object) ? (p.category as { _id: unknown })._id : p.category;
+    const key = `${(p.name ?? '').trim().toLowerCase()}|${(p.unit ?? '').trim().toLowerCase()}|${String(cat ?? '')}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function toCard<T extends { price: number; mrp: number; stock: number; category?: unknown; paymentMode?: 'both' | 'cod' | 'online' }>(p: T) {
   return {
     ...p,
@@ -422,7 +438,7 @@ export const home = asyncHandler(async (req, res) => {
 
   sections.push(...standard.filter((r) => r.position === 'bottom'));
 
-  if (shops.length) sections.push({ type: 'storeTiles', id: 'stores', title: 'Stores near you', items: shops });
+  if (shops.length) sections.push({ type: 'storeTiles', id: 'stores', title: 'Warehouses near you', items: shops });
 
   const homeSettings = (await loadSettings()).settings;
   const instant = homeSettings.deliverySlots?.find((x) => x.key === 'instant');
@@ -441,7 +457,9 @@ export const home = asyncHandler(async (req, res) => {
     if (nearestKm !== null) {
       const q = quoteDelivery(homeSettings, { subtotal: 0, distanceKm: nearestKm, slot: 'instant' });
       deliveryDays = q.days;
-      deliveryText = q.days >= 2 ? `${q.days} days delivery` : q.days === 1 ? 'Next day delivery' : `${deliveryMins} minutes`;
+      // Near band: exactly what the admin set for the fast slot ("19 minutes", or
+      // "2 hours" when they change it), so every customer sees the admin's promise.
+      deliveryText = q.days >= 2 ? `${q.days} days delivery` : q.days === 1 ? 'Next day delivery' : defaultText;
     }
   }
 
@@ -687,7 +705,8 @@ export const listProducts = asyncHandler(async (req, res) => {
     Product.countDocuments(filter),
   ]);
 
-  const cards = products.map(toCard);
+  // No location and no warehouse chosen: every warehouse's copy matched, so show each item once.
+  const cards = (filter.shop ? products : oneListingPerItem(products)).map(toCard);
   await attachVariants(cards as unknown as Record<string, unknown>[]);
   ok(res, cards, pageMeta(page, limit, total));
 });
@@ -732,37 +751,46 @@ export const getProduct = asyncHandler(async (req, res) => {
     .lean();
   if (!product) throw new ApiError(404, 'Product not found');
 
-  const related = await Product.find({
-    _id: { $ne: product._id },
-    category: (product.category as unknown as { _id: Types.ObjectId })._id,
-    isActive: true,
-    stock: { $gt: 0 },
-  })
-    .sort({ soldCount: -1 })
-    .limit(10)
-    .select(CARD_FIELDS)
-    .populate('shop', 'name slug isOpen')
-    .lean();
+  // Point: 6 rows under the product - 2 rows from its own child aisle and 4 rows
+  // from 4 other child aisles of the same parent aisle. With a delivery location,
+  // only the warehouse that serves it; either way each item shows once.
+  const serving = await servingShopIds(lat, lng);
+  const shopFilter = serving ? { shop: { $in: serving } } : {};
+  const ROW = 10;
+  const itemKey = (x: { name?: string; unit?: string }) => `${(x.name ?? '').trim().toLowerCase()}|${(x.unit ?? '').trim().toLowerCase()}`;
+  const sameItem = itemKey(product);
+  const rowItems = async (categoryId: Types.ObjectId, max: number) =>
+    oneListingPerItem(
+      await Product.find({ category: categoryId, isActive: true, stock: { $gt: 0 }, _id: { $ne: product._id }, ...shopFilter })
+        .sort({ soldCount: -1 })
+        .limit(max * 4)
+        .select(CARD_FIELDS)
+        .populate('shop', 'name slug isOpen')
+        .lean(),
+    )
+      .filter((x) => itemKey(x) !== sameItem)
+      .slice(0, max);
 
-  // Point: a second row on the product page from one OTHER child category under
-  // the same parent aisle, so customers discover nearby ranges too.
-  const cat = product.category as unknown as { _id: Types.ObjectId; parent?: Types.ObjectId };
+  const cat = product.category as unknown as { _id: Types.ObjectId; name?: string; slug?: string; parent?: Types.ObjectId };
+  const own = await rowItems(cat._id, ROW * 2);
+  const related = own.slice(0, ROW);
+  const rows: { title: string; category: { name: string; slug: string }; items: ReturnType<typeof toCard>[] }[] = [];
+  if (related.length) rows.push({ title: 'Similar products', category: { name: cat.name ?? '', slug: cat.slug ?? '' }, items: related.map(toCard) });
+  if (own.length > ROW) rows.push({ title: `More in ${cat.name ?? 'this aisle'}`, category: { name: cat.name ?? '', slug: cat.slug ?? '' }, items: own.slice(ROW).map(toCard) });
+
   let relatedOther: { category: { name: string; slug: string }; items: ReturnType<typeof toCard>[] } | null = null;
   if (cat?.parent) {
     const siblings = await Category.find({ parent: cat.parent, _id: { $ne: cat._id }, isActive: true })
+      .sort({ sortOrder: 1, name: 1 })
       .select('name slug')
       .lean();
     for (const sib of siblings) {
-      const items = await Product.find({ category: sib._id, isActive: true, stock: { $gt: 0 }, _id: { $ne: product._id } })
-        .sort({ soldCount: -1 })
-        .limit(10)
-        .select(CARD_FIELDS)
-        .populate('shop', 'name slug isOpen')
-        .lean();
-      if (items.length) {
-        relatedOther = { category: { name: sib.name, slug: sib.slug }, items: items.map(toCard) };
-        break;
-      }
+      if (rows.length >= 6) break;
+      const items = await rowItems(sib._id as Types.ObjectId, ROW);
+      if (!items.length) continue;
+      const row = { title: `More from ${sib.name}`, category: { name: sib.name, slug: sib.slug }, items: items.map(toCard) };
+      relatedOther ??= { category: row.category, items: row.items };
+      rows.push(row);
     }
   }
 
@@ -790,6 +818,8 @@ export const getProduct = asyncHandler(async (req, res) => {
     ...card,
     related: related.map(toCard),
     relatedOther,
+    /** Up to 6 rows: this aisle (2) and other child aisles of the same parent (4). */
+    relatedRows: rows,
     variants: variants.map((v) => ({ ...v, label: v.variantLabel || v.unit, inStock: v.stock > 0 })),
   });
 });

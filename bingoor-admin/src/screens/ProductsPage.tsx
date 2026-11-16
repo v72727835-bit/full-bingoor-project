@@ -465,6 +465,8 @@ function ProductForm({
   };
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
+  /** Extra sizes typed while adding a new product; they are created right after it. */
+  const [draftSizes, setDraftSizes] = useState<DraftSize[]>([]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -521,8 +523,27 @@ function ProductForm({
         standardCategories: form.standardCategories,
         isActive: form.isActive,
       };
+      const extras = product ? [] : draftSizes.filter((d) => d.label.trim() && Number(d.price) > 0);
+      if (!product && draftSizes.some((d) => (d.label.trim() || d.price) && !(d.label.trim() && Number(d.price) > 0))) {
+        throw new Error('Every extra size needs its label (e.g. 1 kg) and a price - or remove that row.');
+      }
+      if (extras.length) {
+        // All sizes share one group, so the website and app show "ADD · N options".
+        body.variantGroup = body.variantGroup || `${form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}-${Date.now().toString(36).slice(-4)}`;
+        body.variantLabel = body.variantLabel || form.unit;
+      }
       if (product) await updateProduct(product._id, body);
       else await createProduct(body as never);
+      for (const d of extras) {
+        await createProduct({
+          ...body,
+          unit: d.label.trim(),
+          variantLabel: d.label.trim(),
+          price: Number(d.price),
+          mrp: Number(d.mrp) || Number(d.price),
+          stock: Number(d.stock) || 0,
+        } as never);
+      }
       onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -659,7 +680,11 @@ function ProductForm({
           </Field>
         </div>
 
-        {product ? <SizesPanel product={product} group={form.variantGroup} onGroup={(g) => set('variantGroup', g)} /> : null}
+        {product ? (
+          <SizesPanel product={product} group={form.variantGroup} onGroup={(g) => set('variantGroup', g)} />
+        ) : (
+          <DraftSizesPanel unit={form.unit} sizes={draftSizes} onChange={setDraftSizes} />
+        )}
 
         <div className="field-row">
           <Field label="Hindi name (shown when the customer picks Hindi)">
@@ -827,6 +852,49 @@ function ProductForm({
  * them and adds a new size in one step, copying everything else from this one.
  * On the website the item then shows "ADD - 3 options" and all sizes.
  */
+interface DraftSize {
+  label: string;
+  price: string;
+  mrp: string;
+  stock: string;
+}
+
+/** Point: other sizes (variants) can be added while creating the product, not only after saving it. */
+function DraftSizesPanel({ unit, sizes, onChange }: { unit: string; sizes: DraftSize[]; onChange: (s: DraftSize[]) => void }) {
+  const update = (i: number, patch: Partial<DraftSize>) => onChange(sizes.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  return (
+    <div className="card card-pad" style={{ margin: '6px 0 16px' }}>
+      <div className="stat-label" style={{ marginBottom: 6 }}>Other sizes of this product (variants)</div>
+      <div className="cell-muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+        The size above ({unit || 'its unit'}) is the first one. Add more sizes here, each with its own price, MRP and stock; they are saved
+        together with this product.
+      </div>
+      {sizes.map((s, i) => (
+        <div className="field-row" key={i}>
+          <Field label="Size">
+            <input value={s.label} onChange={(e) => update(i, { label: e.target.value })} placeholder="1 kg" />
+          </Field>
+          <Field label="Price (₹)">
+            <input type="number" min="0" value={s.price} onChange={(e) => update(i, { price: e.target.value })} />
+          </Field>
+          <Field label="MRP (₹)">
+            <input type="number" min="0" value={s.mrp} onChange={(e) => update(i, { mrp: e.target.value })} />
+          </Field>
+          <Field label="Stock">
+            <input type="number" min="0" value={s.stock} onChange={(e) => update(i, { stock: e.target.value })} />
+          </Field>
+          <Button type="button" variant="ghost" onClick={() => onChange(sizes.filter((_, j) => j !== i))}>
+            Remove
+          </Button>
+        </div>
+      ))}
+      <Button type="button" variant="secondary" onClick={() => onChange([...sizes, { label: '', price: '', mrp: '', stock: '' }])}>
+        + Add variant (another size)
+      </Button>
+    </div>
+  );
+}
+
 function SizesPanel({ product, group, onGroup }: { product: Product; group: string; onGroup: (g: string) => void }) {
   const [sizes, setSizes] = useState<Product[]>([]);
   const [label, setLabel] = useState('');

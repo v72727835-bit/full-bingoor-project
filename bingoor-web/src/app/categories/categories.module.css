@@ -142,6 +142,27 @@
     border-radius: 50%;
   }
 
+  .mCart {
+    position: relative;
+  }
+
+  .mCartBadge {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--brand);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+
   .mTitle {
     flex: 1;
     min-width: 0;

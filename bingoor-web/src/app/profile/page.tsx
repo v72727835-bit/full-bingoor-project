@@ -32,6 +32,7 @@ function ProfileInner() {
 
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  const [gstin, setGstin] = useState(user?.gstin ?? '');
   const [saving, setSaving] = useState(false);
 
   // Replies the team has sent that the customer has not opened yet.
@@ -51,7 +52,7 @@ function ProfileInner() {
     e.preventDefault();
     setSaving(true);
     try {
-      const u = await updateMe({ name: name.trim(), email: email.trim() || undefined });
+      const u = await updateMe({ name: name.trim(), email: email.trim() || undefined, gstin: gstin.trim().toUpperCase() });
       setUser(u);
       try {
         localStorage.setItem('bingoor_user', JSON.stringify(u));
@@ -140,6 +141,14 @@ function ProfileInner() {
             </Field>
             <Field label="Phone" hint="cannot be changed">
               <Input value={user?.phone ?? ''} disabled />
+            </Field>
+            <Field label="GST number" hint="optional · printed under your name on every bill">
+              <Input
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15))}
+                placeholder="09ABCDE1234F1Z5"
+                autoComplete="off"
+              />
             </Field>
             <Button type="submit" loading={saving}>
               Save changes

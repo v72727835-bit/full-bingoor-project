@@ -134,6 +134,7 @@ export function product(raw: RawProduct): Product {
     reviews: raw.reviews?.map(review),
     related: raw.related?.map(product),
     relatedOther: raw.relatedOther ? { category: raw.relatedOther.category, items: raw.relatedOther.items.map(product) } : null,
+    relatedRows: raw.relatedRows?.map((r) => ({ title: r.title, category: r.category, items: r.items.map(product) })),
   };
 }
 

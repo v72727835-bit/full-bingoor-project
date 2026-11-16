@@ -31,7 +31,10 @@ export function Footer() {
   const settings = useSettings();
   const { home } = useCatalog();
   const { name, t } = useLanguage();
-  const apps = settings?.appLinks ?? {};
+  const rawApps = settings?.appLinks ?? {};
+  // Links saved before the admin panel added "https://" still open correctly.
+  const fix = (u?: string) => (u && !/^[a-z][a-z0-9+.-]*:/i.test(u) ? `https://${u.replace(/^\/+/, '')}` : u);
+  const apps = { ...rawApps, ios: fix(rawApps.ios), android: fix(rawApps.android) };
   // Social pages are set in the admin panel; only the ones that were filled in show up.
   const socials = [
     ...SOCIALS.filter((x) => settings?.socialLinks?.[x.key]).map((x) => ({ ...x, url: settings!.socialLinks![x.key]! })),
@@ -49,9 +52,9 @@ export function Footer() {
           <div className={s.brand}>
             <div className={s.logo}>
               <img src="/logo-mark.png" alt="" width={44} height={44} className={s.mark} />
-              <span className={s.word}>Bingoor</span>
+              <span className={s.word}>bingoor.com</span>
             </div>
-            <p className={s.tag}>Everyday essentials from shops in your neighbourhood, delivered to your door in minutes.</p>
+            <p className={s.tag}>Everyday essentials from our warehouses near you, delivered to your door in minutes.</p>
             {settings?.supportPhone ? (
               <a href={`tel:${settings.supportPhone}`} className={s.call}>
                 <Icon name="phone" size={15} />

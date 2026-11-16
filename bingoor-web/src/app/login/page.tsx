@@ -8,6 +8,7 @@ import { googleAccessToken, facebookAccessToken, startInstagramLogin } from '../
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../lib/client';
 import { AuthShell } from '../../components/AuthShell';
+import { FacebookMark, GoogleMark, InstagramMark } from '../../components/SocialSignIn';
 import { Alert, Button, Field, Input, PageLoader } from '../../components/ui';
 
 function LoginInner() {
@@ -54,7 +55,7 @@ function LoginInner() {
 
   return (
     <AuthShell
-      title="Log in to Bingoor"
+      title="Log in to bingoor.com"
       lead="Sign in with your phone number or email."
       footer={
         <>
@@ -67,9 +68,15 @@ function LoginInner() {
     >
       {error ? <Alert tone="bad">{error}</Alert> : null}
       <div style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
-        <Button full variant="outline" disabled={loading} onClick={() => void social('google')}>Continue with Google</Button>
-        <Button full variant="outline" disabled={loading} onClick={() => void social('facebook')}>Continue with Facebook</Button>
-        <Button full variant="outline" disabled={loading} onClick={() => void social('instagram')}>Continue with Instagram</Button>
+        <Button full variant="outline" disabled={loading} onClick={() => void social('google')}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><GoogleMark /> Continue with Google</span>
+        </Button>
+        <Button full variant="outline" disabled={loading} onClick={() => void social('facebook')}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><FacebookMark /> Continue with Facebook</span>
+        </Button>
+        <Button full variant="outline" disabled={loading} onClick={() => void social('instagram')}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><InstagramMark /> Continue with Instagram</span>
+        </Button>
         <small>Instagram login supports Business and Creator accounts.</small>
       </div>
       <form onSubmit={submit}>

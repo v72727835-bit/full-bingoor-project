@@ -25,9 +25,12 @@ export function OrderSuccessScreen() {
     ]).start();
   }, [pop]);
 
+  // React Navigation 7's navigate() no longer pops back to a screen already in
+  // the stack, so "Back to home" could do nothing here. Reset to a clean stack
+  // with Home showing, so back never returns to checkout either.
   const goHome = () => {
-    navigation.navigate('MainTabs');
     goToTab('home');
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
   };
 
   // Hardware back should land on Home, never back on the checkout form.
@@ -105,7 +108,7 @@ export function OrderSuccessScreen() {
               if (count === 1) {
                 navigation.replace('OrderDetail', { id: params.orderIds[0] });
               } else {
-                navigation.navigate('MainTabs');
+                navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
                 goToTab('orders');
               }
             }}

@@ -56,10 +56,11 @@
   background: var(--brand-tint);
 }
 
-/* Half a phone screen, a comfortable square on desktop. */
+/* Under half a phone screen, so the page above and below stays reachable with
+   a finger; a comfortable square on desktop. */
 .mapBox {
   position: relative;
-  height: 50vh;
+  height: 42vh;
   min-height: 260px;
   max-height: 420px;
   border-radius: var(--r-md);
@@ -86,9 +87,14 @@
   color: var(--ink-3);
 }
 
-.pinWrap {
-  background: none;
-  border: 0;
+/* The fixed pin: its foot (the shadow dot) sits on the map's centre. */
+.centerPin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 450;
+  transform: translate(-50%, calc(-100% + 4px));
+  pointer-events: none;
 }
 
 /* Blinkit / Zepto style pin: label, round head, stick and a shadow dot. */
@@ -99,7 +105,6 @@
   align-items: center;
   width: 230px;
   height: 112px;
-  pointer-events: none;
   animation: nudge 0.9s ease-in-out 0.5s 2;
 }
 
@@ -141,7 +146,7 @@
   content: '';
   position: absolute;
   left: 50%;
-  top: 46px;
+  top: 44px;
   width: 10px;
   height: 10px;
   background: #1c2230;

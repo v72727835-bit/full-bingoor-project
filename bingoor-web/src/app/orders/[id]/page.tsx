@@ -87,7 +87,7 @@ function OrderInner() {
           </span>
           <div>
             <h1 className="h2">Order placed</h1>
-            <p className="body-sm">The shop has been notified and will have it on the way shortly.</p>
+            <p className="body-sm">The warehouse has been notified and will have it on the way shortly.</p>
           </div>
         </div>
       ) : null}

@@ -88,7 +88,7 @@ export function PopupPages() {
           body
         )}
         <button type="button" className={s.close} onClick={close} aria-label="Close">
-          <Icon name="x" size={20} />
+          <Icon name="x" size={26} />
         </button>
       </div>
     </div>

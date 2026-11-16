@@ -4,8 +4,8 @@ import { Cart, MAX_QTY_PER_ITEM } from '../models/Cart';
 import { CUSTOMER_CANCELLABLE, IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
 import { User } from '../models/User';
-import { cartPointsTotal, getCartView, lineIssue, resolveCart } from '../services/cart.service';
-import { codTimeBlocked, orderDeliveryDays, paymentFeePct, paymentOptions, quoteCart, quoteDelivery, Slot } from '../services/pricing.service';
+import { basketKm, cartPointsTotal, getCartView, lineIssue, resolveCart } from '../services/cart.service';
+import { codTimeBlocked, orderDeliveryDays, paymentFeePct, paymentOptions, pointsTarget, quoteCart, quoteDelivery, Slot } from '../services/pricing.service';
 import { sendOrderWhatsApp } from '../services/whatsapp.service';
 import { loadSettings, productRules } from '../services/settings.service';
 import { createRazorpayOrder, razorpayEnabled, razorpayKeys, razorpayWebhookSecret, refundRazorpayPayment, verifyRazorpaySignature } from '../services/razorpay.service';
@@ -93,8 +93,10 @@ async function runPlaceOrder(
     if (codCut.blocked) throw new ApiError(400, codCut.message);
   }
 
-  // Hidden cart-points rule: checkout stays closed until the basket reaches the target.
-  if (settings.cartPoints?.enabled && cartPointsTotal(groups) < settings.cartPoints.target) {
+  // Hidden cart-points rule: checkout stays closed until the basket reaches the
+  // target for this address's distance (e.g. 70 points at 9-15 km).
+  const needPoints = pointsTarget(settings, basketKm(groups, address.location));
+  if (needPoints > 0 && cartPointsTotal(groups) < needPoints) {
     throw new ApiError(409, 'Please add 1 product from the list below your cart to continue.', [{ reason: 'points_short' }]);
   }
 

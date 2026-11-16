@@ -33,10 +33,10 @@ type Pricing = ISettings['pricing'];
 const DEFAULTS: Pricing = {
   handlingFee: 2,
   bands: [
-    { upToKm: 9, minOrder: 199, freeAbove: 199, fee: 39, nextDay: false, redOrder: false },
-    { upToKm: 15, minOrder: 199, freeAbove: 999, fee: 39, nextDay: false, redOrder: true },
-    { upToKm: 25, minOrder: 199, freeAbove: 699, fee: 39, nextDay: true, redOrder: false },
-    { upToKm: 30, minOrder: 199, freeAbove: 1199, fee: 39, nextDay: true, redOrder: false },
+    { upToKm: 9, minOrder: 199, freeAbove: 199, fee: 39, nextDay: false, redOrder: false, points: 0 },
+    { upToKm: 15, minOrder: 199, freeAbove: 999, fee: 39, nextDay: false, redOrder: true, points: 70 },
+    { upToKm: 25, minOrder: 199, freeAbove: 999, fee: 39, nextDay: true, redOrder: false, points: 150 },
+    { upToKm: 30, minOrder: 199, freeAbove: 1999, fee: 39, nextDay: true, redOrder: false, points: 180 },
   ],
   beyondDays: 3,
   beyondMinOrder: 199,
@@ -174,4 +174,26 @@ export function quoteCart(
   const known = input.groups.map((g) => g.distanceKm).filter((d): d is number => d !== null);
   const distanceKm = known.length ? Math.max(...known) : null;
   return quoteDelivery(settings, { subtotal, distanceKm, slot: input.slot });
+}
+
+/**
+ * Cart points the basket must reach before checkout, by distance (client rule):
+ * e.g. up to 9 km none, 9-15 km 70, 15-25 km 150, 25-30 km 180. A band without
+ * its own number uses the global Cart points target; past the last band the
+ * "beyond" number (else the last band's). Unknown distance: the global target.
+ */
+export function pointsTarget(
+  settings: Pick<ISettings, 'pricing' | 'cartPoints'> | null,
+  distanceKm: number | null,
+): number {
+  const rule = settings?.cartPoints;
+  if (!rule?.enabled) return 0;
+  const global = rule.target ?? 0;
+  const bands = [...(settings?.pricing?.bands ?? [])].sort((a, b) => a.upToKm - b.upToKm);
+  if (distanceKm === null || !bands.length) return global;
+  const own = (n: number | null | undefined) => (typeof n === 'number' && n >= 0 ? n : undefined);
+  const band = bands.find((b) => distanceKm <= b.upToKm);
+  if (band) return own(band.points) ?? global;
+  const last = bands[bands.length - 1];
+  return own(settings?.pricing?.beyondPoints) ?? own(last.points) ?? global;
 }

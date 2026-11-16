@@ -279,7 +279,8 @@ function OrderCard({ order, saving, riderLocation, onAccept, onDeliver, onCancel
   const km = accepted && riderLocation && order.address.location ? kmBetween(riderLocation, order.address.location) : null;
 
   const slotText = order.deliveryDays ? `${order.deliveryDays} day${order.deliveryDays > 1 ? 's' : ''} delivery` : order.slot === 'twoHour' ? 'Within 2 hours' : order.slot === 'nextDay' ? 'Next day delivery' : 'Deliver in 19 minutes';
-  const placed = new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  // Date and time, so an order from another day is never mistaken for today's.
+  const placed = new Date(order.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   return <View style={[styles.card, order.redOrder ? styles.redCard : null]}>
     <View style={styles.cardTop}><Text style={styles.orderNo}>#{order.orderNumber}</Text><View style={[styles.badge, order.status === 'delivered' ? styles.greenBadge : order.status === 'out_for_delivery' ? styles.blueBadge : styles.orangeBadge]}><Text style={styles.badgeText}>{statusLabel[order.status]}</Text></View></View>
     <Text style={styles.address}>Pickup: {order.shop?.name} · {[order.shop?.address?.line1, order.shop?.address?.city].filter(Boolean).join(', ')}</Text>

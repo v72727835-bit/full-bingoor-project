@@ -35,6 +35,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const toggle = useCallback(
     async (productId: string) => {
       const was = ids.has(productId);
+      // A short buzz on phones that support it, like the ADD button.
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(12);
       // Optimistic: the heart flips at once and goes back if the server says no.
       setIds((cur) => {
         const next = new Set(cur);

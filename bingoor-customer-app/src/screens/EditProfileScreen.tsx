@@ -17,6 +17,9 @@ import { TextField, TextInputRef } from '../ui/TextField';
 import { useToast } from '../ui/Toast';
 import { isValidEmail } from '../utils/validation';
 
+/** GSTIN: state code, PAN, entity number, Z, check digit. */
+const GSTIN = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
 export function EditProfileScreen() {
   const navigation = useNavigation<AppNav>();
   const { user, applyUser } = useAuth();
@@ -25,23 +28,29 @@ export function EditProfileScreen() {
 
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  const [gstin, setGstin] = useState(user?.gstin ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const changed = name.trim() !== (user?.name ?? '') || email.trim().toLowerCase() !== (user?.email ?? '').toLowerCase();
+  const changed =
+    name.trim() !== (user?.name ?? '') ||
+    email.trim().toLowerCase() !== (user?.email ?? '').toLowerCase() ||
+    gstin.trim().toUpperCase() !== (user?.gstin ?? '');
 
   const submit = async () => {
     setFormError(null);
     const next: Record<string, string> = {};
     if (name.trim().length < 2) next.name = 'Enter your full name';
     if (email.trim() && !isValidEmail(email)) next.email = 'Enter a valid email address, or leave it blank';
+    if (gstin.trim() && !GSTIN.test(gstin.trim().toUpperCase())) next.gstin = 'Enter a valid 15-character GST number, e.g. 09ABCDE1234F1Z5';
     setErrors(next);
     if (Object.keys(next).length) return;
 
     setSaving(true);
     try {
-      const payload: { name?: string; email?: string } = {};
+      const payload: { name?: string; email?: string; gstin?: string } = {};
+      if (gstin.trim().toUpperCase() !== (user?.gstin ?? '')) payload.gstin = gstin.trim().toUpperCase();
       if (name.trim() !== user?.name) payload.name = name.trim();
       if (email.trim() && email.trim().toLowerCase() !== (user?.email ?? '').toLowerCase()) {
         payload.email = email.trim().toLowerCase();
@@ -110,6 +119,22 @@ export function EditProfileScreen() {
             onSubmitEditing={submit}
             error={errors.email}
             hint="Used for order receipts. Optional."
+          />
+
+          <TextField
+            label="GST number"
+            placeholder="09ABCDE1234F1Z5"
+            icon="document-text-outline"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={15}
+            value={gstin}
+            onChangeText={(t) => {
+              setGstin(t.toUpperCase().replace(/[^0-9A-Z]/g, ''));
+              if (errors.gstin) setErrors((e) => ({ ...e, gstin: '' }));
+            }}
+            error={errors.gstin}
+            hint="Optional. Printed under your name on every bill, old ones too."
           />
 
           <View style={styles.lockedField}>

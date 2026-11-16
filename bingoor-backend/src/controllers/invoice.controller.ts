@@ -47,6 +47,8 @@ export const renderInvoice = asyncHandler(async (req, res) => {
 
   const order = await Order.findById(id).populate('shop', 'name phone address gstin').lean();
   if (!order) throw new ApiError(404, 'Order not found');
+  // Read live, so a GST number the customer adds after delivery shows on their old bills too.
+  const buyer = order.user ? await User.findById(order.user).select('gstin').lean() : null;
   const settings = await Settings.findOne({ key: 'global' }).lean();
   const kind = format === 'pos' ? 'pos' : 'a4';
   const site = (settings?.company?.website && /^https?:\/\//i.test(settings.company.website) ? settings.company.website : 'https://bingoor.com').replace(/\/$/, '');
@@ -82,7 +84,17 @@ export const renderInvoice = asyncHandler(async (req, res) => {
       social: (settings?.socialLinks ?? {}) as Record<string, string | undefined>,
       siteUrl: site,
       gst,
-      supplier: { name: shop?.name || company.name || 'Bingoor', address: shopAddress || company.address || '', gstin, phone: shop?.phone || company.phone, stateText: `${from.name} (${from.code})` },
+      // "Sold by" is the company (name and address from Admin > Store settings > Company);
+      // the warehouse the order left from is printed under it.
+      supplier: {
+        name: company.name || shop?.name || 'Bingoor',
+        address: company.address || shopAddress || '',
+        gstin,
+        phone: company.phone || shop?.phone,
+        stateText: `${from.name} (${from.code})`,
+        ...(company.name && shop?.name ? { dispatchedFrom: [shop.name, shopAddress].filter(Boolean).join(', ') } : {}),
+      },
+      buyerGstin: buyer?.gstin || undefined,
       placeOfSupply: to ? `${to.name} (${to.code})` : order.address.state || from.name,
     },
     kind,

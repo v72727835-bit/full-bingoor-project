@@ -437,7 +437,20 @@ export default function ProductPage() {
         </div>
       ) : null}
 
-      {p.related && p.related.length > 0 ? (
+      {p.relatedRows && p.relatedRows.length > 0 ? (
+        p.relatedRows.map((row, i) => (
+          <section className={s.related} key={`${row.category.slug}-${i}`}>
+            <SectionHead title={row.title} subtitle={i === 0 ? 'You might also like these' : 'Another range you may like'} />
+            <div className="rail">
+              {row.items.map((r) => (
+                <ProductCard key={r.id} product={r} width={168} />
+              ))}
+            </div>
+          </section>
+        ))
+      ) : null}
+
+      {!p.relatedRows && p.related && p.related.length > 0 ? (
         <section className={s.related}>
           <SectionHead title="Similar products" subtitle="You might also like these" />
           <div className="rail">
@@ -448,7 +461,7 @@ export default function ProductPage() {
         </section>
       ) : null}
 
-      {p.relatedOther && p.relatedOther.items.length > 0 ? (
+      {!p.relatedRows && p.relatedOther && p.relatedOther.items.length > 0 ? (
         <section className={s.related}>
           <SectionHead title={`More from ${p.relatedOther.category.name}`} subtitle="Another range you may like" />
           <div className="rail">

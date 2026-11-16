@@ -20,6 +20,8 @@ export interface IUser {
   name: string;
   phone: string;
   email?: string;
+  /** A customer's own GST number, printed under their name on every bill (old ones too). */
+  gstin?: string;
   password: string;
   role: 'customer' | 'rider' | 'shop' | 'admin' | 'seller';
   /** Riders: the first warehouse (kept for old data). `warehouses` is the full list they deliver for. */
@@ -121,6 +123,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     name: { type: String, required: true, trim: true, maxlength: 80 },
     phone: { type: String, required: true, trim: true },
     email: { type: String, lowercase: true, trim: true },
+    gstin: { type: String, uppercase: true, trim: true },
     password: { type: String, required: true, select: false },
     role: {
       type: String,

@@ -79,7 +79,9 @@ export interface InvoiceData {
   siteUrl: string;
   gst: GstResult;
   /** Who supplies the goods: the warehouse (with its own GSTIN) or, failing that, the company. */
-  supplier: { name: string; address: string; gstin: string; phone?: string; stateText: string };
+  supplier: { name: string; address: string; gstin: string; phone?: string; stateText: string; dispatchedFrom?: string };
+  /** The customer's GSTIN from their profile, if they added one. */
+  buyerGstin?: string;
   placeOfSupply: string;
 }
 
@@ -190,8 +192,8 @@ td{padding:6px 5px;border-bottom:1px solid #e5e7eb;vertical-align:top}.c{text-al
   <div class="title"><h2>${title}</h2><p><b>Invoice no:</b> ${esc(o.orderNumber)}</p><p><b>Date:</b> ${esc(dateText(o.createdAt))}</p><p><b>Payment:</b> ${esc(pay)}</p><p><b>Reverse charge:</b> No</p></div>
  </div>
  <div class="meta">
-  <div class="box"><h4>Bill to</h4><b>${esc(o.address.name)}</b><br>${esc(o.address.phone)}<br>${addressLines(o.address)}</div>
-  <div class="box"><h4>Supplier (sold by)</h4><b>${esc(sup.name)}</b><br>${esc(sup.address)}${sup.phone ? `<br>${esc(sup.phone)}` : ''}${sup.gstin ? `<br><b>GSTIN:</b> ${esc(sup.gstin)}` : ''}${sup.stateText ? `<br>State: ${esc(sup.stateText)}` : ''}</div>
+  <div class="box"><h4>Bill to</h4><b>${esc(o.address.name)}</b>${d.buyerGstin ? `<br><b>GSTIN:</b> ${esc(d.buyerGstin)}` : ''}<br>${esc(o.address.phone)}<br>${addressLines(o.address)}</div>
+  <div class="box"><h4>Sold by</h4><b>${esc(sup.name)}</b><br>${esc(sup.address)}${sup.phone ? `<br>${esc(sup.phone)}` : ''}${sup.gstin ? `<br><b>GSTIN:</b> ${esc(sup.gstin)}` : ''}${sup.stateText ? `<br>State: ${esc(sup.stateText)}` : ''}${sup.dispatchedFrom ? `<br><span class="mut">Dispatched from: ${esc(sup.dispatchedFrom)}</span>` : ''}</div>
   <div class="box"><h4>Place of supply</h4><b>${esc(d.placeOfSupply)}</b><br>${g.interState ? 'Inter-state supply (IGST)' : 'Intra-state supply (CGST + SGST)'}${o.note ? `<br><span class="mut">Note: ${esc(o.note)}</span>` : ''}</div>
  </div>
  <table><thead><tr><th class="c" style="width:26px">#</th><th>Description of goods / services</th><th class="c" style="width:52px">HSN/SAC</th><th class="c" style="width:34px">Qty</th><th class="r" style="width:58px">Rate (incl. GST)</th><th class="r" style="width:64px">Taxable value</th>${heads.map((h) => `<th class="r" style="width:62px">${h}</th>`).join('')}<th class="r" style="width:70px">Amount</th></tr></thead><tbody>${rows}</tbody></table>
@@ -253,9 +255,9 @@ function pos(d: InvoiceData): string {
  <div class="hr"></div>
  ${(c.gstin || d.supplier.gstin) ? '<div class="ctr"><b>TAX INVOICE</b></div>' : ''}
  ${line('Bill no', `<b>${esc(o.orderNumber)}</b>`)}${line('Date', esc(dateText(o.createdAt)))}${line('Payment', esc(pay))}
- ${d.shop?.name ? line('Store', esc(d.shop.name)) : ''}${line('Supply', esc(d.placeOfSupply))}
+ ${line('Sold by', esc(d.supplier.name))}${d.shop?.name ? line('Store', esc(d.shop.name)) : ''}${line('Supply', esc(d.placeOfSupply))}
  <div class="hr"></div>
- <div><b>${esc(o.address.name)}</b> · ${esc(o.address.phone)}<div class="m">${[o.address.line1, o.address.line2, o.address.city, o.address.pincode].filter(Boolean).map(esc).join(', ')}</div></div>
+ <div><b>${esc(o.address.name)}</b> · ${esc(o.address.phone)}${d.buyerGstin ? `<div class="m">GSTIN: ${esc(d.buyerGstin)}</div>` : ''}<div class="m">${[o.address.line1, o.address.line2, o.address.city, o.address.pincode].filter(Boolean).map(esc).join(', ')}</div></div>
  <div class="hr"></div>
  ${items}
  <div class="hr"></div>

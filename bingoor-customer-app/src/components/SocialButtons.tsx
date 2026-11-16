@@ -43,9 +43,9 @@ export function SocialButtons({ onError, onBusy }: { onError: (message: string |
 
   return (
     <View style={{ gap: 10, marginBottom: 20 }}>
-      <Button label="Continue with Google" variant="secondary" disabled={busy} onPress={() => void run('google')} />
-      <Button label="Continue with Facebook" variant="secondary" disabled={busy} onPress={() => void run('facebook')} />
-      <Button label="Continue with Instagram" variant="secondary" disabled={busy} onPress={() => void run('instagram')} />
+      <Button label="Continue with Google" icon="logo-google" variant="secondary" disabled={busy} onPress={() => void run('google')} />
+      <Button label="Continue with Facebook" icon="logo-facebook" variant="secondary" disabled={busy} onPress={() => void run('facebook')} />
+      <Button label="Continue with Instagram" icon="logo-instagram" variant="secondary" disabled={busy} onPress={() => void run('instagram')} />
       <Txt variant="caption" tone="muted" center>
         Instagram login supports professional (Business or Creator) accounts.
       </Txt>

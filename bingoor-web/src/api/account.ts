@@ -9,7 +9,7 @@ export const fetchMe = async (): Promise<UserProfile> => {
   return { ...raw, id: raw._id ?? raw.id };
 };
 
-export const updateMe = async (body: { name?: string; email?: string; avatar?: string }): Promise<UserProfile> => {
+export const updateMe = async (body: { name?: string; email?: string; avatar?: string; gstin?: string }): Promise<UserProfile> => {
   const { data } = await api.patch('/me', body);
   const raw = data.data;
   return { ...raw, id: raw._id ?? raw.id };

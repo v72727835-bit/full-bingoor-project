@@ -95,7 +95,7 @@ export default function WarehouseRegisterPage() {
               <PasswordField id="confirm" value={f.confirm} onChange={(v) => set('confirm', v)} canGenerate={false} required />
             </Field>
           </div>
-          <Field label="Warehouse / shop name" required>
+          <Field label="Warehouse name" required>
             <Input value={f.shopName} onChange={(e) => set('shopName', e.target.value)} required minLength={2} />
           </Field>
           <Field label="Warehouse address" required>

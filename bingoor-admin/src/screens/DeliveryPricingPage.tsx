@@ -203,6 +203,7 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
               <th>Delivery fee ₹</th>
               <th>Next day</th>
               <th>Red order</th>
+              <th title="Cart points the basket must reach before checkout. Blank = the Cart points target below; 0 = none.">Points needed</th>
               <th />
             </tr>
           </thead>
@@ -215,6 +216,7 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
                 <td><input type="number" min={0} value={b.fee} onChange={(e) => setBand(i, { fee: num(e.target.value) })} style={{ width: 80 }} /></td>
                 <td><input type="checkbox" checked={b.nextDay} onChange={(e) => setBand(i, { nextDay: e.target.checked })} /></td>
                 <td><input type="checkbox" checked={b.redOrder} onChange={(e) => setBand(i, { redOrder: e.target.checked })} /></td>
+                <td><input type="number" min={0} value={b.points ?? ''} placeholder="default" onChange={(e) => setBand(i, { points: e.target.value === '' ? null : num(e.target.value) })} style={{ width: 90 }} /></td>
                 <td>
                   <Button variant="ghost" size="sm" onClick={() => setP((cur) => ({ ...cur, bands: cur.bands.filter((_, j) => j !== i) }))} disabled={p.bands.length <= 1}>
                     Remove
@@ -252,6 +254,9 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
         </Field>
         <Field label="Long distance: delivery fee (₹, blank = last row's fee)">
           <input type="number" min={0} value={p.beyondFee ?? ''} onChange={(e) => setP({ ...p, beyondFee: e.target.value === '' ? undefined : num(e.target.value) })} placeholder="e.g. 80" />
+        </Field>
+        <Field label="Long distance: points needed (blank = last row's)">
+          <input type="number" min={0} value={p.beyondPoints ?? ''} onChange={(e) => setP({ ...p, beyondPoints: e.target.value === '' ? null : num(e.target.value) })} placeholder="e.g. 180" />
         </Field>
       </div>
 

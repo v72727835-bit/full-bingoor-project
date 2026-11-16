@@ -2,25 +2,25 @@ import { OrderStatus } from './types';
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   placed: 'Order received',
-  accepted: 'Confirmed by the shop',
+  accepted: 'Confirmed by the warehouse',
   preparing: 'Being packed',
   ready_for_pickup: 'Packed, waiting for a rider',
   out_for_delivery: 'Out for delivery',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
-  rejected: 'Rejected by the shop',
+  rejected: 'Rejected by the warehouse',
 };
 
 /** Shown under whichever step the order is sitting on right now. */
 export const STATUS_BLURB: Record<OrderStatus, string> = {
-  placed: 'The shop has been notified and will confirm shortly.',
-  accepted: 'The shop has accepted your order.',
+  placed: 'The warehouse has been notified and will confirm shortly.',
+  accepted: 'The warehouse has accepted your order.',
   preparing: 'Your items are being packed right now.',
   ready_for_pickup: 'Your order is packed and a rider is being assigned.',
   out_for_delivery: 'Your rider is on the way — keep your OTP handy.',
   delivered: 'Thank you for shopping with us. Reorder any time in one tap.',
   cancelled: 'This order was cancelled.',
-  rejected: 'The shop was unable to fulfil this order.',
+  rejected: 'The warehouse was unable to fulfil this order.',
 };
 
 export const STATUS_TONE: Record<OrderStatus, 'brand' | 'ok' | 'warn' | 'bad' | 'muted'> = {

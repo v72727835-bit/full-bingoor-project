@@ -87,12 +87,15 @@ export interface ISettings {
   /** Delivery pricing by distance from the warehouse. */
   pricing: {
     handlingFee: number;
-    bands: { upToKm: number; minOrder: number; freeAbove: number; fee: number; nextDay: boolean; redOrder: boolean }[];
+    /** `points`: cart points needed for checkout in this band (blank = the global Cart points target, 0 = none). */
+    bands: { upToKm: number; minOrder: number; freeAbove: number; fee: number; nextDay: boolean; redOrder: boolean; points?: number }[];
     /** Beyond the last band: delivery in this many days, COD off. */
     beyondDays: number;
     beyondMinOrder: number;
     /** Point: delivery fee for customers past the last band (30km+). Falls back to the last band's fee when unset. */
     beyondFee?: number;
+    /** Cart points needed past the last band (blank = the last band's). */
+    beyondPoints?: number;
     /** Cash on delivery is refused past the last band when this is on. */
     beyondCodDisabled: boolean;
     /** Shown when a long-distance customer taps COD. */
@@ -228,19 +231,21 @@ const settingsSchema = new Schema<ISettings>(
             fee: Number,
             nextDay: { type: Boolean, default: false },
             redOrder: { type: Boolean, default: false },
+            points: { type: Number, min: 0 },
             _id: false,
           },
         ],
         default: [
-          { upToKm: 9, minOrder: 199, freeAbove: 199, fee: 39, nextDay: false, redOrder: false },
-          { upToKm: 15, minOrder: 199, freeAbove: 999, fee: 39, nextDay: false, redOrder: true },
-          { upToKm: 25, minOrder: 199, freeAbove: 699, fee: 39, nextDay: true, redOrder: false },
-          { upToKm: 30, minOrder: 199, freeAbove: 1199, fee: 39, nextDay: true, redOrder: false },
+          { upToKm: 9, minOrder: 199, freeAbove: 199, fee: 39, nextDay: false, redOrder: false, points: 0 },
+          { upToKm: 15, minOrder: 199, freeAbove: 999, fee: 39, nextDay: false, redOrder: true, points: 70 },
+          { upToKm: 25, minOrder: 199, freeAbove: 999, fee: 39, nextDay: true, redOrder: false, points: 150 },
+          { upToKm: 30, minOrder: 199, freeAbove: 1999, fee: 39, nextDay: true, redOrder: false, points: 180 },
         ],
       },
       beyondDays: { type: Number, default: 3, min: 1 },
       beyondMinOrder: { type: Number, default: 199, min: 0 },
       beyondFee: { type: Number, min: 0 },
+      beyondPoints: { type: Number, min: 0 },
       beyondCodDisabled: { type: Boolean, default: true },
       beyondCodMessage: { type: String, default: 'For long distance "COD" option is not available', trim: true },
       beyondCategories: { type: [{ type: Schema.Types.ObjectId, ref: 'Category' }], default: [] },

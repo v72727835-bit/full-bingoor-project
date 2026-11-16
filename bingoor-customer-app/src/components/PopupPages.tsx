@@ -73,7 +73,7 @@ export function PopupPages() {
             <Image source={{ uri: page.image }} style={{ width: frameW, height: frameH, borderRadius: radius.lg, backgroundColor: '#111' }} resizeMode="cover" />
           </Pressable>
           <Pressable onPress={close} hitSlop={hitSlop} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
-            <Icon name="close" size={ms(20)} color="#fff" />
+            <Icon name="close" size={ms(28)} color="#fff" />
           </Pressable>
         </View>
       </View>
@@ -84,16 +84,18 @@ export function PopupPages() {
 const styles = themed(() => ({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.82)', alignItems: 'center', justifyContent: 'center' },
   fill: { alignItems: 'center', justifyContent: 'center' },
+  // Point: the cross sits above the picture's top edge and is bigger, so it is
+  // easy to find and never covers the promo.
   close: {
     position: 'absolute',
-    top: ms(8),
-    right: ms(8),
-    width: ms(38),
-    height: ms(38),
-    borderRadius: ms(19),
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
+    top: -ms(56),
+    right: 0,
+    width: ms(46),
+    height: ms(46),
+    borderRadius: ms(23),
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.75)',
     alignItems: 'center',
     justifyContent: 'center',
   },

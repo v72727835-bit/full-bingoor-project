@@ -306,7 +306,7 @@ export function CheckoutScreen() {
           message="Your cart is empty. Add a few items and come back."
           actionLabel="Start shopping"
           onAction={() => {
-            navigation.navigate('MainTabs');
+            navigation.popTo('MainTabs');
             goToTab('home');
           }}
         />
