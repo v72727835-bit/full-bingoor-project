@@ -38,7 +38,9 @@ test('parallel withdrawals and "delivered" taps can never pay twice', { timeout:
     await WalletTxn.create({ rider: rider._id, kind: 'earning', amount: 500, status: 'completed', note: 'seed' });
     const riderTries = await Promise.all(Array.from({ length: 5 }, () => post('/rider/wallet/withdraw', riderToken, { amount: 400, method: 'upi' })));
     assert.deepEqual(riderTries.map((r) => r.status).filter((s) => s === 201).length, 1, `statuses: ${riderTries.map((r) => r.status)}`);
-    assert.ok(riderTries.every((r) => r.status === 201 || r.status === 409));
+    // A request that loses the race gets 409 (a withdrawal is already waiting) or, when it only
+    // reaches the balance check after the winner is saved, 400 (the pending money is already held).
+    assert.ok(riderTries.every((r) => [201, 400, 409].includes(r.status)), `statuses: ${riderTries.map((r) => r.status)}`);
     assert.equal(await WalletTxn.countDocuments({ rider: rider._id, kind: 'withdrawal' }), 1);
 
     // Seller: same story.
