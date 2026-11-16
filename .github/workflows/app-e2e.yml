@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - blinkit-app-/**
+      - bingoor-customer-app/**
       - bingoor-backend/**
       - e2e/**
       - .github/workflows/app-e2e.yml
@@ -27,10 +27,10 @@ jobs:
       matrix:
         include:
           - app: customer
-            dir: blinkit-app-
+            dir: bingoor-customer-app
             pkg: com.bingoor.shop
           - app: rider
-            dir: bingoor-backend/bingoor-mobile
+            dir: bingoor-rider-app
             pkg: com.bingoor.delivery
     services:
       mongo:

@@ -12,6 +12,7 @@ import { findImage } from './utils/imageStore';
 import routes from './routes';
 import { upgradeOwnLinks } from './utils/publicUrl';
 import { ensureSettings } from './services/settings.service';
+import { sessionCookie } from './middleware/sessionCookie';
 
 const app = express();
 
@@ -29,18 +30,19 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
  *    the "*" placeholder in a non-production environment;
  *  - otherwise the Origin must be in the explicit, lowercased whitelist.
  */
+/** The live front-ends, used in production when CORS_ORIGINS is not set. */
+const PRODUCTION_ORIGINS = 'https://bingoor.com,https://www.bingoor.com,https://admin.bingoor.com,https://www.admin.bingoor.com,https://api.bingoor.com';
+const corsSetting = env.CORS_ORIGINS?.trim() || (env.NODE_ENV === 'production' ? PRODUCTION_ORIGINS : '*');
 const corsWhitelist = new Set(
-  env.CORS_ORIGINS.split(',')
+  corsSetting
+    .split(',')
     .map((s) => s.trim().toLowerCase().replace(/\/$/, ''))
     .filter((s) => s && s !== '*'),
 );
-// When CORS_ORIGINS is "*" or unset there is no configured allow-list yet, so we
-// allow all origins (warning in production) rather than break a live front-end on
-// deploy. The strict allow-list takes over automatically once CORS_ORIGINS is set
-// to explicit domains — the real remediation for ISSUE-04.
+// Only an explicit "*" (or no setting outside production) opens the API to every origin.
 const allowAllOrigins = corsWhitelist.size === 0;
 if (allowAllOrigins && env.NODE_ENV === 'production') {
-  console.warn('[CORS] CORS_ORIGINS is not set to explicit domains — allowing all origins. Set CORS_ORIGINS to your front-end domains to lock this down.');
+  console.warn('[CORS] CORS_ORIGINS is "*" — allowing all origins. Set it to your front-end domains to lock this down.');
 }
 app.use(
   cors({
@@ -130,7 +132,7 @@ app.use('/api', (_req, res, next) => {
   next();
 });
 
-app.use('/api/v1', ensureSettings, routes);
+app.use('/api/v1', sessionCookie, ensureSettings, routes);
 
 app.use(notFound);
 app.use(errorHandler);

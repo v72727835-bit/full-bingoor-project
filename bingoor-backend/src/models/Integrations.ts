@@ -16,7 +16,7 @@ export interface IIntegrations {
   /** Shiprocket courier: API user email + password, and the pickup location to ship from. */
   shiprocket?: { email?: string; passwordEnc?: string; pickupLocation?: string; channelId?: string; enabled?: boolean };
   /** RazorpayX payouts: pay a rider's withdrawal to their UPI/bank automatically. */
-  razorpayx?: { accountNumber?: string; keyId?: string; keySecretEnc?: string; enabled?: boolean; autoPayout?: boolean };
+  razorpayx?: { accountNumber?: string; keyId?: string; keySecretEnc?: string; webhookSecretEnc?: string; enabled?: boolean; autoPayout?: boolean };
 }
 
 const schema = new Schema<IIntegrations>(
@@ -38,6 +38,7 @@ const schema = new Schema<IIntegrations>(
       accountNumber: { type: String, trim: true },
       keyId: { type: String, trim: true },
       keySecretEnc: String,
+      webhookSecretEnc: String,
       enabled: { type: Boolean, default: false },
       autoPayout: { type: Boolean, default: false },
     },

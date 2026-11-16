@@ -41,6 +41,8 @@ export interface ISettings {
   };
   /** A rider is paused automatically once this much COD cash is unsettled. */
   riderCodLimit: number;
+  /** When off, a rider can only mark an order delivered with the customer's 4-digit OTP. */
+  riderDirectDelivery: boolean;
   /** How a rider earns per delivery, by distance. */
   riderPay: {
     enabled: boolean;
@@ -174,6 +176,7 @@ const settingsSchema = new Schema<ISettings>(
       cutoffMessage: { type: String, default: 'After 7 PM COD option is not available', trim: true },
     },
     riderCodLimit: { type: Number, default: 2000, min: 0 },
+    riderDirectDelivery: { type: Boolean, default: true },
     riderPay: {
       enabled: { type: Boolean, default: true },
       baseFare: { type: Number, default: 10, min: 0 },

@@ -23,7 +23,7 @@ export function RidersScreen() {
 
   const add = async () => {
     setError('');
-    if (f.name.trim().length < 2 || f.phone.trim().length < 10 || f.password.length < 6) return setError('Enter the rider name, a 10-digit phone number and a password of at least 6 characters.');
+    if (f.name.trim().length < 2 || f.phone.trim().length < 10 || f.password.length < 8) return setError('Enter the rider name, a 10-digit phone number and a password of at least 8 characters.');
     if (warehouses.length > 1 && picked.length === 0) return setError('Choose at least one warehouse for this rider.');
     setBusy(true);
     try {
@@ -312,7 +312,7 @@ export function AccountScreen() {
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     setError(''); setMsg('');
-    if (next.length < 6) return setError('The new password must be at least 6 characters.');
+    if (next.length < 8) return setError('The new password must be at least 8 characters.');
     setBusy(true);
     try { await changePassword(cur, next); setMsg('Password changed.'); setCur(''); setNext(''); } catch (e) { setError(getErrorMessage(e)); } finally { setBusy(false); }
   };

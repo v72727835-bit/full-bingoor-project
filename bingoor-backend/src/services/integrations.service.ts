@@ -27,6 +27,7 @@ export interface LiveIntegrations {
     accountNumber?: string;
     keyId?: string;
     keySecret?: string;
+    webhookSecret?: string;
     enabled: boolean;
     autoPayout: boolean;
   };
@@ -79,6 +80,7 @@ export async function getIntegrations(): Promise<LiveIntegrations> {
       accountNumber: doc?.razorpayx?.accountNumber || undefined,
       keyId: doc?.razorpayx?.keyId || undefined,
       keySecret: safeOpen(doc?.razorpayx?.keySecretEnc) || undefined,
+      webhookSecret: safeOpen(doc?.razorpayx?.webhookSecretEnc) || undefined,
       enabled: !!doc?.razorpayx?.enabled,
       autoPayout: !!doc?.razorpayx?.autoPayout,
     },

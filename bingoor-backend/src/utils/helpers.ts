@@ -34,3 +34,6 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
 }
 
 export const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+/** True for a MongoDB duplicate-key error (a unique index refused the write). */
+export const isDuplicateKey = (e: unknown): boolean => (e as { code?: number } | null)?.code === 11000;

@@ -40,37 +40,37 @@ jobs:
       - run: npm run test:integration
 
   customer-app:
-    name: Customer app (blinkit-app-) typecheck
+    name: Customer app (bingoor-customer-app) typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
         shell: bash
-        working-directory: blinkit-app-
+        working-directory: bingoor-customer-app
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: blinkit-app-/package-lock.json
+          cache-dependency-path: bingoor-customer-app/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npx tsc --noEmit
 
   rider-app:
-    name: Rider app (bingoor-mobile) typecheck
+    name: Rider app (bingoor-rider-app) typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
         shell: bash
-        working-directory: bingoor-backend/bingoor-mobile
+        working-directory: bingoor-rider-app
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: bingoor-backend/bingoor-mobile/package-lock.json
+          cache-dependency-path: bingoor-rider-app/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npx tsc --noEmit

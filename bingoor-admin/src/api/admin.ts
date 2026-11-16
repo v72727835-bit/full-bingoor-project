@@ -464,6 +464,7 @@ export interface IntegrationsView {
   razorpayxAccountNumber: string;
   razorpayxKeyId: string;
   razorpayxSecretSaved: boolean;
+  razorpayxWebhookSaved?: boolean;
   razorpayxEnabled: boolean;
   razorpayxAutoPayout: boolean;
   googleMapsApiKey: string;

@@ -405,7 +405,7 @@ function LoginModal({ shop, current, onClose, onDone }: { shop: Shop; current?: 
         <Field label="Login phone number (10 digits)">
           <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="numeric" required />
         </Field>
-        <Field label={current ? 'New password (leave empty to keep the current one)' : 'Password (at least 6 characters)'}>
+        <Field label={current ? 'New password (leave empty to keep the current one)' : 'Password (at least 8 characters)'}>
           <div style={{ display: 'flex', gap: 8 }}>
             <input value={password} onChange={(e) => setPassword(e.target.value)} required={!current} style={{ flex: 1 }} />
             <Button type="button" variant="secondary" onClick={gen}>

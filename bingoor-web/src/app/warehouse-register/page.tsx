@@ -33,7 +33,7 @@ export default function WarehouseRegisterPage() {
     setError('');
     const phone = f.phone.replace(/[\s-]/g, '').replace(/^(\+91|91)(?=\d{10}$)/, '');
     if (!/^[6-9]\d{9}$/.test(phone)) return setError('Enter a valid 10-digit mobile number (it starts with 6, 7, 8 or 9).');
-    if (f.password.length < 6) return setError('Password must be at least 6 characters.');
+    if (f.password.length < 8) return setError('Password must be at least 8 characters.');
     if (f.password !== f.confirm) return setError('The two passwords do not match.');
     if (!location) return setError('Please mark your warehouse on the map (or tap "Use my location") so riders and customers can find it.');
     setBusy(true);

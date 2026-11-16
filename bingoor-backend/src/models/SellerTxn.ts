@@ -59,4 +59,7 @@ schema.index({ kind: 1, status: 1 });
 // One earning per seller per order (so a re-delivered/redundant credit can't double-pay).
 schema.index({ seller: 1, order: 1, kind: 1 }, { unique: true, partialFilterExpression: { kind: 'earning', order: { $exists: true } } });
 
+// At most one open withdrawal per seller (two parallel requests can't both pass the balance check).
+schema.index({ seller: 1, kind: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
+
 export const SellerTxn = model<ISellerTxn>('SellerTxn', schema);

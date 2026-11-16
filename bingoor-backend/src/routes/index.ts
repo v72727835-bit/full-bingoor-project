@@ -33,6 +33,15 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many attempts. Please try again later.' },
 });
 
+const limiter = (limit: number) =>
+  rateLimit({ windowMs: 15 * 60 * 1000, limit, standardHeaders: true, legacyHeaders: false, message: { success: false, message: 'Too many requests. Please try again in a few minutes.' } });
+/** "Notify me" stores a phone / email per request: keep it from being used to spam the list. */
+const notifyLimiter = limiter(20);
+/** The guest cart is re-priced as a visitor shops, so it gets more room than a form. */
+const guestCartLimiter = limiter(300);
+/** Payment providers retry, but never this often from one address. */
+const webhookLimiter = limiter(300);
+
 /* ============ Auth ============ */
 router.post('/auth/register', authLimiter, validate({ body: v.registerBody }), auth.register);
 router.post('/auth/login', authLimiter, validate({ body: v.loginBody }), auth.login);
@@ -45,11 +54,11 @@ router.post('/auth/logout', protect, auth.logout);
 router.post('/auth/change-password', ...customerOnly, validate({ body: v.changePasswordBody }), auth.changePassword);
 
 /* ============ Webhooks (no login; verified by signature or by re-fetching from the provider) ============ */
-router.post('/webhooks/razorpayx', extra.razorpayxWebhook);
+router.post('/webhooks/razorpayx', webhookLimiter, extra.razorpayxWebhook);
 // Razorpay payment webhook: places (or refunds) the order even if the client
 // never calls /orders/online/confirm. Verified by HMAC signature on the raw body.
-router.post('/orders/online/webhook', orders.razorpayWebhook);
-router.post('/webhooks/razorpay', orders.razorpayWebhook);
+router.post('/orders/online/webhook', webhookLimiter, orders.razorpayWebhook);
+router.post('/webhooks/razorpay', webhookLimiter, orders.razorpayWebhook);
 
 /* ============ Public catalog (no login needed) ============ */
 router.get('/home', catalogCache, validate({ query: v.homeQuery }), catalog.home);
@@ -73,7 +82,7 @@ router.get('/blog/:slug', catalogCache, validate({ params: v.blogSlugParam }), b
 router.get('/gallery', catalogCache, extra.listMediaPublic('photo'));
 router.get('/videos', catalogCache, extra.listMediaPublic('video'));
 router.post('/enquiries', authLimiter, validate({ body: v.enquiryBody }), support.createEnquiry);
-router.post('/products/:id/notify', validate({ params: v.idParam, body: v.notifyMeBody }), support.notifyMe);
+router.post('/products/:id/notify', notifyLimiter, validate({ params: v.idParam, body: v.notifyMeBody }), support.notifyMe);
 
 /* ============ Chat with customer care (login) ============ */
 router.get('/me/tickets', ...customerOnly, support.listMyTickets);
@@ -137,7 +146,7 @@ router.delete('/me/wishlist/:productId', ...customerOnly, validate({ params: v.p
 
 /* ============ Cart (login) ============ */
 router.get('/cart/points-products', catalog.pointsProducts);
-router.post('/cart/guest', validate({ body: v.guestCartBody }), cart.guestCart);
+router.post('/cart/guest', guestCartLimiter, validate({ body: v.guestCartBody }), cart.guestCart);
 router.get('/cart', ...customerOnly, cart.getCart);
 router.get('/cart/quote', ...customerOnly, validate({ query: v.quoteQuery }), cart.quote);
 router.post('/cart/items', ...customerOnly, validate({ body: v.addCartItemBody }), cart.addItem);

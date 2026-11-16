@@ -105,6 +105,10 @@ export interface IOrder {
   cancelledBy?: 'customer' | 'shop' | 'admin';
   cancelReason?: string;
   deliveredAt?: Date;
+  /** True when the rider marked it delivered without the customer's OTP (audit trail). */
+  deliveredWithoutOtp?: boolean;
+  /** Where the rider's phone was when they marked it delivered without the OTP. */
+  deliveredAtLocation?: { lat: number; lng: number };
   /** What the rider earned for this delivery (set when delivered). */
   riderEarning?: number;
   /** Distance used for that earning, in km. */
@@ -197,6 +201,8 @@ const orderSchema = new Schema<IOrder>(
     cancelledBy: { type: String, enum: ['customer', 'shop', 'admin'] },
     cancelReason: String,
     deliveredAt: Date,
+    deliveredWithoutOtp: { type: Boolean, default: false },
+    deliveredAtLocation: { lat: Number, lng: Number, _id: false },
     riderEarning: { type: Number, default: 0, min: 0 },
     riderEarningKm: { type: Number, default: 0, min: 0 },
   },

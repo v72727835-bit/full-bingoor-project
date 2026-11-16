@@ -73,6 +73,22 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+/**
+ * Release signing: env vars (CI) first, then Gradle properties (a developer's
+ * ~/.gradle/gradle.properties). Nothing secret is stored in the repository.
+ */
+def signingValue = { String name ->
+    def fromEnv = System.getenv(name)
+    if (fromEnv) return fromEnv
+    return project.hasProperty(name) ? project.property(name) : null
+}
+def releaseSigning = [
+    storeFile    : signingValue('BINGOOR_UPLOAD_STORE_FILE'),
+    storePassword: signingValue('BINGOOR_UPLOAD_STORE_PASSWORD'),
+    keyAlias     : signingValue('BINGOOR_UPLOAD_KEY_ALIAS'),
+    keyPassword  : signingValue('BINGOOR_UPLOAD_KEY_PASSWORD'),
+]
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -106,15 +122,30 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // The real release key. It comes from the CI secrets (see
+        // .github/workflows/build-apks.yml) or ~/.gradle/gradle.properties, never from git.
+        if (releaseSigning.storeFile) {
+            release {
+                storeFile file(releaseSigning.storeFile)
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.keyAlias
+                keyPassword releaseSigning.keyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Signed with the release key when it is provided; otherwise (a local
+            // test build) with the debug key, which must never be shipped to users.
+            if (releaseSigning.storeFile) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn('BINGOOR_UPLOAD_STORE_FILE is not set: this release APK is signed with the DEBUG key.')
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }

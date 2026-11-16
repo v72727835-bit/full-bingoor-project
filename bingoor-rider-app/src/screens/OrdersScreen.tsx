@@ -138,7 +138,7 @@ export default function OrdersScreen() {
     setSaving(delivery._id);
     setDeliveryError('');
     try {
-      const updated = await deliverRiderOrder(delivery._id);
+      const updated = await deliverRiderOrder(delivery._id, undefined, riderLocation);
       setOrders((items) => [updated, ...items.filter((item) => item._id !== delivery._id)]);
       setDelivery(null);
       setOtp('');
@@ -233,7 +233,7 @@ export default function OrdersScreen() {
         </View>
       </View>
     </Modal>
-    <Modal visible={!!delivery} transparent animationType="slide" onRequestClose={() => { if (!saving) setDelivery(null); }}><KeyboardAvoidingView style={styles.modalBackdrop} behavior="padding"><View style={styles.modal}><Text style={styles.modalTitle}>Confirm delivery</Text><Text style={styles.modalSub}>Order #{delivery?.orderNumber} · {delivery?.shop?.name ?? 'Warehouse'}{'\n'}Ask the customer to open this same order and share its 4-digit delivery OTP.</Text>{deliveryError ? <ErrorBanner message={deliveryError} /> : null}<TextInput value={otp} onChangeText={(value) => { setOtp(value.replace(/\D/g, '').slice(0, 4)); setDeliveryError(''); }} editable={!saving} keyboardType="number-pad" placeholder="••••" placeholderTextColor="#94A3B8" style={styles.otp} autoFocus /><Button title="Mark as delivered" onPress={() => void deliver()} loading={saving === delivery?._id} disabled={otp.length !== 4 || !!saving} /><Text style={styles.modalSub}>No OTP from the customer? You can still mark it delivered.</Text><Button title="Mark delivered directly" variant="outline" disabled={!!saving} onPress={() => void deliverDirect()} style={{ marginTop: 10 }} /><Button title="Cancel" variant="outline" disabled={!!saving} onPress={() => setDelivery(null)} style={{ marginTop: 10 }} /></View></KeyboardAvoidingView></Modal>
+    <Modal visible={!!delivery} transparent animationType="slide" onRequestClose={() => { if (!saving) setDelivery(null); }}><KeyboardAvoidingView style={styles.modalBackdrop} behavior="padding"><View style={styles.modal}><Text style={styles.modalTitle}>Confirm delivery</Text><Text style={styles.modalSub}>Order #{delivery?.orderNumber} · {delivery?.shop?.name ?? 'Warehouse'}{'\n'}Ask the customer to open this same order and share its 4-digit delivery OTP.</Text>{deliveryError ? <ErrorBanner message={deliveryError} /> : null}<TextInput value={otp} onChangeText={(value) => { setOtp(value.replace(/\D/g, '').slice(0, 4)); setDeliveryError(''); }} editable={!saving} keyboardType="number-pad" placeholder="••••" placeholderTextColor="#94A3B8" style={styles.otp} autoFocus /><Button title="Mark as delivered" onPress={() => void deliver()} loading={saving === delivery?._id} disabled={otp.length !== 4 || !!saving} />{profile?.directDeliveryAllowed !== false ? <><Text style={styles.modalSub}>No OTP from the customer? You can still mark it delivered.</Text><Button title="Mark delivered directly" variant="outline" disabled={!!saving} onPress={() => void deliverDirect()} style={{ marginTop: 10 }} /></> : null}<Button title="Cancel" variant="outline" disabled={!!saving} onPress={() => setDelivery(null)} style={{ marginTop: 10 }} /></View></KeyboardAvoidingView></Modal>
   </View>;
 }
 

@@ -53,9 +53,9 @@ export default function CreateRiderModal({ rider, onClose, onDone }: { rider?: R
         </Field>
         <Field label="Email (optional)"><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
         {rider && <label className="checkbox-row"><input type="checkbox" checked={f.isActive} onChange={(e) => setF({ ...f, isActive: e.target.checked })} />Account active</label>}
-        <Field label={rider ? 'New password (leave blank to keep current)' : 'Password (at least 6 characters)'}>
+        <Field label={rider ? 'New password (leave blank to keep current)' : 'Password (at least 8 characters)'}>
           <div className="row-flex">
-            <input value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required={!rider} minLength={6} maxLength={72} style={{ flex: 1 }} />
+            <input value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required={!rider} minLength={8} maxLength={72} style={{ flex: 1 }} />
             <Button type="button" variant="secondary" onClick={gen}>
               Generate
             </Button>

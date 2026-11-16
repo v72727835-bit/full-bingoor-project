@@ -39,7 +39,7 @@ export function ChangePasswordScreen() {
     setFormError(null);
     const found: Record<string, string> = {};
     if (!current) found.currentPassword = 'Enter your current password';
-    if (next.length < 6) found.newPassword = 'Use at least 6 characters';
+    if (next.length < 8) found.newPassword = 'Use at least 8 characters';
     else if (next === current) found.newPassword = 'Choose a password different from your current one';
     if (confirm !== next) found.confirm = 'The two passwords do not match';
     setErrors(found);

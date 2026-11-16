@@ -11,7 +11,12 @@ const schema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 chars'),
   JWT_ACCESS_EXPIRES: z.string().default('15m'),
   JWT_REFRESH_EXPIRES: z.string().default('30d'),
-  CORS_ORIGINS: z.string().default('*'),
+  /**
+   * Comma-separated front-end origins allowed to call the API from a browser.
+   * Unset: development allows any origin; production allows only the Bingoor
+   * domains below. "*" allows every origin (not recommended in production).
+   */
+  CORS_ORIGINS: z.string().optional(),
   /**
    * Optional: dedicated key for encrypting admin-saved integration secrets.
    * When set, rotating JWT_REFRESH_SECRET no longer breaks stored payment/login

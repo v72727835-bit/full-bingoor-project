@@ -107,7 +107,7 @@ function RidersInner({ warehouses }: { warehouses: Wh[] }) {
           <form onSubmit={save}>
             <Field label="Rider name"><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></Field>
             <Field label="Phone number (rider app login)"><input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} inputMode="numeric" required /></Field>
-            <Field label="Password (at least 6 characters)">
+            <Field label="Password (at least 8 characters)">
               <div className="row-flex">
                 <input value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required style={{ flex: 1 }} />
                 <Button type="button" variant="secondary" onClick={gen}>Generate</Button>

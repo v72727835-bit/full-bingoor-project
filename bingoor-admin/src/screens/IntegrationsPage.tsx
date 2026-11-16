@@ -33,6 +33,7 @@ export default function IntegrationsPage() {
   const [rxAcct, setRxAcct] = useState('');
   const [rxKeyId, setRxKeyId] = useState('');
   const [rxSecret, setRxSecret] = useState('');
+  const [rxWebhook, setRxWebhook] = useState('');
   const [rxOn, setRxOn] = useState(false);
   const [rxAuto, setRxAuto] = useState(false);
   const [mapsKey, setMapsKey] = useState('');
@@ -305,6 +306,9 @@ export default function IntegrationsPage() {
         <Field label={data.razorpayxSecretSaved ? 'Key Secret (saved - type a new one to replace)' : 'Key Secret'}>
           <input type="password" value={rxSecret} onChange={(e) => setRxSecret(e.target.value)} placeholder={data.razorpayxSecretSaved ? '••••••••••••' : ''} autoComplete="new-password" />
         </Field>
+        <Field label={data.razorpayxWebhookSaved ? 'Webhook Secret (saved - type a new one to replace)' : 'Webhook Secret (from RazorpayX > Webhooks, for api.bingoor.com/api/v1/webhooks/razorpayx)'}>
+          <input type="password" value={rxWebhook} onChange={(e) => setRxWebhook(e.target.value)} placeholder={data.razorpayxWebhookSaved ? '••••••••••••' : ''} autoComplete="new-password" />
+        </Field>
         <label className="checkbox-row" style={{ marginBottom: 6 }}>
           <input type="checkbox" checked={rxOn} onChange={(e) => setRxOn(e.target.checked)} />
           <span>Enable RazorpayX payouts (show “Approve &amp; Pay” on the Payouts page)</span>
@@ -327,7 +331,7 @@ export default function IntegrationsPage() {
             onClick={() =>
               save(
                 'rx',
-                { razorpayxAccountNumber: rxAcct, razorpayxKeyId: rxKeyId, razorpayxEnabled: rxOn, razorpayxAutoPayout: rxAuto, ...(rxSecret ? { razorpayxKeySecret: rxSecret } : {}) },
+                { razorpayxAccountNumber: rxAcct, razorpayxKeyId: rxKeyId, razorpayxEnabled: rxOn, razorpayxAutoPayout: rxAuto, ...(rxSecret ? { razorpayxKeySecret: rxSecret } : {}), ...(rxWebhook ? { razorpayxWebhookSecret: rxWebhook } : {}) },
                 'RazorpayX saved. Press “Test connection” to check it.',
               )
             }

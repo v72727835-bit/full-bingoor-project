@@ -67,7 +67,10 @@ export async function creditDeliveryEarning(orderId: Types.ObjectId | string): P
   // The customer's tip (#35) goes to the rider in full, on top of the delivery pay.
   const tip = order.tip ?? 0;
   const amount = earningFor(km, rules) + tip;
-  await Order.updateOne({ _id: order._id, riderEarning: { $in: [0, null, undefined] } }, { $set: { riderEarning: amount, riderEarningKm: Math.round(km * 10) / 10 } });
+  // Claim the earning on the order first; only the call that wins the claim pays.
+  const claim = await Order.updateOne({ _id: order._id, riderEarning: { $in: [0, null] } }, { $set: { riderEarning: amount, riderEarningKm: Math.round(km * 10) / 10 } });
+  if (!claim.modifiedCount) return 0;
+  // The unique (order, earning) index is the second guard against a double credit.
   await WalletTxn.create({
     rider: order.rider,
     kind: 'earning',
@@ -76,6 +79,8 @@ export async function creditDeliveryEarning(orderId: Types.ObjectId | string): P
     order: order._id,
     km: Math.round(km * 10) / 10,
     note: tip > 0 ? `Delivery #${order.orderNumber} (incl. ₹${tip} tip)` : `Delivery #${order.orderNumber}`,
+  }).catch((e: { code?: number }) => {
+    if (e?.code !== 11000) throw e;
   });
   return amount;
 }

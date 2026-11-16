@@ -46,6 +46,7 @@ export const getProfile = asyncHandler(async (req, res) => {
     deliveredCount: cod?.deliveries ?? 0,
     cancelledCount: rider.riderCancelCount ?? 0,
     paused: !!rider.riderPaused,
+    directDeliveryAllowed: settings.riderDirectDelivery ?? true,
     notices,
   });
 });
@@ -112,18 +113,37 @@ export const acceptOrder = asyncHandler(async (req, res) => {
 });
 
 export const deliverOrder = asyncHandler(async (req, res) => {
-  const order = await Order.findOne({ _id: req.params.id, rider: req.user!.id, status: 'out_for_delivery' });
+  const body = req.body as { otp?: string; direct?: boolean; lat?: number; lng?: number };
+  const order = await Order.findOne({ _id: req.params.id, rider: req.user!.id, status: 'out_for_delivery' }).select('orderNumber deliveryOtp paymentMethod').lean();
   if (!order) throw new ApiError(404, 'Active delivery not found');
-  // The rider can confirm the hand-over directly, or with the customer's OTP.
-  if (!req.body.direct) {
-    if (!order.deliveryOtp || String(order.deliveryOtp).trim() !== String(req.body.otp ?? '').trim()) {
-      throw new ApiError(400, `Incorrect delivery OTP for order ${order.orderNumber}. Ask the customer to open this order and share its 4-digit delivery OTP, or mark it delivered directly.`);
-    }
+  const { settings } = await loadSettings();
+  const directAllowed = settings.riderDirectDelivery ?? true;
+  const otpOk = !!order.deliveryOtp && String(order.deliveryOtp).trim() === String(body.otp ?? '').trim();
+  const direct = !!body.direct && !otpOk;
+  if (direct && !directAllowed) {
+    throw new ApiError(403, `Order ${order.orderNumber} needs the customer's 4-digit delivery OTP. Ask the customer to open this order and share it.`);
   }
-  order.status = 'delivered';
-  order.deliveredAt = new Date();
-  order.statusHistory.push({ status: 'delivered', at: new Date(), note: 'Delivered by rider' });
-  await order.save();
+  if (!direct && !otpOk) {
+    throw new ApiError(400, `Incorrect delivery OTP for order ${order.orderNumber}. Ask the customer to open this order and share its 4-digit delivery OTP${directAllowed ? ', or mark it delivered directly' : ''}.`);
+  }
+  const now = new Date();
+  const hasLoc = typeof body.lat === 'number' && typeof body.lng === 'number';
+  // One atomic step: two taps (or a retried request) can't both deliver, so the
+  // earnings below are credited exactly once.
+  const updated = await Order.findOneAndUpdate(
+    { _id: order._id, rider: req.user!.id, status: 'out_for_delivery' },
+    {
+      $set: {
+        status: 'delivered',
+        deliveredAt: now,
+        deliveredWithoutOtp: direct,
+        ...(direct && hasLoc ? { deliveredAtLocation: { lat: body.lat, lng: body.lng } } : {}),
+      },
+      $push: { statusHistory: { status: 'delivered', at: now, note: direct ? 'Delivered by rider without OTP' : 'Delivered by rider (OTP verified)' } },
+    },
+    { new: true },
+  ).select('_id').lean();
+  if (!updated) throw new ApiError(409, 'This order was already marked delivered.');
   // The rider earns their delivery pay the moment the order is handed over.
   await creditDeliveryEarning(order._id).catch(() => undefined);
   // Sellers earn their net (item sales minus commission) on the same delivery.

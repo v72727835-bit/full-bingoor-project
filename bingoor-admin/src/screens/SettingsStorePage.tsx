@@ -394,11 +394,12 @@ function CodCard({
 function RiderCard({ settings, onSave }: { settings: Settings; onSave: (patch: Record<string, unknown>) => Promise<void> }) {
   const [limit, setLimit] = useState(String(settings.riderCodLimit));
   const [kb, setKb] = useState(String(settings.imageMaxKb));
+  const [direct, setDirect] = useState(settings.riderDirectDelivery !== false);
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
     setSaving(true);
-    await onSave({ riderCodLimit: Number(limit) || 0, imageMaxKb: Number(kb) || 200 });
+    await onSave({ riderCodLimit: Number(limit) || 0, imageMaxKb: Number(kb) || 200, riderDirectDelivery: direct });
     setSaving(false);
   };
 
@@ -416,6 +417,14 @@ function RiderCard({ settings, onSave }: { settings: Settings; onSave: (patch: R
       <div className="page-subtitle">
         A rider is paused automatically once their unsubmitted cash reaches the limit; they get no new orders until you resume them
         on the Riders page.
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+        <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} />
+        Riders may mark an order delivered without the customer&apos;s OTP
+      </label>
+      <div className="page-subtitle">
+        Turn this off to require the 4-digit delivery OTP on every order. Orders delivered without the OTP are flagged on the order
+        with the rider&apos;s location.
       </div>
       <div className="modal-actions">
         <Button onClick={submit} disabled={saving}>

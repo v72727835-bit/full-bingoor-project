@@ -11,14 +11,14 @@ on:
   push:
     branches: [main]
     paths:
-      - blinkit-app-/**
-      - bingoor-backend/bingoor-mobile/**
+      - bingoor-customer-app/**
+      - bingoor-rider-app/**
       - bingoor-warehouse/**
       - .github/workflows/build-apks.yml
   pull_request:
     paths:
-      - blinkit-app-/**
-      - bingoor-backend/bingoor-mobile/**
+      - bingoor-customer-app/**
+      - bingoor-rider-app/**
       - bingoor-warehouse/**
       - .github/workflows/build-apks.yml
 
@@ -54,7 +54,7 @@ jobs:
       - name: npm install (all three apps)
         shell: bash
         run: |
-          for dir in blinkit-app- bingoor-backend/bingoor-mobile bingoor-warehouse; do
+          for dir in bingoor-customer-app bingoor-rider-app bingoor-warehouse; do
             echo "::group::npm install $dir"
             (cd "$dir" && npm install --no-audit --no-fund)
             echo "::endgroup::"
@@ -62,14 +62,29 @@ jobs:
 
       - name: Build APKs
         shell: bash
+        env:
+          # Release key (Settings > Secrets and variables > Actions). Without it the
+          # APKs fall back to the debug key and a warning is printed.
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          BINGOOR_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BINGOOR_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          BINGOOR_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -e
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            ks="$RUNNER_TEMP/bingoor-release.jks"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ks"
+            export BINGOOR_UPLOAD_STORE_FILE="$ks"
+            trap 'rm -f "$ks"' EXIT
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set - the APKs are signed with the public debug key. See deploy/ANDROID-SIGNING.md."
+          fi
           build() {
             (cd "$2/android" && chmod +x gradlew && ./gradlew assembleRelease --no-daemon --stacktrace)
             cp "$2/android/app/build/outputs/apk/release/app-release.apk" "$GITHUB_WORKSPACE/bingoor-$1.apk"
           }
-          build customer blinkit-app-
-          build rider bingoor-backend/bingoor-mobile
+          build customer bingoor-customer-app
+          build rider bingoor-rider-app
           build warehouse bingoor-warehouse
 
       - name: APK sizes

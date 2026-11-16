@@ -292,6 +292,7 @@ export interface Settings {
   popup?: { enabled: boolean; intervalSeconds: number; pages: { image: string; link?: string }[] };
   cod: { disabledCategories: (CategoryRef | string)[]; message: string; cutoffEnabled?: boolean; cutoffTime?: string; cutoffMessage?: string };
   riderCodLimit: number;
+  riderDirectDelivery?: boolean;
   riderPay?: {
     enabled: boolean;
     baseFare: number;

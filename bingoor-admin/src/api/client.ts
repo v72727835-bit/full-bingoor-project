@@ -1,7 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_URL } from '../config';
 
-export const api = axios.create({ baseURL: API_URL, timeout: 15000 });
+/**
+ * The refresh token lives in an HttpOnly cookie the API sets (X-Session-Cookie),
+ * so page scripts never see it; the short-lived access token is kept in memory only.
+ */
+const SESSION_HEADERS = { 'X-Session-Cookie': '1' };
+export const api = axios.create({ baseURL: API_URL, timeout: 15000, withCredentials: true, headers: SESSION_HEADERS });
 
 const ACCESS_KEY = 'bingoor_admin_access';
 const REFRESH_KEY = 'bingoor_admin_refresh';
@@ -25,23 +30,37 @@ if (typeof window !== 'undefined') {
   }
 }
 
+let accessToken: string | null = null;
+
 export const tokens = {
   get access() {
-    return localStorage.getItem(ACCESS_KEY);
+    return accessToken;
   },
-  get refresh() {
-    return localStorage.getItem(REFRESH_KEY);
+  /** A refresh token left in storage by an older build; sent once, then the cookie takes over. */
+  get legacyRefresh() {
+    try {
+      return localStorage.getItem(REFRESH_KEY);
+    } catch {
+      return null;
+    }
   },
   get user(): unknown | null {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    try {
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   },
-  save(access: string, refresh: string, user?: unknown) {
-    localStorage.setItem(ACCESS_KEY, access);
-    localStorage.setItem(REFRESH_KEY, refresh);
+  /** Keeps the access token in memory and the (non-secret) profile for the UI. */
+  save(access: string, user?: unknown) {
+    accessToken = access || accessToken;
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
   },
   clear() {
+    accessToken = null;
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
@@ -59,12 +78,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-async function refreshTokens(): Promise<string | null> {
-  const refreshToken = tokens.refresh;
-  if (!refreshToken) return null;
+/** Gets a fresh access token using the HttpOnly refresh cookie. */
+export async function refreshTokens(): Promise<string | null> {
+  const legacy = tokens.legacyRefresh;
   try {
-    const { data } = await axios.post(`${API_URL}/auth/refresh`, { refreshToken }, { timeout: 15000 });
-    tokens.save(data.data.accessToken, data.data.refreshToken);
+    const { data } = await axios.post(`${API_URL}/auth/refresh`, legacy ? { refreshToken: legacy } : {}, {
+      timeout: 15000,
+      withCredentials: true,
+      headers: SESSION_HEADERS,
+    });
+    tokens.save(data.data.accessToken);
     return data.data.accessToken;
   } catch {
     return null;

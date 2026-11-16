@@ -84,3 +84,31 @@ Run these as root in the server terminal.
    Docker, and removes the pm2 apps once the containers are healthy.
 
 If `deploy/ci-entry.sh` changes, copy it to `/usr/local/bin/bingoor-deploy` again.
+
+## Daily database backup
+
+`deploy/mongo-backup.sh` dumps MongoDB (using `MONGO_URI` from
+`/opt/bingoor-env/backend.env`) to `/opt/bingoor-backups`, one gzipped archive
+per run, and keeps 14 days. Schedule it once as root:
+
+```
+install -m 755 /opt/bingoor-src/deploy/mongo-backup.sh /usr/local/bin/bingoor-backup
+(crontab -l 2>/dev/null; echo '30 2 * * * /usr/local/bin/bingoor-backup >> /var/log/bingoor-backup.log 2>&1') | crontab -
+```
+
+Restore one: `mongorestore --uri="$MONGO_URI" --gzip --archive=/opt/bingoor-backups/<file>.archive.gz`.
+Copy the folder off the server now and then (a backup on the same disk does not survive a lost VPS).
+
+## Security settings to check in backend.env
+
+- `CORS_ORIGINS`: leave unset to allow only bingoor.com, www.bingoor.com and
+  admin.bingoor.com, or list your domains comma-separated. `*` allows every site.
+- `ENCRYPTION_SECRET` (16+ characters): encrypts the payment / login keys saved in
+  the admin panel. Without it they are encrypted with `JWT_REFRESH_SECRET`, so
+  changing that secret would make the saved keys unreadable. Old keys still
+  open after you add it; re-save them under Admin > Login & Payments so they move
+  to the new key, and only then is it safe to change `JWT_REFRESH_SECRET`.
+
+## Android release signing
+
+See [ANDROID-SIGNING.md](ANDROID-SIGNING.md).

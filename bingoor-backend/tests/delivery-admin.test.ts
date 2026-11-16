@@ -7,6 +7,8 @@ import { freeRidersForOrder } from '../src/services/orderFlow.service';
 import { deleteUserAdmin, listOrdersAdmin } from '../src/controllers/admin.controller';
 import { Order } from '../src/models/Order';
 import { User } from '../src/models/User';
+import { Settings } from '../src/models/Settings';
+import { clearSettingsCache } from '../src/services/settings.service';
 import { adminShopBody, adminShopUpdateBody, riderDeliveryBody } from '../src/validators/schemas';
 
 afterEach(() => mock.restoreAll());
@@ -29,34 +31,82 @@ test('OTP validation trims whitespace, preserves leading zeroes, rejects malform
   for (const otp of ['', '123', '12345', '12a4', '12 34', 1234]) assert.equal(riderDeliveryBody.safeParse({ otp }).success, false);
 });
 
-test('matching delivery OTP proceeds to save the delivery, including legacy whitespace', async () => {
+/** The settings the delivery check reads (only riderDirectDelivery matters here). */
+function settingsWith(riderDirectDelivery?: boolean) {
+  clearSettingsCache();
+  mock.method(Settings, 'findOne', async () => ({ toObject: () => ({ key: 'global', ...(riderDirectDelivery === undefined ? {} : { riderDirectDelivery }) }) }));
+}
+/** Order.findOne(...).select(...).lean() resolving to `order`. */
+const foundOrder = (order: unknown) => () => ({ select: () => ({ lean: async () => order }) }) as any;
+
+test('matching delivery OTP delivers atomically, including legacy whitespace', async () => {
   for (const stored of ['0123', ' 0123 ']) {
-    const saved = new Error('save reached');
-    const order = { deliveryOtp: stored, status: 'out_for_delivery', statusHistory: [], save: async () => { throw saved; } };
-    mock.method(Order, 'findOne', async (filter: any) => {
+    settingsWith();
+    const reached = new Error('update reached');
+    mock.method(Order, 'findOne', (filter: any) => {
       assert.equal(filter.rider, '507f1f77bcf86cd799439012');
       assert.equal(filter.status, 'out_for_delivery');
-      return order;
+      return foundOrder({ _id: 'o1', deliveryOtp: stored, orderNumber: 'BG-TEST' })();
     });
-    assert.equal(await invoke(deliverOrder, { otp: ' 0123 ' }), saved);
-    assert.equal(order.status, 'delivered');
+    const update = mock.method(Order, 'findOneAndUpdate', (filter: any, change: any) => {
+      // Only an order still out for delivery can flip to delivered (no double credit).
+      assert.equal(filter.status, 'out_for_delivery');
+      assert.equal(change.$set.status, 'delivered');
+      assert.equal(change.$set.deliveredWithoutOtp, false);
+      throw reached;
+    });
+    assert.equal(await invoke(deliverOrder, { otp: ' 0123 ' }), reached);
+    assert.equal(update.mock.callCount(), 1);
     mock.restoreAll();
   }
 });
 
-test('wrong or missing OTP never saves the order and identifies the order', async () => {
+test('wrong or missing OTP never updates the order and identifies the order', async () => {
   for (const stored of ['1234', undefined]) {
-    const save = mock.fn();
-    mock.method(Order, 'findOne', async () => ({ deliveryOtp: stored, orderNumber: 'BG-TEST', save }));
+    settingsWith();
+    mock.method(Order, 'findOne', foundOrder({ _id: 'o1', deliveryOtp: stored, orderNumber: 'BG-TEST' }));
+    const update = mock.method(Order, 'findOneAndUpdate', () => { throw new Error('must not update'); });
     const error = await invoke(deliverOrder, { otp: '9999' });
     assert.match(error.message, /Incorrect delivery OTP for order BG-TEST/);
-    assert.equal(save.mock.callCount(), 0);
+    assert.equal(update.mock.callCount(), 0);
     mock.restoreAll();
   }
+});
+
+test('direct delivery is flagged for audit, and refused when the admin requires the OTP', async () => {
+  settingsWith(true);
+  mock.method(Order, 'findOne', foundOrder({ _id: 'o1', deliveryOtp: '1234', orderNumber: 'BG-TEST' }));
+  const reached = new Error('update reached');
+  mock.method(Order, 'findOneAndUpdate', (_f: any, change: any) => {
+    assert.equal(change.$set.deliveredWithoutOtp, true);
+    assert.deepEqual(change.$set.deliveredAtLocation, { lat: 28.6, lng: 77.2 });
+    throw reached;
+  });
+  assert.equal(await invoke(deliverOrder, { direct: true, lat: 28.6, lng: 77.2 }), reached);
+  mock.restoreAll();
+
+  settingsWith(false);
+  mock.method(Order, 'findOne', foundOrder({ _id: 'o1', deliveryOtp: '1234', orderNumber: 'BG-TEST' }));
+  const update = mock.method(Order, 'findOneAndUpdate', () => { throw new Error('must not update'); });
+  const refused = await invoke(deliverOrder, { direct: true });
+  assert.equal(refused.statusCode, 403);
+  assert.match(refused.message, /needs the customer's 4-digit delivery OTP/);
+  assert.equal(update.mock.callCount(), 0);
+  mock.restoreAll();
+  clearSettingsCache();
+});
+
+test('a second "delivered" for the same order is refused', async () => {
+  settingsWith();
+  mock.method(Order, 'findOne', foundOrder({ _id: 'o1', deliveryOtp: '1234', orderNumber: 'BG-TEST' }));
+  mock.method(Order, 'findOneAndUpdate', () => ({ select: () => ({ lean: async () => null }) }) as any);
+  const error = await invoke(deliverOrder, { otp: '1234' });
+  assert.equal(error.statusCode, 409);
+  clearSettingsCache();
 });
 
 test('an order not assigned to the rider cannot be delivered', async () => {
-  mock.method(Order, 'findOne', async () => null);
+  mock.method(Order, 'findOne', foundOrder(null));
   assert.match((await invoke(deliverOrder, { otp: '1234' })).message, /Active delivery not found/);
 });
 

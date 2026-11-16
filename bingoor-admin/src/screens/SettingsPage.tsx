@@ -40,7 +40,7 @@ export default function SettingsPage() {
     try {
       const updated = await updateMe(profile);
       setMe((m) => (m ? { ...m, ...updated } : m));
-      tokens.save(tokens.access ?? '', tokens.refresh ?? '', { ...(tokens.user as object), ...updated });
+      tokens.save(tokens.access ?? '', { ...(tokens.user as object), ...updated });
       setProfileMsg('Profile saved. Refresh to see the new name in the corner.');
     } catch (err) {
       setProfileErr(getErrorMessage(err));
@@ -58,7 +58,7 @@ export default function SettingsPage() {
     setSavingPw(true);
     try {
       const res = await changeMyPassword(pw.current, pw.next);
-      tokens.save(res.accessToken, res.refreshToken, tokens.user ?? undefined);
+      tokens.save(res.accessToken, tokens.user ?? undefined);
       setPw({ current: '', next: '', confirm: '' });
       setPwMsg('Password changed. Other devices have been signed out.');
     } catch (err) {

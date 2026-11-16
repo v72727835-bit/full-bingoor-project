@@ -87,6 +87,8 @@ export interface RiderProfile {
   codToday?: number;
   codTodayDeliveries?: number;
   codLimit: number;
+  /** False when the admin requires the customer's OTP for every delivery. */
+  directDeliveryAllowed?: boolean;
   deliveredCount: number;
   cancelledCount: number;
   paused: boolean;

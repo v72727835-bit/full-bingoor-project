@@ -1,13 +1,14 @@
 # Bingoor
 
-Quick-commerce platform. One repository, four projects:
+Quick-commerce platform. One repository, six projects:
 
 | Folder | What it is | Stack |
 | --- | --- | --- |
-| `bingoor-backend` | API (customers, riders, warehouses, admin), plus the rider app in `bingoor-mobile` | Express, MongoDB, TypeScript |
+| `bingoor-backend` | API (customers, riders, warehouses, admin) | Express, MongoDB, TypeScript |
 | `bingoor-web` | Customer website (bingoor.com) | Next.js |
 | `bingoor-admin` | Super admin and warehouse panel (admin.bingoor.com) | Next.js |
-| `blinkit-app-` | Customer mobile app | React Native |
+| `bingoor-customer-app` | Customer mobile app | React Native |
+| `bingoor-rider-app` | Rider (delivery) mobile app | React Native |
 | `bingoor-warehouse` | Warehouse (seller) mobile app | React Native |
 
 The three Android apps (customer `com.bingoor.shop`, rider `com.bingoor.delivery`,

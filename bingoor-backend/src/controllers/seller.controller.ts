@@ -7,6 +7,7 @@ import { Product } from '../models/Product';
 import { Shop } from '../models/Shop';
 import { User } from '../models/User';
 import { ApiError } from '../utils/ApiError';
+import { isDuplicateKey } from '../utils/helpers';
 import { importProducts } from '../services/bulkProducts.service';
 import { asyncHandler } from '../utils/asyncHandler';
 import { created, ok, pageMeta } from '../utils/response';
@@ -322,7 +323,10 @@ export const requestMyWithdraw = asyncHandler(async (req, res) => {
   const sum = await sellerWalletSummary(req.user!.id);
   if (amount < min) throw new ApiError(400, `The smallest withdrawal is ₹${min}.`);
   if (amount > sum.balance) throw new ApiError(400, `You can withdraw up to ₹${Math.floor(sum.balance)}.`);
-  const txn = await SellerTxn.create({ seller: req.user!.id, kind: 'withdrawal', amount: Math.round(amount), status: 'pending', method, destination, note: 'Withdrawal request' });
+  const txn = await SellerTxn.create({ seller: req.user!.id, kind: 'withdrawal', amount: Math.round(amount), status: 'pending', method, destination, note: 'Withdrawal request' }).catch((e) => {
+    if (isDuplicateKey(e)) throw new ApiError(409, 'You already have a withdrawal waiting for approval.');
+    throw e;
+  });
   ok(res, txn, undefined, 201);
 });
 

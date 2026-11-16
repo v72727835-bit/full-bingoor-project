@@ -162,12 +162,12 @@ function ProfileInner() {
                 required
               />
             </Field>
-            <Field label="New password" required hint="at least 6 characters">
+            <Field label="New password" required hint="at least 8 characters">
               <Input
                 type="password"
                 value={next}
                 onChange={(e) => setNext(e.target.value)}
-                minLength={6}
+                minLength={8}
                 autoComplete="new-password"
                 required
               />

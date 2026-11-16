@@ -219,7 +219,7 @@ function BannerForm({
       <form onSubmit={submit}>
         <ErrorBanner message={error} />
 
-        <Field label="Banner image (recommended 1560 × 300 px, wide and short like Blinkit)">
+        <Field label="Banner image (recommended 1560 × 300 px, wide and short)">
           <div className="banner-preview banner-preview-lg" onClick={() => fileRef.current?.click()} role="button" tabIndex={0}>
             {image ? (
               <img src={image} alt="" />

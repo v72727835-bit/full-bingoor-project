@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { FilterQuery, Types } from 'mongoose';
 import { AdminAlert } from '../models/AdminAlert';
 import { MediaItem } from '../models/MediaItem';
@@ -344,6 +345,18 @@ export const testRazorpayxAdmin = asyncHandler(async (_req, res) => {
 
 /** RazorpayX payout webhook: we re-fetch the payout's real status rather than trusting the body. */
 export const razorpayxWebhook = asyncHandler(async (req, res) => {
+  // With a webhook secret saved, only calls signed by RazorpayX are acted on. Without
+  // one the call is still safe-ish (it only makes us re-read the payout's real status
+  // from RazorpayX), but saving the secret in Admin > Login & Payments is recommended.
+  const secret = (await getIntegrations()).razorpayx.webhookSecret;
+  if (secret) {
+    const signature = req.headers['x-razorpay-signature'];
+    const raw = (req as typeof req & { rawBody?: Buffer }).rawBody;
+    if (typeof signature !== 'string' || !raw) return res.status(400).json({ success: false, message: 'Missing signature' });
+    const a = Buffer.from(crypto.createHmac('sha256', secret).update(raw).digest('hex'));
+    const b = Buffer.from(signature);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.status(400).json({ success: false, message: 'Invalid signature' });
+  }
   const payoutId = (req.body as { payload?: { payout?: { entity?: { id?: string } } } })?.payload?.payout?.entity?.id;
   if (payoutId) {
     await syncPayoutById(payoutId).catch(() => undefined); // a rider payout…
@@ -527,6 +540,7 @@ async function integrationsView() {
     razorpayxAccountNumber: doc?.razorpayx?.accountNumber ?? '',
     razorpayxKeyId: doc?.razorpayx?.keyId ?? '',
     razorpayxSecretSaved: !!doc?.razorpayx?.keySecretEnc,
+    razorpayxWebhookSaved: !!doc?.razorpayx?.webhookSecretEnc,
     razorpayxEnabled: !!doc?.razorpayx?.enabled,
     razorpayxAutoPayout: !!doc?.razorpayx?.autoPayout,
     /** Whether each one is actually working for customers right now (the .env file counts too). */
@@ -572,6 +586,8 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
     razorpayxKeyId?: string;
     razorpayxKeySecret?: string;
     clearRazorpayxSecret?: boolean;
+    razorpayxWebhookSecret?: string;
+    clearRazorpayxWebhook?: boolean;
     razorpayxEnabled?: boolean;
     razorpayxAutoPayout?: boolean;
   };
@@ -608,6 +624,8 @@ export const updateIntegrationsAdmin = asyncHandler(async (req, res) => {
   if (b.razorpayxKeyId !== undefined) set['razorpayx.keyId'] = b.razorpayxKeyId;
   if (b.razorpayxKeySecret) set['razorpayx.keySecretEnc'] = seal(b.razorpayxKeySecret);
   else if (b.clearRazorpayxSecret) unset['razorpayx.keySecretEnc'] = 1;
+  if (b.razorpayxWebhookSecret?.trim()) set['razorpayx.webhookSecretEnc'] = seal(b.razorpayxWebhookSecret.trim());
+  else if (b.clearRazorpayxWebhook) unset['razorpayx.webhookSecretEnc'] = 1;
   if (b.razorpayxEnabled !== undefined) set['razorpayx.enabled'] = b.razorpayxEnabled;
   if (b.razorpayxAutoPayout !== undefined) set['razorpayx.autoPayout'] = b.razorpayxAutoPayout;
   await Integrations.updateOne(

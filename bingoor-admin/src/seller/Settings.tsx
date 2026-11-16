@@ -145,8 +145,8 @@ export function AccountView({ me, onLogout }: { me: Me; onLogout: () => void }) 
           <ErrorBanner message={error} />
           {msg && <div className="badge badge-success" style={{ marginBottom: 10 }}>{msg}</div>}
           <Field label="Current password"><input type="password" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" required /></Field>
-          <Field label="New password (at least 6 characters)"><input type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={6} required /></Field>
-          <Field label="New password again"><input type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" minLength={6} required /></Field>
+          <Field label="New password (at least 8 characters)"><input type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={8} required /></Field>
+          <Field label="New password again"><input type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" minLength={8} required /></Field>
           <div className="modal-actions"><Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Change password'}</Button></div>
         </form>
       </div>

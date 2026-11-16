@@ -10,7 +10,7 @@ export const phone = z
   .transform((v) => v.replace(/[\s-]/g, '').replace(/^(\+91|91)(?=\d{10}$)/, ''))
   .pipe(z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number'));
 
-const password = z.string().min(6, 'Password must be at least 6 characters').max(72);
+const password = z.string().min(8, 'Password must be at least 8 characters').max(72);
 const boolFromQuery = z.enum(['true', 'false']).transform((v) => v === 'true');
 
 /* ---------- common ---------- */
@@ -209,7 +209,7 @@ export const riderLocationBody = z.object({
   lng: z.number().min(-180).max(180),
 });
 
-export const riderDeliveryBody = z.object({ otp: z.string().trim().regex(/^\d{4}$/, 'Enter the 4-digit delivery OTP').optional(), direct: z.coerce.boolean().optional() }).refine((b) => !!b.otp || b.direct, { message: 'Enter the 4-digit delivery OTP' });
+export const riderDeliveryBody = z.object({ otp: z.string().trim().regex(/^\d{4}$/, 'Enter the 4-digit delivery OTP').optional(), direct: z.boolean().optional(), lat: z.number().min(-90).max(90).optional(), lng: z.number().min(-180).max(180).optional() }).refine((b) => !!b.otp || b.direct, { message: 'Enter the 4-digit delivery OTP' });
 
 /* ---------- admin ---------- */
 export const adminLoginBody = z.object({
@@ -349,7 +349,7 @@ export const adminUserUpdateBody = z
     phone,
     email: z.string().trim().toLowerCase().email().or(z.literal('')),
     /** A new password the admin sets for the person (they are signed out everywhere). */
-    password: z.string().min(6, 'Password must be at least 6 characters').max(72),
+    password: z.string().min(8, 'Password must be at least 8 characters').max(72),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update');
@@ -452,6 +452,7 @@ export const adminSettingsBody = z
         popup: z.object({ enabled: z.boolean(), intervalSeconds: z.coerce.number().int().min(15).max(3600), pages: z.array(z.object({ image: z.string().trim().max(500), link: z.string().trim().max(500).optional().or(z.literal('')) })).max(30) }).partial(),
     cod: z.object({ disabledCategories: z.array(objectId).max(100), message: z.string().trim().max(300), cutoffEnabled: z.boolean(), cutoffTime: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/), cutoffMessage: z.string().trim().max(200) }).partial(),
     riderCodLimit: z.coerce.number().min(0).max(1_000_000),
+    riderDirectDelivery: z.boolean(),
     riderPay: z
       .object({
         enabled: z.boolean(),
@@ -736,6 +737,8 @@ export const integrationsBody = z.object({
   razorpayxKeyId: z.string().trim().max(100).optional(),
   razorpayxKeySecret: z.string().trim().max(200).optional(),
   clearRazorpayxSecret: z.boolean().optional(),
+  razorpayxWebhookSecret: z.string().trim().max(200).optional(),
+  clearRazorpayxWebhook: z.boolean().optional(),
   razorpayxEnabled: z.boolean().optional(),
   razorpayxAutoPayout: z.boolean().optional(),
 });

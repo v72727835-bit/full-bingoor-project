@@ -43,6 +43,10 @@ const walletTxnSchema = new Schema<IWalletTxn>(
     method: { type: String, enum: ['upi', 'bank'] },
     destination: { type: String, trim: true },
     reference: { type: String, trim: true },
+    // Without these in the schema Mongoose silently dropped them, so a RazorpayX
+    // payout id was never saved and the withdrawal could not be synced or guarded.
+    payoutId: { type: String, trim: true },
+    payoutStatus: { type: String, trim: true },
     note: { type: String, trim: true },
     km: { type: Number, min: 0 },
   },
@@ -51,5 +55,10 @@ const walletTxnSchema = new Schema<IWalletTxn>(
 
 walletTxnSchema.index({ rider: 1, createdAt: -1 });
 walletTxnSchema.index({ kind: 1, status: 1 });
+// One delivery earning per order: a double tap or a retried "delivered" call can't pay twice.
+walletTxnSchema.index({ order: 1, kind: 1 }, { unique: true, partialFilterExpression: { kind: 'earning', order: { $exists: true } } });
+// At most one open withdrawal and one open cash submission per rider, enforced by the
+// database so two requests sent at the same moment can't both pass the balance check.
+walletTxnSchema.index({ rider: 1, kind: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
 
 export const WalletTxn = model<IWalletTxn>('WalletTxn', walletTxnSchema);

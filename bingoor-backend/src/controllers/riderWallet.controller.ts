@@ -3,6 +3,7 @@ import { Order } from '../models/Order';
 import { User } from '../models/User';
 import { WalletTxn } from '../models/WalletTxn';
 import { ApiError } from '../utils/ApiError';
+import { isDuplicateKey } from '../utils/helpers';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ok, pageMeta } from '../utils/response';
 import { codSummary } from '../services/rider.service';
@@ -86,7 +87,11 @@ export const requestWithdraw = asyncHandler(async (req, res) => {
   if (amount < rules.minWithdraw) throw new ApiError(400, `The smallest withdrawal is ₹${rules.minWithdraw}.`);
   if (amount > sum.balance) throw new ApiError(400, `You can withdraw up to ₹${Math.floor(sum.balance)}.`);
 
-  const txn = await WalletTxn.create({ rider: req.user!.id, kind: 'withdrawal', amount: Math.round(amount), status: 'pending', method, destination, note: 'Withdrawal request' });
+  // The unique "one pending withdrawal" index makes a second parallel request fail here.
+  const txn = await WalletTxn.create({ rider: req.user!.id, kind: 'withdrawal', amount: Math.round(amount), status: 'pending', method, destination, note: 'Withdrawal request' }).catch((e) => {
+    if (isDuplicateKey(e)) throw new ApiError(409, 'You already have a withdrawal waiting. Please wait until it is paid.');
+    throw e;
+  });
 
   // When RazorpayX is on in fully-automatic mode, pay it out at once. If the
   // payout call fails, the request simply stays pending for an admin to handle,
@@ -112,6 +117,9 @@ export const submitCash = asyncHandler(async (req, res) => {
   const open = await WalletTxn.exists({ rider: req.user!.id, kind: 'cash_submit', status: 'pending' });
   if (open) throw new ApiError(409, 'A cash submission is already waiting for the office to confirm.');
   const amt = Math.min(Math.round(amount || pending), Math.round(pending));
-  const txn = await WalletTxn.create({ rider: req.user!.id, kind: 'cash_submit', amount: amt, status: 'pending', note: note || 'Cash handed to office' });
+  const txn = await WalletTxn.create({ rider: req.user!.id, kind: 'cash_submit', amount: amt, status: 'pending', note: note || 'Cash handed to office' }).catch((e) => {
+    if (isDuplicateKey(e)) throw new ApiError(409, 'A cash submission is already waiting for the office to confirm.');
+    throw e;
+  });
   ok(res, txn, undefined, 201);
 });

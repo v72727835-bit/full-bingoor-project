@@ -43,7 +43,7 @@ export function SignupScreen() {
     const next: Record<string, string> = {};
     if (form.name.trim().length < 2) next.name = 'Enter your full name';
     if (!isValidPhone(form.phone)) next.phone = 'Enter a valid 10-digit mobile number';
-    if (form.password.length < 6) next.password = 'Use at least 6 characters';
+    if (form.password.length < 8) next.password = 'Use at least 8 characters';
     setErrors(next);
     return Object.keys(next).length === 0;
   };

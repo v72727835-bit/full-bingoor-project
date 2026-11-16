@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { api, getErrorMessage, setSessionExpiredHandler, tokens } from '../api/client';
+import { api, getErrorMessage, refreshTokens, setSessionExpiredHandler, tokens } from '../api/client';
 import { AdminUser } from '../types';
 
 interface AuthApi {
@@ -19,17 +19,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setSessionExpiredHandler(() => setUser(null));
-    // The admin's profile came back with login and is cached alongside the
-    // tokens, so a page refresh doesn't force a fresh sign-in.
-    if (tokens.access && tokens.user) setUser(tokens.user as AdminUser);
-    setLoading(false);
-    return () => setSessionExpiredHandler(null);
+    // The profile is cached for the UI; the session itself is the HttpOnly
+    // refresh cookie, so a page reload trades it for a new in-memory access token.
+    let cancelled = false;
+    const cached = tokens.user as AdminUser | null;
+    if (!cached) {
+      setLoading(false);
+    } else {
+      void refreshTokens().then((access) => {
+        if (cancelled) return;
+        if (access) setUser(cached);
+        else tokens.clear();
+        setLoading(false);
+      });
+    }
+    return () => {
+      cancelled = true;
+      setSessionExpiredHandler(null);
+    };
   }, []);
 
   const login = async (identifier: string, password: string, asSeller = false) => {
     try {
       const { data } = await api.post(asSeller ? '/seller/auth/login' : '/admin/auth/login', { identifier, password });
-      tokens.save(data.data.accessToken, data.data.refreshToken, data.data.user);
+      tokens.save(data.data.accessToken, data.data.user);
       setUser(data.data.user);
     } catch (err) {
       throw new Error(getErrorMessage(err));
@@ -37,6 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    // Ends this session on the server and clears the refresh cookie.
+    if (tokens.access) void api.post('/auth/logout', {}).catch(() => undefined);
     tokens.clear();
     setUser(null);
   };

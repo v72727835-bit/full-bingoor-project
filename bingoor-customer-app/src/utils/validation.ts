@@ -18,7 +18,7 @@ export function formatPrice(value: number): string {
  * Deliberately simple: the server is the real gate, this is only guidance.
  */
 export function passwordStrength(value: string): { score: 0 | 1 | 2 | 3; label: string } {
-  if (value.length < 6) return { score: 0, label: 'Too short' };
+  if (value.length < 8) return { score: 0, label: 'Too short' };
   let score = 1;
   if (value.length >= 10) score += 1;
   if (/[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value)) score += 1;
