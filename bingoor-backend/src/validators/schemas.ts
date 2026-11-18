@@ -283,6 +283,11 @@ export const adminProductBody = z.object({
 });
 export const adminProductUpdateBody = adminProductBody.partial();
 
+export const adminProductGroupBody = z.object({
+  ids: z.array(objectId).min(1).max(1000),
+  patch: adminProductBody.omit({ shop: true, allWarehouses: true }).partial(),
+});
+
 export const adminProductsQuery = pagination.extend({
   q: z.string().trim().max(60).optional(),
   category: objectId.optional(),

@@ -217,23 +217,42 @@ export const listProductsAdmin = asyncHandler(async (req, res) => {
     filter.$or = [{ name: rx }, { brand: rx }];
   }
   if (category) filter.category = category;
-  if (shop) filter.shop = shop;
   if (isActive !== undefined) filter.isActive = isActive;
   if (variantGroup) filter.variantGroup = variantGroup;
 
-  const [products, total] = await Promise.all([
-    Product.find(filter)
+  const allProducts = await Product.find(filter)
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
       .select(ADMIN_PRODUCT_FIELDS)
       .populate('shop', 'name')
       .populate('category', 'name')
       .populate('seller', 'name sellerId sellerProfile.firm')
-      .lean(),
-    Product.countDocuments(filter),
+      .lean();
+  const keyFor = (p: (typeof allProducts)[number]) => JSON.stringify([
+    p.name.trim().toLowerCase(), p.brand?.trim().toLowerCase() ?? '', String(p.category?._id ?? p.category),
+    p.description ?? '', p.images?.[0] ?? '', p.price, p.mrp, p.unit, p.foodType, p.variantGroup ?? '', p.variantLabel ?? '',
+    p.nameHi ?? '', p.hsn ?? '', p.gstRate ?? null, p.paymentMode ?? 'both', p.isActive, p.rating, p.ratingCount ?? 0,
+    p.ratingLabel ?? '', p.points ?? 0, p.sortCode ?? 1_000_000, !!p.cartFeatured, !!p.dealOfDay,
+    JSON.stringify(p.attributes ?? []), JSON.stringify(p.tags ?? []), JSON.stringify(p.standardCategories ?? []),
   ]);
-  ok(res, products, pageMeta(page, limit, total));
+  const groups = new Map<string, Array<(typeof allProducts)[number]>>();
+  for (const product of allProducts) {
+    const key = keyFor(product);
+    groups.set(key, [...(groups.get(key) ?? []), product]);
+  }
+  const grouped = [...groups.values()].map((items) => {
+    const matchingShopIds = new Set(items.map((p) => String(p.shop?._id ?? p.shop)));
+    const selected = shop ? items.filter((p) => String(p.shop?._id ?? p.shop) === shop) : items;
+    const representative = selected[0] ?? items[0];
+    return {
+      ...representative,
+      _id: String(representative._id),
+      shops: items.map((p) => p.shop),
+      productIds: items.map((p) => String(p._id)),
+      warehouseCount: matchingShopIds.size,
+    };
+  }).filter((p) => !shop || String(p.shop?._id ?? p.shop) === shop);
+  const products = grouped.slice((page - 1) * limit, page * limit);
+  ok(res, products, pageMeta(page, limit, grouped.length));
 });
 
 export const getProductAdmin = asyncHandler(async (req, res) => {
@@ -287,10 +306,29 @@ export const updateProduct = asyncHandler(async (req, res) => {
   ok(res, product);
 });
 
+export const updateProductGroup = asyncHandler(async (req, res) => {
+  const { ids, patch } = req.body as { ids: string[]; patch: Record<string, unknown> };
+  if (patch.category) await assertLeafCategory(String(patch.category));
+  const uniqueIds = [...new Set(ids)];
+  const products = await Product.find({ _id: { $in: uniqueIds } }).select('_id').lean();
+  if (products.length !== uniqueIds.length) throw new ApiError(404, 'One or more products were not found');
+  await Product.updateMany({ _id: { $in: uniqueIds } }, { $set: patch }, { runValidators: true });
+  ok(res, { updated: products.length });
+});
+
 export const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findByIdAndDelete(req.params.id);
   if (!product) throw new ApiError(404, 'Product not found');
   ok(res, { message: 'Product deleted' });
+});
+
+export const deleteProductGroup = asyncHandler(async (req, res) => {
+  const { ids } = req.body as { ids: string[] };
+  const uniqueIds = [...new Set(ids)];
+  const existing = await Product.countDocuments({ _id: { $in: uniqueIds } });
+  if (existing !== uniqueIds.length) throw new ApiError(404, 'One or more products were not found');
+  const result = await Product.deleteMany({ _id: { $in: uniqueIds } });
+  ok(res, { message: 'Products deleted', deletedCount: result.deletedCount });
 });
 
 /* ============ Categories ============ */

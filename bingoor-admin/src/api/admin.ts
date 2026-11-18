@@ -34,6 +34,14 @@ export const bulkCreateProducts = async (rows: Record<string, string>[], dryRun:
 export const createProduct = async (body: Partial<Product> & { shop: string; category: string }): Promise<Product> =>
   (await api.post('/admin/products', body)).data.data;
 
+export const updateProductGroup = async (ids: string[], patch: Partial<Product>): Promise<void> => {
+  await api.patch('/admin/products/group', { ids, patch });
+};
+
+export const deleteProductGroup = async (ids: string[]): Promise<void> => {
+  await api.delete('/admin/products/group', { data: { ids } });
+};
+
 export const updateProduct = async (id: string, body: Partial<Product>): Promise<Product> =>
   (await api.patch(`/admin/products/${id}`, body)).data.data;
 

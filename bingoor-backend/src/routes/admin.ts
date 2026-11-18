@@ -49,6 +49,8 @@ router.get('/products', validate({ query: v.adminProductsQuery }), admin.listPro
 router.get('/products/:id', validate({ params: v.idParam }), admin.getProductAdmin);
 router.post('/products/bulk', validate({ body: v.bulkProductsBody }), admin.bulkCreateProducts);
 router.post('/products', validate({ body: v.adminProductBody }), admin.createProduct);
+router.patch('/products/group', validate({ body: v.adminProductGroupBody }), admin.updateProductGroup);
+router.delete('/products/group', validate({ body: v.adminProductGroupBody.pick({ ids: true }) }), admin.deleteProductGroup);
 router.patch('/products/:id', validate({ params: v.idParam, body: v.adminProductUpdateBody }), admin.updateProduct);
 router.delete('/products/:id', validate({ params: v.idParam }), admin.deleteProduct);
 

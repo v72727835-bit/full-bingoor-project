@@ -108,6 +108,9 @@ export interface Product {
   sortCode?: number | null;
   seller?: { _id: string; name: string; sellerId?: string; sellerProfile?: { firm?: string } } | string;
   shop: { _id: string; name: string } | string;
+  shops?: Array<{ _id: string; name: string } | string>;
+  productIds?: string[];
+  warehouseCount?: number;
   category: { _id: string; name: string } | string;
   createdAt: string;
 }

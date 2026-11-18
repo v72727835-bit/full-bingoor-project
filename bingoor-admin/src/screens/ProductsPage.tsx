@@ -3,7 +3,7 @@ import RichTextField from '../components/RichTextField';
 import { useSearchParams } from '../navigation';
 import BulkUpload from '../components/BulkUpload';
 import ProductVideoField from '../components/ProductVideoField';
-import { bulkCreateProducts, uploadProductVideo, createProduct, deleteProduct, fetchCategories, fetchProduct, fetchProducts, fetchAllShops, fetchSettings, fetchStandardCategories, updateProduct, uploadImages } from '../api/admin';
+import { bulkCreateProducts, uploadProductVideo, createProduct, deleteProductGroup, fetchCategories, fetchProduct, fetchProducts, fetchAllShops, fetchSettings, fetchStandardCategories, updateProduct, updateProductGroup, uploadImages } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { IconPlus } from '../components/icons';
 import { Badge, Button, CenterSpinner, ErrorBanner, Field, Modal, Pagination, Tabs, Thumb, money } from '../components/ui';
@@ -97,7 +97,8 @@ export default function ProductsPage() {
   const openEdit = async (p: Product) => {
     setOpening(p._id);
     try {
-      setEditing(await fetchProduct(p._id));
+      const details = await fetchProduct(p._id);
+      setEditing({ ...details, productIds: p.productIds, shops: p.shops, warehouseCount: p.warehouseCount });
     } catch {
       setEditing(p);
     } finally {
@@ -177,9 +178,9 @@ export default function ProductsPage() {
   };
 
   const remove = async (p: Product) => {
-    if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete "${p.name}" from ${p.warehouseCount ?? 1} warehouse${(p.warehouseCount ?? 1) === 1 ? '' : 's'}? This cannot be undone.`)) return;
     try {
-      await deleteProduct(p._id);
+      await deleteProductGroup(p.productIds?.length ? p.productIds : [p._id]);
       load();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -294,10 +295,10 @@ export default function ProductsPage() {
                 <tr>
                   <th>Product</th>
                   <th>Category</th>
-                  <th>Warehouse</th>
                   <th>Price</th>
                   <th>Stock</th>
                   <th>Status</th>
+                  <th>Warehouses</th>
                   <th></th>
                 </tr>
               </thead>
@@ -317,7 +318,6 @@ export default function ProductsPage() {
                       </div>
                     </td>
                     <td className="cell-muted">{categoryName(p.category)}</td>
-                    <td className="cell-muted">{shopName(p.shop)}</td>
                     <td>
                       {money(p.price)}
                       {p.mrp > p.price && (
@@ -337,6 +337,10 @@ export default function ProductsPage() {
                     </td>
                     <td>
                       <Badge tone={p.isActive ? 'success' : 'muted'}>{p.isActive ? 'Active' : 'Hidden'}</Badge>
+                    </td>
+                    <td className="cell-muted">
+                      <span>{p.warehouseCount ?? 1} warehouse{(p.warehouseCount ?? 1) === 1 ? '' : 's'}</span>
+                      {p.shops?.length ? <div style={{ fontSize: 11, marginTop: 3 }}>{Array.from(new Map(p.shops.map((s) => [typeof s === 'string' ? s : s._id, typeof s === 'string' ? shops.find((item) => item._id === s)?.name ?? s : s.name])).entries()).map(([, name]) => name).join(', ')}</div> : null}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
@@ -532,7 +536,13 @@ function ProductForm({
         body.variantGroup = body.variantGroup || `${form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}-${Date.now().toString(36).slice(-4)}`;
         body.variantLabel = body.variantLabel || form.unit;
       }
-      if (product) await updateProduct(product._id, body);
+      if (product?.productIds && product.productIds.length > 1) {
+        const sharedBody: Record<string, unknown> = { ...body };
+        delete sharedBody.shop;
+        delete sharedBody.allWarehouses;
+        delete sharedBody.stock;
+        await updateProductGroup(product.productIds, sharedBody as Partial<Product>);
+      } else if (product) await updateProduct(product._id, body);
       else await createProduct(body as never);
       for (const d of extras) {
         await createProduct({
