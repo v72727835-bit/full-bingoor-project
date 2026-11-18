@@ -39,6 +39,17 @@ function oneListingPerItem<T extends { name?: string; unit?: string; category?: 
   });
 }
 
+/** A copied warehouse listing can repeat the same size inside one size group. */
+function oneVariantPerSize<T extends { variantLabel?: string; unit?: string; stock?: number }>(items: T[]): T[] {
+  const bySize = new Map<string, T>();
+  for (const item of items) {
+    const label = (item.variantLabel || item.unit || '').trim().toLowerCase();
+    const current = bySize.get(label);
+    if (!current || ((item.stock ?? 0) > 0 && (current.stock ?? 0) <= 0)) bySize.set(label, item);
+  }
+  return [...bySize.values()];
+}
+
 function toCard<T extends { price: number; mrp: number; stock: number; category?: unknown; paymentMode?: 'both' | 'cod' | 'online' }>(p: T) {
   return {
     ...p,
@@ -52,8 +63,8 @@ function toCard<T extends { price: number; mrp: number; stock: number; category?
 /**
  * Point 22: every size of the item behind each card (e.g. 500 g / 1 kg / 2 kg),
  * so the card can offer "ADD - 3 options" and open them in a sheet. Sizes share
- * the admin's "Size group"; only sizes from the card's own warehouse are listed,
- * and a card whose item has a single size is left as it was.
+ * the admin's "Size group"; only unique sizes from the card's own warehouse are
+ * listed, and a card whose item has a single size is left as it was.
  */
 async function attachVariants(cards: Record<string, unknown>[]): Promise<void> {
   const groups = [...new Set(cards.map((c) => c.variantGroup).filter((g): g is string => typeof g === 'string' && g.length > 0))];
@@ -68,7 +79,7 @@ async function attachVariants(cards: Record<string, unknown>[]): Promise<void> {
     const list = typeof c.variantGroup === 'string' ? byGroup.get(c.variantGroup) : undefined;
     if (!list) continue;
     const shop = c.shop && typeof c.shop === 'object' && '_id' in c.shop ? String((c.shop as { _id: unknown })._id) : c.shop ? String(c.shop) : '';
-    const same = list.filter((v) => !shop || String(v.shop) === shop);
+    const same = oneVariantPerSize(list.filter((v) => !shop || String(v.shop) === shop));
     if (same.length < 2) continue;
     c.variants = same.map((v) => ({
       _id: v._id,
@@ -705,8 +716,9 @@ export const listProducts = asyncHandler(async (req, res) => {
     Product.countDocuments(filter),
   ]);
 
-  // No location and no warehouse chosen: every warehouse's copy matched, so show each item once.
-  const cards = (filter.shop ? products : oneListingPerItem(products)).map(toCard);
+  // Collapse duplicate listings within the selected warehouse too. Without a
+  // location, the same helper also collapses copies stocked by other warehouses.
+  const cards = oneListingPerItem(products).map(toCard);
   await attachVariants(cards as unknown as Record<string, unknown>[]);
   ok(res, cards, pageMeta(page, limit, total));
 });
@@ -795,11 +807,16 @@ export const getProduct = asyncHandler(async (req, res) => {
   }
 
   // Other sizes of the same item (e.g. 100 g / 200 g / 500 g), cheapest first.
+  const productShopId = String(
+    product.shop && typeof product.shop === 'object' && '_id' in product.shop
+      ? (product.shop as { _id: unknown })._id
+      : product.shop,
+  );
   const variants = product.variantGroup
-    ? await Product.find({ variantGroup: product.variantGroup, isActive: true })
+    ? oneVariantPerSize(await Product.find({ variantGroup: product.variantGroup, isActive: true, shop: productShopId })
         .sort({ price: 1 })
         .select('name nameHi slug unit price mrp stock images icon variantLabel')
-        .lean()
+        .lean())
     : [];
 
   const card = toCard(product);
