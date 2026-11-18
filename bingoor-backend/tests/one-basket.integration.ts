@@ -67,7 +67,7 @@ test('a basket filled by two warehouses has one minimum and one set of fees', { 
   }
 });
 
-test('the basket minimum is judged on the whole cart', { timeout: 900000 }, async () => {
+test('the basket minimum is judged on the whole cart beyond 9 km', { timeout: 900000 }, async () => {
   const db = await MongoMemoryServer.create({ binary: { version: '8.2.6' }, instance: { launchTimeout: 60000 } });
   await mongoose.connect(db.getUri());
   const server = app.listen(0, '127.0.0.1');
@@ -77,9 +77,11 @@ test('the basket minimum is judged on the whole cart', { timeout: 900000 }, asyn
     const user = await User.create({ name: 'Buyer', phone: '9876543211', password: 'test-password', role: 'customer', addresses: [
       { label: 'home', name: 'Buyer', phone: '9876543211', line1: 'Near', city: 'Jaipur', state: 'Rajasthan', pincode: '302020', location: { lat: 26.85, lng: 75.77 } },
     ] });
-    const near = { type: 'Point', coordinates: [75.77, 26.851] };
-    const a = await Shop.create({ name: 'A', owner: user._id, deliveryRadiusKm: 50, location: near });
-    const b = await Shop.create({ name: 'B', owner: user._id, deliveryRadiusKm: 50, location: near });
+    // Keep this case in the 9–15 km band, which still has a ₹199 checkout
+    // minimum. Within 9 km a smaller basket may be placed with the delivery fee.
+    const midDistance = { type: 'Point', coordinates: [75.66, 26.851] };
+    const a = await Shop.create({ name: 'A', owner: user._id, deliveryRadiusKm: 50, location: midDistance });
+    const b = await Shop.create({ name: 'B', owner: user._id, deliveryRadiusKm: 50, location: midDistance });
     const category = await Category.create({ name: 'Grocery' });
     await Settings.create({ key: 'global' });
     const x = await Product.create({ name: 'X', shop: a._id, category: category._id, price: 50, mrp: 60, stock: 10 });
