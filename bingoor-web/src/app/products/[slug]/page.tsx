@@ -4,13 +4,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
-import { fetchProduct, submitReview } from '../../../api/catalog';
+import { fetchProduct, fetchReviews, submitReview } from '../../../api/catalog';
 import { POINT_EVENT } from '../../../lib/deliveryPoint';
 import { addToWishlist, fetchWishlist, removeFromWishlist } from '../../../api/account';
 import { getErrorMessage } from '../../../lib/client';
 import { videoSource } from '../../../lib/video';
 import { fitClass } from '../../../lib/art';
-import { Product } from '../../../lib/types';
+import { Product, Review } from '../../../lib/types';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
@@ -32,7 +32,6 @@ import {
   FoodMark,
   SectionHead,
   Textarea,
-  compact,
 } from '../../../components/ui';
 import s from './product.module.css';
 
@@ -56,6 +55,7 @@ export default function ProductPage() {
   const [stars, setStars] = useState(5);
   const [comment, setComment] = useState('');
   const [posting, setPosting] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   const load = useCallback(() => {
     setError('');
@@ -68,6 +68,11 @@ export default function ProductPage() {
   }, [slug]);
 
   useEffect(load, [load]);
+
+  useEffect(() => {
+    if (!p) return;
+    fetchReviews(p.id).then(setReviews).catch(() => setReviews([]));
+  }, [p?.id]);
 
   // The delivery time depends on the delivery location, so a changed location reloads the page's data.
   useEffect(() => {
@@ -128,6 +133,7 @@ export default function ProductPage() {
       if (wished) await removeFromWishlist(p.id);
       else await addToWishlist(p.id);
       setWished(!wished);
+      if (typeof navigator !== 'undefined') navigator.vibrate?.(14);
       show(wished ? 'Product is removed from wish list' : 'Product is added to wish list', 'success');
     } catch (e) {
       show(getErrorMessage(e), 'error');
@@ -141,6 +147,7 @@ export default function ProductPage() {
       await submitReview(p.id, stars, comment.trim() || undefined);
       setComment('');
       show('Thank you — your review has been added', 'success');
+      setReviews(await fetchReviews(p.id));
       load();
     } catch (e) {
       show(getErrorMessage(e), 'error');
@@ -366,13 +373,10 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* #21: reviews are collected here but published on Google, not on the
-          site, so the list of other people's reviews is not shown. The star
-          rating and the count stay, since those come from the catalogue. */}
       <section className={s.reviews}>
         <SectionHead
-          title="Rate this product"
-          subtitle={p.ratingCount ? `Rated by ${compact(p.ratingCount)} customers` : 'Tell other shoppers what you thought'}
+          title="Customer reviews"
+          subtitle={reviews.length ? `${reviews.length} recent review${reviews.length === 1 ? '' : 's'}` : 'Be the first to review this product'}
         />
         <div className={s.revGrid}>
           <aside className={`card card-pad ${s.write}`}>
@@ -417,6 +421,25 @@ export default function ProductPage() {
               </a>
             ) : null}
           </aside>
+          <div className={s.reviewList}>
+            {reviews.length ? reviews.map((review) => (
+              <article className={`card card-pad ${s.reviewCard}`} key={review.id}>
+                <div className={s.revTop}>
+                  <div className={s.who}>
+                    <span className={s.avatar} aria-hidden="true">{review.userName.slice(0, 1).toUpperCase()}</span>
+                    <div>
+                      <span className={s.whoName}>{review.userName}</span>
+                      <span className={`body-sm ${s.whoWhen}`}>{new Date(review.createdAt).toLocaleDateString('en-IN')}</span>
+                    </div>
+                  </div>
+                  <span className={s.reviewStars} aria-label={`${review.rating} out of 5 stars`}>
+                    {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                  </span>
+                </div>
+                {review.comment ? <p className={s.revBody}>{review.comment}</p> : null}
+              </article>
+            )) : <p className="body-sm">Verified customer reviews will appear here.</p>}
+          </div>
         </div>
       </section>
 

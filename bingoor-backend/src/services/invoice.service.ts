@@ -128,7 +128,7 @@ const pct = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(2)}%`;
 
 function a4(d: InvoiceData): string {
   const { order: o, company: c, gst: g } = d;
-  const name = c.name || 'Bingoor';
+  const name = c.name || 'AUAXI AID';
   const logo = safeUrl(c.logo);
   const sign = safeUrl(c.signature);
   const seal = safeUrl(c.seal);
@@ -221,7 +221,7 @@ td{padding:6px 5px;border-bottom:1px solid #e5e7eb;vertical-align:top}.c{text-al
 
 function pos(d: InvoiceData): string {
   const { order: o, company: c } = d;
-  const name = c.name || 'Bingoor';
+  const name = c.name || 'AUAXI AID';
   const logo = safeUrl(c.logo);
   const sign = safeUrl(c.signature);
   const seal = safeUrl(c.seal);

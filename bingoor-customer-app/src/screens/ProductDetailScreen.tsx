@@ -27,6 +27,7 @@ import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, currency, gutter, hitSlop, ms, radius, space, themed } from '../theme';
 import { useHomeQuery, useProductQuery } from '../store/catalogApi';
 import { shortDelivery } from '../utils/delivery';
+import { tapConfirm } from '../utils/haptics';
 import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
 import { ReviewPage } from '../types';
 import { Button } from '../ui/Button';
@@ -571,7 +572,7 @@ export function ProductDetailScreen() {
           <Ionicons name="share-social-outline" size={ms(20)} color={colors.ink} />
         </Pressable>
         <Pressable
-          onPress={() => toggle(product)}
+          onPress={() => { tapConfirm(); void toggle(product); }}
           hitSlop={hitSlop}
           accessibilityRole="button"
           accessibilityLabel={saved ? 'Remove from wishlist' : 'Save to wishlist'}

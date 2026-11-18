@@ -145,7 +145,10 @@ function SlotsCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
 /* --------------------------- distance-based pricing ------------------------ */
 
 function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save }) {
-  const [p, setP] = useState({ ...settings.pricing, bands: settings.pricing?.bands ?? [] });
+  const [p, setP] = useState({
+    ...settings.pricing,
+    bands: (settings.pricing?.bands ?? []).map((band) => ({ ...band, minOrder: band.upToKm <= 9 ? 0 : band.minOrder })),
+  });
   const [busy, setBusy] = useState(false);
   const [cats, setCats] = useState<Category[]>([]);
   useEffect(() => {
@@ -188,7 +191,7 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
     <div className="card card-pad" style={{ marginBottom: 18 }}>
       <h2 className="card-title">Distance-based delivery pricing</h2>
       <div className="page-subtitle" style={{ marginBottom: 14 }}>
-        Each row is a distance from the warehouse. The customer must shop at least the <b>minimum</b>; delivery is free from the <b>free-above</b> amount,
+        Each row is a distance from the warehouse. The customer must shop at least the <b>minimum</b>; deliveries within 9 km can be placed below the free-delivery threshold by paying the fee. Delivery is free from the <b>free-above</b> amount,
         otherwise the <b>fee</b> is charged (shown struck-through when waived). A <b>handling fee</b> is always added. <b>Red order</b> sends the order to
         the rider highlighted in red; <b>next day</b> promises next-day delivery. Customers further than the last row get the long-distance rules below and
         their orders go only to riders marked “long distance”.
@@ -211,7 +214,7 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
             {p.bands.map((b, i) => (
               <tr key={i}>
                 <td><input type="number" min={1} value={b.upToKm} onChange={(e) => setBand(i, { upToKm: num(e.target.value) })} style={{ width: 80 }} /></td>
-                <td><input type="number" min={0} value={b.minOrder} onChange={(e) => setBand(i, { minOrder: num(e.target.value) })} style={{ width: 100 }} /></td>
+                <td><input type="number" min={0} value={b.minOrder} disabled={b.upToKm <= 9} title={b.upToKm <= 9 ? 'Orders up to 9 km can be placed by paying the delivery fee.' : undefined} onChange={(e) => setBand(i, { minOrder: num(e.target.value) })} style={{ width: 100 }} /></td>
                 <td><input type="number" min={0} value={b.freeAbove} onChange={(e) => setBand(i, { freeAbove: num(e.target.value) })} style={{ width: 100 }} /></td>
                 <td><input type="number" min={0} value={b.fee} onChange={(e) => setBand(i, { fee: num(e.target.value) })} style={{ width: 80 }} /></td>
                 <td><input type="checkbox" checked={b.nextDay} onChange={(e) => setBand(i, { nextDay: e.target.checked })} /></td>

@@ -28,6 +28,10 @@
   padding: 0;
 }
 
+.dealSection {
+  margin-bottom: 22px;
+}
+
 .skHero {
   height: 172px;
   border-radius: var(--r-lg);

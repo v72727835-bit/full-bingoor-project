@@ -236,7 +236,7 @@ const settingsSchema = new Schema<ISettings>(
           },
         ],
         default: [
-          { upToKm: 9, minOrder: 199, freeAbove: 199, fee: 39, nextDay: false, redOrder: false, points: 0 },
+          { upToKm: 9, minOrder: 0, freeAbove: 199, fee: 39, nextDay: false, redOrder: false, points: 0 },
           { upToKm: 15, minOrder: 199, freeAbove: 999, fee: 39, nextDay: false, redOrder: true, points: 70 },
           { upToKm: 25, minOrder: 199, freeAbove: 999, fee: 39, nextDay: true, redOrder: false, points: 150 },
           { upToKm: 30, minOrder: 199, freeAbove: 1999, fee: 39, nextDay: true, redOrder: false, points: 180 },

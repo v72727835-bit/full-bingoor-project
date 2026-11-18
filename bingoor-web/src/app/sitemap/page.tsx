@@ -13,7 +13,7 @@ export default function Page() {
       <p className="body-sm" style={{ margin: '4px 0 22px' }}>Everything on Bingoor in one place.</p>
       <div className={s.grid}>
         <section className="card card-pad">
-          <h2 className="h3">Shop</h2>
+          <h2 className="h3">Warehouse</h2>
           <ul className={s.list}>
             <li><Link href="/">Home</Link></li>
             <li><Link href="/categories">All categories</Link></li>

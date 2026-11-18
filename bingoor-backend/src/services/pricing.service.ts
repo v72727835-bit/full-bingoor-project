@@ -33,7 +33,9 @@ type Pricing = ISettings['pricing'];
 const DEFAULTS: Pricing = {
   handlingFee: 2,
   bands: [
-    { upToKm: 9, minOrder: 199, freeAbove: 199, fee: 39, nextDay: false, redOrder: false, points: 0 },
+    // ₹199 is the free-delivery threshold, not a checkout block: customers
+    // below it can still place the order and pay the ₹39 delivery fee.
+    { upToKm: 9, minOrder: 0, freeAbove: 199, fee: 39, nextDay: false, redOrder: false, points: 0 },
     { upToKm: 15, minOrder: 199, freeAbove: 999, fee: 39, nextDay: false, redOrder: true, points: 70 },
     { upToKm: 25, minOrder: 199, freeAbove: 999, fee: 39, nextDay: true, redOrder: false, points: 150 },
     { upToKm: 30, minOrder: 199, freeAbove: 1999, fee: 39, nextDay: true, redOrder: false, points: 180 },
@@ -68,7 +70,9 @@ export function quoteDelivery(
   if (distanceKm !== null) {
     const band = bands.find((b) => distanceKm <= b.upToKm);
     if (band) {
-      minOrder = band.minOrder;
+      // Up to 9 km a customer may place a smaller order by paying delivery;
+      // the first-band minimum from older saved settings must not block it.
+      minOrder = distanceKm <= 9 ? 0 : band.minOrder;
       freeAbove = band.freeAbove;
       fee = band.fee;
       days = band.nextDay ? 1 : 0;

@@ -56,6 +56,7 @@ export function ProductCard({
     const wasWished = wished;
     act(async () => {
       await wishlist.toggle(product.id);
+      if (typeof navigator !== 'undefined') navigator.vibrate?.(14);
       show(wasWished ? 'Product is removed from wish list' : 'Product is added to wish list', 'success');
     });
   };

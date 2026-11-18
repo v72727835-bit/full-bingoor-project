@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react
 import { useCartItem } from '../context/CartContext';
 import { NotifyMeSheet } from './NotifyMeSheet';
 import { VariantPickerSheet } from './VariantPickerSheet';
-import { tapAdd } from '../utils/haptics';
+import { tapAdd, tapConfirm } from '../utils/haptics';
 import { useWishlist } from '../context/WishlistContext';
 import { colors, currency, hitSlop, ms, radius, space, themed } from '../theme';
 import { ProductSummary } from '../types';
@@ -65,7 +65,7 @@ function ProductCardBase({ product, width, onPress, deliveryText = '19 min', sty
         ) : null}
 
         <Pressable
-          onPress={() => toggle(product)}
+          onPress={() => { tapConfirm(); void toggle(product); }}
           hitSlop={hitSlop}
           accessibilityRole="button"
           accessibilityLabel={saved ? `Remove ${product.name} from wishlist` : `Save ${product.name}`}

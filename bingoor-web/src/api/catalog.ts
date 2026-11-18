@@ -13,7 +13,9 @@ import {
   PublicSettings,
   RawCategory,
   RawProduct,
+  RawReview,
   RawShop,
+  Review,
   Shop,
 } from '../lib/types';
 
@@ -102,6 +104,11 @@ export const fetchShop = async (idOrSlug: string): Promise<Shop> => {
 
 export const submitReview = async (productId: string, rating: number, comment?: string) => {
   await api.put(`/products/${productId}/reviews`, { rating, comment });
+};
+
+export const fetchReviews = async (productId: string): Promise<Review[]> => {
+  const { data } = await api.get(`/products/${productId}/reviews`, { params: { page: 1, limit: 20 } });
+  return ((data.data?.reviews ?? []) as RawReview[]).map(n.review);
 };
 
 export const deleteReview = async (reviewId: string) => {

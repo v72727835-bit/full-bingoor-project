@@ -87,7 +87,7 @@ export const renderInvoice = asyncHandler(async (req, res) => {
       // "Sold by" is the company (name and address from Admin > Store settings > Company);
       // the warehouse the order left from is printed under it.
       supplier: {
-        name: company.name || shop?.name || 'Bingoor',
+        name: company.name || 'AUAXI AID',
         address: company.address || shopAddress || '',
         gstin,
         phone: company.phone || shop?.phone,

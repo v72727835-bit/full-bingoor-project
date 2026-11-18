@@ -45,6 +45,7 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('leaflet').Map | null>(null);
   const leaflet = useRef<typeof import('leaflet') | null>(null);
+  const movingPinRef = useRef(false);
   const settings = useSettings();
   const mapsCfgRef = useRef(settings?.maps);
   mapsCfgRef.current = settings?.maps;
@@ -52,6 +53,7 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
   const [hits, setHits] = useState<Hit[]>([]);
   const [searching, setSearching] = useState(false);
   const [note, setNote] = useState('');
+  const [movingPin, setMovingPin] = useState(false);
 
   // Last point handed to onPick, so the map's own moveend after a jump
   // (search, GPS) does not look the same address up twice.
@@ -77,7 +79,9 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
       // Start where the customer is (the delivery point) when the address has no pin yet.
       const here = getDeliveryPoint();
       const start = value ?? (here ? { lat: here.lat, lng: here.lng } : START);
-      const map = L.map(box.current, { zoomControl: true, attributionControl: true }).setView([start.lat, start.lng], value || here ? 17 : 13);
+      // Keep one-finger vertical swipes available for page scrolling. Customers
+      // explicitly enable map movement while positioning the pin.
+      const map = L.map(box.current, { zoomControl: true, attributionControl: true, dragging: false }).setView([start.lat, start.lng], value || here ? 17 : 13);
       await addBaseLayer(L, map, mapsCfgRef.current);
       // The pin stays fixed in the middle of the map and the map moves under it
       // (Blinkit / Zepto style). Dragging a small marker with a finger was
@@ -91,6 +95,7 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
       // A tap moves that spot under the pin.
       map.on('click', (e) => map.panTo(e.latlng));
       mapRef.current = map;
+      if (movingPinRef.current) map.dragging.enable();
       // The map opened on the customer's own spot: that is already a valid
       // pin, so save it without making them nudge the map first.
       if (!value && here) place(start.lat, start.lng, false);
@@ -103,6 +108,14 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
     // The map is built once; later pins move through `place`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    movingPinRef.current = movingPin;
+    const dragging = mapRef.current?.dragging;
+    if (!dragging) return;
+    if (movingPin) dragging.enable();
+    else dragging.disable();
+  }, [movingPin]);
 
   const search = async () => {
     if (!q.trim()) return;
@@ -187,7 +200,10 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
         </button>
       </div>
       <div className={s.foot}>
-        <span className="body-sm">Move the map so the pin sits on your doorstep.</span>
+        <span className="body-sm">{movingPin ? 'Move the map so the pin sits on your doorstep.' : 'Page scrolling stays available. Turn on map movement to place the pin.'}</span>
+        <Button type="button" size="sm" variant={movingPin ? 'soft' : 'primary'} icon={movingPin ? 'check' : 'pin'} onClick={() => setMovingPin((v) => !v)}>
+          {movingPin ? 'Done moving pin' : 'Move map to set pin'}
+        </Button>
         <Button type="button" variant="outline" size="sm" icon="pin" onClick={locate}>
           Use my current location
         </Button>

@@ -100,13 +100,14 @@ function Section({ section }: { section: HomeSection }) {
 
     case 'productRail': {
       const deals = section.style === 'deals';
+      const sectionHeading = deals ? 'Deals of the day' : heading;
       return (
-        <section className={s.section}>
+        <section className={`${s.section} ${deals ? s.dealSection : ''}`}>
           <div className={deals ? s.deals : undefined}>
             <SectionHead
-              title={heading}
+              title={sectionHeading}
               subtitle={section.subtitle}
-              eyebrow={deals ? 'Limited time' : undefined}
+              eyebrow={undefined}
               href={section.seeAllSlug ? `/categories/${section.seeAllSlug}` : undefined}
               previews={section.items.map((p) => p.photo)}
             />

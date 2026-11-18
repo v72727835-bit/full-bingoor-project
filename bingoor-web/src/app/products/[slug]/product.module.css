@@ -221,6 +221,23 @@
   gap: 20px;
 }
 
+.reviewList {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.reviewCard {
+  min-width: 0;
+}
+
+.reviewStars {
+  flex-shrink: 0;
+  color: #f0a92b;
+  letter-spacing: 1px;
+  font-size: 14px;
+}
+
 .revTop {
   display: flex;
   align-items: center;
