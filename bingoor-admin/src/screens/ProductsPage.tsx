@@ -411,7 +411,11 @@ function ProductForm({
           name: product.name,
           brand: product.brand ?? '',
           description: product.description ?? '',
-          shop: typeof product.shop === 'string' ? product.shop : product.shop._id,
+          // Admin rows that represent copies in multiple warehouses carry all
+          // their source ids. Keep that state visible when the form is opened.
+          shop: (product.productIds?.length ?? 0) > 1
+            ? 'all'
+            : typeof product.shop === 'string' ? product.shop : product.shop._id,
           category: typeof product.category === 'string' ? product.category : product.category._id,
           price: String(product.price),
           mrp: String(product.mrp),
@@ -589,10 +593,12 @@ function ProductForm({
 
         <div className="field-row">
           <Field label="Warehouse">
-            <select value={form.shop} onChange={(e) => set('shop', e.target.value)} required disabled={optionsLoading || shops.length === 0}>
+            <select value={form.shop} onChange={(e) => set('shop', e.target.value)} required disabled={optionsLoading || shops.length === 0 || (product?.productIds?.length ?? 0) > 1}>
               <option value="">{optionsLoading ? 'Loading warehouses…' : shops.length === 0 ? 'No warehouses available' : 'Select warehouse…'}</option>
               {/* Super admin: one listing in every warehouse at once. */}
-              {!product && shops.length > 0 ? <option value="all">All warehouses</option> : null}
+              {((!product && shops.length > 0) || (product?.productIds?.length ?? 0) > 1) ? (
+                <option value="all">All warehouses{product?.warehouseCount ? ` (${product.warehouseCount})` : ''}</option>
+              ) : null}
               {shops.map((s) => (
                 <option key={s._id} value={s._id}>
                   {s.name}
@@ -934,13 +940,26 @@ function SizesPanel({ product, group, onGroup }: { product: Product; group: stri
       if (!g) {
         // First extra size: give this item a group and label its own size.
         g = `${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}-${product._id.slice(-4)}`;
-        await updateProduct(product._id, { variantGroup: g, variantLabel: product.variantLabel || product.unit });
+        const basePatch = { variantGroup: g, variantLabel: product.variantLabel || product.unit };
+        if (product.productIds?.length && product.productIds.length > 1) {
+          await updateProductGroup(product.productIds, basePatch);
+        } else {
+          await updateProduct(product._id, basePatch);
+        }
         onGroup(g);
       }
       const shop = typeof product.shop === 'string' ? product.shop : product.shop._id;
       const category = typeof product.category === 'string' ? product.category : product.category._id;
-      await createProduct({
-        shop,
+      const warehouseIds = [...new Set((product.shops ?? []).map((s) => typeof s === 'string' ? s : s._id).filter(Boolean))];
+      if (!warehouseIds.length) warehouseIds.push(shop);
+      const existingSize = sizes.find((s) => (s.variantLabel || s.unit).trim().toLowerCase() === label.trim().toLowerCase());
+      const alreadyIn = new Set((existingSize?.shops ?? []).map((s) => typeof s === 'string' ? s : s._id));
+      const missingWarehouses = warehouseIds.filter((id) => !alreadyIn.has(id));
+      if (!missingWarehouses.length) {
+        setDone(`${label.trim()} is already added in all ${warehouseIds.length} warehouses.`);
+        return;
+      }
+      const baseFields = {
         category,
         name: product.name,
         nameHi: product.nameHi || undefined,
@@ -959,8 +978,11 @@ function SizesPanel({ product, group, onGroup }: { product: Product; group: stri
         mrp: Number(mrp) || Number(price),
         stock: Number(stock) || 0,
         isActive: true,
-      } as never);
-      setDone(`${label.trim()} added.`);
+      };
+      for (const warehouseId of missingWarehouses) {
+        await createProduct({ ...baseFields, shop: warehouseId } as never);
+      }
+      setDone(`${label.trim()} added in ${missingWarehouses.length} warehouse${missingWarehouses.length === 1 ? '' : 's'}.`);
       setLabel('');
       setPrice('');
       setMrp('');
