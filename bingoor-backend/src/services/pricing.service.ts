@@ -63,8 +63,8 @@ export function quoteDelivery(
   let minOrder = bands[0].minOrder;
   let freeAbove = bands[0].freeAbove;
   let fee = bands[0].fee;
-  // Customer delivery promise is tied to the actual warehouse distance,
-  // independently of the configurable fee/minimum-order bands.
+  // The customer delivery promise follows the requested distance tiers,
+  // independently of the selected slot and configurable fee bands.
   let days = distanceKm === null ? 0 : distanceKm <= 15 ? 0 : distanceKm <= 30 ? 1 : 3;
   let redOrder = false;
   let longDistance = false;
@@ -86,7 +86,10 @@ export function quoteDelivery(
       longDistance = true;
     }
   }
-  if (slot === 'nextDay' && days < 1) days = 1;
+  // If the distance is unknown, keep the explicit slot as the only available
+  // ETA signal. Once we know the warehouse distance, the three distance tiers
+  // above always win (including for a stale saved next-day slot).
+  if (distanceKm === null && slot === 'nextDay') days = 1;
 
   const twoHourFee = slot === 'twoHour' && settings?.twoHourCharge?.enabled ? settings.twoHourCharge.amount : 0;
   const deliveryFee = subtotal >= freeAbove ? 0 : fee;

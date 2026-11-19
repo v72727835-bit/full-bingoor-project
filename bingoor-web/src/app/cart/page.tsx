@@ -182,10 +182,10 @@ function CartInner() {
         <Icon name="bolt" size={20} />
         <span className={s.etaTime}>
           {/* The real promise comes from the distance: far addresses are next day or a few working days. */}
-          {sixDayOnly > 1
-            ? `${t('delivery')}: ${sixDayOnly} days`
-            : quote && quote.distanceKm !== null
+          {quote && quote.distanceKm !== null
             ? `${t('delivery')}: ${distanceDeliveryText(quote.distanceKm)}`
+            : sixDayOnly > 1
+            ? `${t('delivery')}: ${sixDayOnly} days`
             : quote && quote.days > 0
             ? `${t('delivery')}: ${quote.days === 1 ? 'Next day delivery' : `${quote.days} working days`}`
             : slot === 'instant' && home
