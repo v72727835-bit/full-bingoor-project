@@ -245,7 +245,7 @@ function CheckoutInner() {
   const showForm = adding || list.length === 0 || !!editing;
   // The same promise the cart showed: far addresses are next day or a few working days.
   const etaText =
-    slot === 'instant' && quote && quote.distanceKm !== null
+    quote && quote.distanceKm !== null
       ? distanceDeliveryText(quote.distanceKm)
       : quote && quote.days > 0
       ? quote.days === 1 ? 'Next day delivery' : `${quote.days} working days`

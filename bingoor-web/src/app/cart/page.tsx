@@ -184,7 +184,7 @@ function CartInner() {
           {/* The real promise comes from the distance: far addresses are next day or a few working days. */}
           {sixDayOnly > 1
             ? `${t('delivery')}: ${sixDayOnly} days`
-            : slot === 'instant' && quote && quote.distanceKm !== null
+            : quote && quote.distanceKm !== null
             ? `${t('delivery')}: ${distanceDeliveryText(quote.distanceKm)}`
             : quote && quote.days > 0
             ? `${t('delivery')}: ${quote.days === 1 ? 'Next day delivery' : `${quote.days} working days`}`
@@ -201,7 +201,7 @@ function CartInner() {
       ) : null}
       {/* Point 18: the header's delivery time is not repeated here. A same-day
           address only gets the other times on offer, as an optional change. */}
-      {slots.length > 1 && !(quote && quote.days > 0) ? <DeliverySlots compact laterOnly /> : null}
+      {slots.length > 1 && !(quote && quote.distanceKm !== null && quote.distanceKm > 15) ? <DeliverySlots compact laterOnly /> : null}
 
       <div className="page-head">
         <div>
