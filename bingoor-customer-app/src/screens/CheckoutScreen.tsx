@@ -14,7 +14,7 @@ import { useGoToTab } from '../navigation/TabsContext';
 import type { AppNav } from '../navigation/types';
 import { useHomeQuery, usePublicSettingsQuery } from '../store/catalogApi';
 import { deliveryPointParams, useDeliveryPointKey } from '../store/deliveryPoint';
-import { shortDelivery } from '../utils/delivery';
+import { distanceDeliveryText, shortDelivery } from '../utils/delivery';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { Address, CheckoutProblem, PayKey, PayOptionDef, PaymentMethod } from '../types';
 import { AppHeader } from '../ui/AppHeader';
@@ -85,6 +85,7 @@ export function CheckoutScreen() {
   const [fees, setFees] = useState<Record<string, number> | null>(null);
   // Delivery days for the chosen address, from the server's quote (0 = same day).
   const [quoteDays, setQuoteDays] = useState<number | null>(null);
+  const [quoteDistanceKm, setQuoteDistanceKm] = useState<number | null>(null);
   // The server's bill for this basket and address (handling, delivery, total) - what the order is charged.
   const [bill, setBill] = useState<{ handlingFee: number; deliveryFee: number; baseDeliveryFee: number; total: number } | null>(null);
   // A tip for the delivery partner (rupees); the server adds it to the first order and pays all of it to the rider.
@@ -150,11 +151,16 @@ export function CheckoutScreen() {
   useEffect(() => {
     if (!selectedId) return;
     let live = true;
+    setFees(null);
+    setQuoteDays(null);
+    setQuoteDistanceKm(null);
+    setBill(null);
     fetchQuote(selectedId)
       .then((q) => {
         if (!live) return;
         setFees(q.paymentFees ?? null);
         setQuoteDays(typeof q.days === 'number' ? q.days : null);
+        setQuoteDistanceKm(typeof q.distanceKm === 'number' ? q.distanceKm : null);
         setBill(typeof q.total === 'number'
           ? { handlingFee: q.handlingFee ?? 0, deliveryFee: q.deliveryFee ?? 0, baseDeliveryFee: q.baseDeliveryFee ?? 0, total: q.total }
           : null);
@@ -479,7 +485,13 @@ export function CheckoutScreen() {
           <View style={styles.section}>
             <Banner
               tone="info"
-              message={`Delivery to this address: ${quoteDays >= 2 ? `${quoteDays} days` : quoteDays === 1 ? 'Next day delivery' : shortDelivery(home)}`}
+              message={`Delivery to this address: ${quoteDistanceKm !== null
+                ? distanceDeliveryText(quoteDistanceKm).replace(/^Delivery in /, '')
+                : quoteDays >= 2
+                  ? `${quoteDays} days`
+                  : quoteDays === 1
+                    ? 'Next day delivery'
+                    : shortDelivery(home)}`}
             />
           </View>
         ) : null}

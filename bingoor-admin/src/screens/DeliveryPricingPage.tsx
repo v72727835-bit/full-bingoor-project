@@ -191,10 +191,7 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
     <div className="card card-pad" style={{ marginBottom: 18 }}>
       <h2 className="card-title">Distance-based delivery pricing</h2>
       <div className="page-subtitle" style={{ marginBottom: 14 }}>
-        Each row is a distance from the warehouse. The customer must shop at least the <b>minimum</b>; deliveries within 9 km can be placed below the free-delivery threshold by paying the fee. Delivery is free from the <b>free-above</b> amount,
-        otherwise the <b>fee</b> is charged (shown struck-through when waived). A <b>handling fee</b> is always added. <b>Red order</b> sends the order to
-        the rider highlighted in red; <b>next day</b> promises next-day delivery. Customers further than the last row get the long-distance rules below and
-        their orders go only to riders marked “long distance”.
+        Each row sets the distance-based minimum shopping amount, free-delivery threshold, delivery fee, red-order flag and Cart points. The customer delivery promise is fixed by warehouse distance: up to 15 km is 19 minutes, over 15 km through 30 km is next day, and over 30 km is 3 days. A <b>handling fee</b> is always added. Customers further than 30 km get the long-distance payment rules below and their orders go only to riders marked “long distance”.
       </div>
       <div className="table-wrap">
         <table>
@@ -204,7 +201,6 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
               <th>Minimum shopping ₹</th>
               <th>Free delivery above ₹</th>
               <th>Delivery fee ₹</th>
-              <th>Next day</th>
               <th>Red order</th>
               <th title="Cart points the basket must reach before checkout. Blank = the Cart points target below; 0 = none.">Points needed</th>
               <th />
@@ -217,7 +213,6 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
                 <td><input type="number" min={0} value={b.minOrder} disabled={b.upToKm <= 9} title={b.upToKm <= 9 ? 'Orders up to 9 km can be placed by paying the delivery fee.' : undefined} onChange={(e) => setBand(i, { minOrder: num(e.target.value) })} style={{ width: 100 }} /></td>
                 <td><input type="number" min={0} value={b.freeAbove} onChange={(e) => setBand(i, { freeAbove: num(e.target.value) })} style={{ width: 100 }} /></td>
                 <td><input type="number" min={0} value={b.fee} onChange={(e) => setBand(i, { fee: num(e.target.value) })} style={{ width: 80 }} /></td>
-                <td><input type="checkbox" checked={b.nextDay} onChange={(e) => setBand(i, { nextDay: e.target.checked })} /></td>
                 <td><input type="checkbox" checked={b.redOrder} onChange={(e) => setBand(i, { redOrder: e.target.checked })} /></td>
                 <td><input type="number" min={0} value={b.points ?? ''} placeholder="default" onChange={(e) => setBand(i, { points: e.target.value === '' ? null : num(e.target.value) })} style={{ width: 90 }} /></td>
                 <td>
@@ -249,8 +244,8 @@ function PricingCard({ settings, onSave }: { settings: Settings; onSave: Save })
         <Field label="Handling fee, always charged (₹)">
           <input type="number" min={0} value={p.handlingFee} onChange={(e) => setP({ ...p, handlingFee: num(e.target.value) })} />
         </Field>
-        <Field label="Long distance: delivery in (days)">
-          <input type="number" min={1} value={p.beyondDays} onChange={(e) => setP({ ...p, beyondDays: num(e.target.value) })} />
+        <Field label="Long distance delivery time">
+          <div className="cell-muted" style={{ paddingTop: 10 }}>3 days for destinations over 30 km</div>
         </Field>
         <Field label="Long distance: minimum shopping (₹)">
           <input type="number" min={0} value={p.beyondMinOrder} onChange={(e) => setP({ ...p, beyondMinOrder: num(e.target.value) })} />

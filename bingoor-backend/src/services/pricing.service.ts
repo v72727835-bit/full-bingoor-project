@@ -63,7 +63,9 @@ export function quoteDelivery(
   let minOrder = bands[0].minOrder;
   let freeAbove = bands[0].freeAbove;
   let fee = bands[0].fee;
-  let days = 0;
+  // Customer delivery promise is tied to the actual warehouse distance,
+  // independently of the configurable fee/minimum-order bands.
+  let days = distanceKm === null ? 0 : distanceKm <= 15 ? 0 : distanceKm <= 30 ? 1 : 3;
   let redOrder = false;
   let longDistance = false;
 
@@ -75,14 +77,12 @@ export function quoteDelivery(
       minOrder = distanceKm <= 9 ? 0 : band.minOrder;
       freeAbove = band.freeAbove;
       fee = band.fee;
-      days = band.nextDay ? 1 : 0;
       redOrder = band.redOrder;
     } else {
       const last = bands[bands.length - 1];
       minOrder = pricing.beyondMinOrder ?? last.minOrder;
       freeAbove = last.freeAbove;
       fee = pricing.beyondFee ?? last.fee;
-      days = pricing.beyondDays ?? 3;
       longDistance = true;
     }
   }

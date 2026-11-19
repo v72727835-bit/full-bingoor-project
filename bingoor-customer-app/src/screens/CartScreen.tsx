@@ -12,7 +12,7 @@ import { CartQuote, fetchCartQuote } from '../api/orders';
 import { TipPicker } from '../components/TipPicker';
 import { useTip } from '../store/tip';
 import { WEB_URL } from '../config';
-import { shortDelivery } from '../utils/delivery';
+import { distanceDeliveryText, shortDelivery } from '../utils/delivery';
 import { colors, currency, gutter, ms, radius, space, themed } from '../theme';
 import { CartGroup, CartItem } from '../types';
 import { AppHeader } from '../ui/AppHeader';
@@ -51,6 +51,7 @@ export function CartScreen({ active }: TabScreenProps) {
   useEffect(() => {
     if (!active || cart.itemCount === 0) return;
     let live = true;
+    setMinQuote(null);
     fetchCartQuote(deliveryPointParams())
       .then((q) => { if (live) setMinQuote(q); })
       .catch(() => { if (live) setMinQuote(null); });
@@ -116,7 +117,15 @@ export function CartScreen({ active }: TabScreenProps) {
         <View style={styles.eta}>
           <Ionicons name={etaDays > 0 ? 'calendar-outline' : 'flash'} size={ms(17)} color={colors.brand} />
           <Txt variant="h3" tone="brand" numberOfLines={1}>
-            {etaDays >= 2 ? `Delivery in ${etaDays} days` : etaDays === 1 ? 'Next day delivery' : `Delivery in ${shortDelivery(home)}`}
+            {slowDays > 1
+              ? `Delivery in ${slowDays} days`
+              : minQuote?.distanceKm != null
+                ? distanceDeliveryText(minQuote.distanceKm)
+                : etaDays >= 2
+                  ? `Delivery in ${etaDays} days`
+                  : etaDays === 1
+                    ? 'Next day delivery'
+                    : `Delivery in ${shortDelivery(home)}`}
           </Txt>
         </View>
 

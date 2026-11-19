@@ -51,6 +51,7 @@ export async function reorder(id: string): Promise<{ cart: CartView; skipped: { 
 
 /** The server's priced cart for the delivery point: the same numbers the order is charged with. */
 export interface CartQuote {
+  distanceKm: number | null;
   subtotal: number;
   minOrder: number;
   meetsMinOrder: boolean;
