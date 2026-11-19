@@ -35,9 +35,14 @@ export function useQuote(slot: SlotKey, refreshKey: unknown, addressId?: string)
       try {
         const here = getDeliveryPoint();
         if (addressId) {
-          // Checkout quotes the selected address; the active point is only a
-          // fallback when that saved address has no map pin.
-          const q = await fetchQuote({ addressId, slot, lat: here?.lat, lng: here?.lng });
+          // The current selected map pin is the delivery destination. A saved
+          // address pin is only used when no active point has been selected.
+          const q = await fetchQuote({
+            ...(!here ? { addressId } : {}),
+            slot,
+            lat: here?.lat,
+            lng: here?.lng,
+          });
           if (live) setQuote(q);
           return;
         }

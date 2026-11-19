@@ -115,15 +115,15 @@ export const quote = asyncHandler(async (req, res) => {
   const { addressId, lat, lng, slot } = req.query as unknown as { addressId?: string; lat?: number; lng?: number; slot: Slot };
   const groups = await resolveCart(req.user!.id);
 
-  // The address's own map pin wins; without one, the customer's current
-  // location (sent as lat/lng) decides the distance band and delivery time.
+  // The active delivery pin is the selected destination and wins over an old
+  // saved address pin. Use the saved address only when no active pin was sent.
   let point: { lat: number; lng: number } | undefined;
-  if (addressId) {
+  if (lat !== undefined && lng !== undefined) point = { lat, lng };
+  if (!point && addressId) {
     const user = await User.findById(req.user!.id).select('addresses').lean();
     const a = user?.addresses?.find((x) => String(x._id) === addressId);
     if (a?.location?.lat && a.location.lng) point = { lat: a.location.lat, lng: a.location.lng };
   }
-  if (!point && lat !== undefined && lng !== undefined) point = { lat, lng };
   ok(res, await quoteFor(groups, point, slot));
 });
 

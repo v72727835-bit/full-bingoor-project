@@ -43,6 +43,28 @@ test('long-distance (beyond the last band) uses beyondFee when set', () => {
   assert.equal(near.baseDeliveryFee, 30);
 });
 
+test('distance ETA tiers are inclusive at 15 km and 30 km and ignore saved fee bands', () => {
+  const settings = {
+    pricing: {
+      handlingFee: 2,
+      bands: [
+        { upToKm: 8, minOrder: 0, freeAbove: 199, fee: 39, nextDay: false, redOrder: false },
+        { upToKm: 15, minOrder: 199, freeAbove: 999, fee: 39, nextDay: false, redOrder: true },
+        { upToKm: 25, minOrder: 199, freeAbove: 999, fee: 39, nextDay: true, redOrder: false },
+        { upToKm: 30, minOrder: 199, freeAbove: 1999, fee: 39, nextDay: true, redOrder: false },
+      ],
+      beyondDays: 3,
+    },
+  } as never;
+  const eta = (distanceKm: number) => quoteDelivery(settings, { subtotal: 100, distanceKm, slot: 'instant' }).days;
+
+  assert.equal(eta(0), 0);
+  assert.equal(eta(15), 0);
+  assert.equal(eta(15.01), 1);
+  assert.equal(eta(30), 1);
+  assert.equal(eta(30.01), 3);
+});
+
 test('6-day aisles slow an order only when every item is from a 6-day aisle', () => {
   assert.equal(orderDeliveryDays(0, [6]), 6); // single 6-day product
   assert.equal(orderDeliveryDays(0, [6, 6, 6]), 6); // only 6-day products

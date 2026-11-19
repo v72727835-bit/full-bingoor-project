@@ -184,6 +184,8 @@ function CartInner() {
           {/* The real promise comes from the distance: far addresses are next day or a few working days. */}
           {quote && quote.distanceKm !== null
             ? `${t('delivery')}: ${distanceDeliveryText(quote.distanceKm)}`
+            : !guest && !accountQuote
+            ? 'Calculating delivery time for your location…'
             : sixDayOnly > 1
             ? `${t('delivery')}: ${sixDayOnly} days`
             : quote && quote.days > 0
