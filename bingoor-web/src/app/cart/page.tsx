@@ -14,7 +14,7 @@ import { useQuote } from '../../lib/useQuote';
 import { DeliverySlots } from '../../components/DeliverySlots';
 import { fitClass } from '../../lib/art';
 import { getErrorMessage } from '../../lib/client';
-import { shortDelivery } from '../../lib/deliveryText';
+import { distanceDeliveryText, shortDelivery } from '../../lib/deliveryText';
 import { Icon } from '../../components/Icon';
 import { QuantityStepper } from '../../components/QuantityStepper';
 import { TopUpSheet } from '../../components/TopUpSheet';
@@ -184,6 +184,8 @@ function CartInner() {
           {/* The real promise comes from the distance: far addresses are next day or a few working days. */}
           {sixDayOnly > 1
             ? `${t('delivery')}: ${sixDayOnly} days`
+            : slot === 'instant' && quote && quote.distanceKm !== null
+            ? `${t('delivery')}: ${distanceDeliveryText(quote.distanceKm)}`
             : quote && quote.days > 0
             ? `${t('delivery')}: ${quote.days === 1 ? 'Next day delivery' : `${quote.days} working days`}`
             : slot === 'instant' && home

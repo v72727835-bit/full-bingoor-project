@@ -22,7 +22,7 @@ import { useCatalog } from '../../context/CatalogContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
 import { AddressForm } from '../../components/AddressForm';
-import { shortDelivery } from '../../lib/deliveryText';
+import { distanceDeliveryText, shortDelivery } from '../../lib/deliveryText';
 import { Icon, IconName } from '../../components/Icon';
 import { RequireAuth } from '../../components/RequireAuth';
 import { Alert, Badge, Button, EmptyState, Field, Input, PageLoader, Textarea } from '../../components/ui';
@@ -245,7 +245,9 @@ function CheckoutInner() {
   const showForm = adding || list.length === 0 || !!editing;
   // The same promise the cart showed: far addresses are next day or a few working days.
   const etaText =
-    quote && quote.days > 0
+    slot === 'instant' && quote && quote.distanceKm !== null
+      ? distanceDeliveryText(quote.distanceKm)
+      : quote && quote.days > 0
       ? quote.days === 1 ? 'Next day delivery' : `${quote.days} working days`
       : slot === 'instant' && home ? shortDelivery(home) : label;
   const chosen = options.find((o) => o.key === opt);
