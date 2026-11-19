@@ -28,8 +28,8 @@ test('long-distance customers see only the ticked categories, standard rows and 
     const row = await StandardCategory.create({ name: 'Diwali Deals' });
     const make = (name: string, category: unknown, extra: Record<string, unknown> = {}) =>
       Product.create({ name, shop: shop._id, category, price: 100, mrp: 120, stock: 10, ...extra });
-    await make('Atta 5 kg', atta._id, { variantGroup: 'aashirvaad-atta', variantLabel: '5 kg', price: 250 });
-    await make('Atta 10 kg', atta._id, { variantGroup: 'aashirvaad-atta', variantLabel: '10 kg', price: 480 });
+    await make('Aashirvaad Atta', atta._id, { variantGroup: 'aashirvaad-atta', variantLabel: '5 kg', unit: '5 kg', price: 250 });
+    await make('Aashirvaad Atta', atta._id, { variantGroup: 'aashirvaad-atta', variantLabel: '10 kg', unit: '10 kg', price: 480 });
     await make('Plain sweet', sweets._id);
     await make('Row sweet', sweets._id, { standardCategories: [row._id] });
     const festProduct = await make('Festival sweet', sweets._id);
@@ -43,14 +43,15 @@ test('long-distance customers see only the ticked categories, standard rows and 
       ((await get(`/products?lat=${lat}&lng=${lng}&limit=50`)).data as { name: string }[]).map((p) => p.name).sort();
 
     // About 70 km away: past the last 30 km row.
-    assert.deepEqual(await names(25.336, 83.008), ['Atta 10 kg', 'Atta 5 kg', 'Festival sweet', 'Row sweet']);
+    assert.deepEqual(await names(25.336, 83.008), ['Aashirvaad Atta', 'Festival sweet', 'Row sweet']);
     // Near the warehouse: everything.
-    assert.deepEqual(await names(24.701, 83.071), ['Atta 10 kg', 'Atta 5 kg', 'Festival sweet', 'Plain sweet', 'Row sweet']);
+    assert.deepEqual(await names(24.701, 83.071), ['Aashirvaad Atta', 'Festival sweet', 'Plain sweet', 'Row sweet']);
 
     // Point 22: each size's card lists both sizes, cheapest first; single-size items have none.
     const cards = (await get('/products?limit=50')).data as { name: string; variants?: { label: string; price: number }[] }[];
-    const five = cards.find((c) => c.name === 'Atta 5 kg')!;
+    const five = cards.find((c) => c.name === 'Aashirvaad Atta')!;
     assert.deepEqual(five.variants?.map((v) => [v.label, v.price]), [['5 kg', 250], ['10 kg', 480]]);
+    assert.equal(cards.filter((c) => c.name === 'Aashirvaad Atta').length, 1, 'variant sizes appear in one product card');
     assert.equal(cards.find((c) => c.name === 'Plain sweet')!.variants, undefined);
 
     // A short flat / house number such as "15" is a valid address line.

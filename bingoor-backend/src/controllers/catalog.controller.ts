@@ -26,13 +26,18 @@ const CAT_FIELDS = 'name nameHi slug icon image tint parent level';
 /**
  * A product stocked in several warehouses is one listing per warehouse in the
  * database. Without a delivery location (so no single warehouse to pick) a
- * customer must still see it once: keep the first copy of each name + size + aisle.
+ * customer must still see it once: keep one copy per product/size group and aisle.
  */
-function oneListingPerItem<T extends { name?: string; unit?: string; category?: unknown }>(items: T[]): T[] {
+function oneListingPerItem<T extends { name?: string; unit?: string; variantGroup?: string; category?: unknown }>(items: T[]): T[] {
   const seen = new Set<string>();
   return items.filter((p) => {
     const cat = p.category && typeof p.category === 'object' && '_id' in (p.category as object) ? (p.category as { _id: unknown })._id : p.category;
-    const key = `${(p.name ?? '').trim().toLowerCase()}|${(p.unit ?? '').trim().toLowerCase()}|${String(cat ?? '')}`;
+    // Different sizes/prices in one admin size group are one customer-facing
+    // product card. The size picker carries the individual options.
+    const group = p.variantGroup?.trim().toLowerCase();
+    const key = group
+      ? `group:${group}|${String(cat ?? '')}`
+      : `${(p.name ?? '').trim().toLowerCase()}|${(p.unit ?? '').trim().toLowerCase()}|${String(cat ?? '')}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -243,10 +248,11 @@ export const coverage = asyncHandler(async (req, res) => {
 function railQuery(categoryIds: Types.ObjectId[], limit: number, scope: Record<string, unknown> = visible) {
   return Product.find({ ...scope, category: { $in: categoryIds } })
     .sort({ soldCount: -1, rating: -1 })
-    .limit(limit)
+    .limit(limit * 4)
     .select(CARD_FIELDS)
     .populate('shop', 'name slug isOpen')
-    .lean();
+    .lean()
+    .then((items) => oneListingPerItem(items).slice(0, limit));
 }
 
 /* ---------------- home ---------------- */
@@ -322,24 +328,26 @@ export const home = asyncHandler(async (req, res) => {
     .filter(Boolean) as typeof level2;
 
   const [trending, dealPool, ...railProducts] = await Promise.all([
-    Product.find(scope).sort({ soldCount: -1, rating: -1 }).limit(12).select(CARD_FIELDS).populate('shop', 'name slug isOpen').lean(),
+    Product.find(scope).sort({ soldCount: -1, rating: -1 }).limit(48).select(CARD_FIELDS).populate('shop', 'name slug isOpen').lean()
+      .then((items) => oneListingPerItem(items).slice(0, 12)),
     Product.find({ ...scope, category: { $in: dealIds }, $expr: { $gt: ['$mrp', '$price'] } })
       .sort({ soldCount: -1 })
-      .limit(80)
+      .limit(320)
       .select(CARD_FIELDS)
       .populate('shop', 'name slug isOpen')
-      .lean(),
+      .lean()
+      .then((items) => oneListingPerItem(items).slice(0, 80)),
     ...headliners.map(async (c) => railQuery(await categoryFamily(c._id as Types.ObjectId), 10, scope)),
   ]);
 
   // Point 27: when the admin has hand-picked products for Deals of the Day,
   // show all of them (unlimited). Otherwise fall back to the automatic strip of
   // the biggest everyday savings.
-  const pickedDeals = await Product.find({ ...scope, dealOfDay: true, $expr: { $gt: ['$mrp', '$price'] } })
+  const pickedDeals = oneListingPerItem(await Product.find({ ...scope, dealOfDay: true, $expr: { $gt: ['$mrp', '$price'] } })
     .sort({ soldCount: -1, updatedAt: -1 })
     .select(CARD_FIELDS)
     .populate('shop', 'name slug isOpen')
-    .lean();
+    .lean());
   const deals = pickedDeals.length
     ? pickedDeals.map(toCard).sort((a, b) => b.discountPercent - a.discountPercent)
     : dealPool
@@ -354,12 +362,12 @@ export const home = asyncHandler(async (req, res) => {
   const standardRows = await StandardCategory.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).lean();
   const standard = (
     await mapLimit(standardRows, 4, async (row) => {
-        const items = await Product.find({ ...scope, standardCategories: row._id })
+        const items = oneListingPerItem(await Product.find({ ...scope, standardCategories: row._id })
           .sort({ sortCode: 1, name: 1 })
-          .limit(24)
+          .limit(96)
           .select(CARD_FIELDS)
           .populate('shop', 'name slug isOpen')
-          .lean();
+          .lean()).slice(0, 24);
         return items.length
           ? ({ type: 'productRail', id: `std-${row._id}`, style: 'standard', title: row.name, titleHi: row.nameHi, position: row.position, items: items.map(toCard) } as Section & { position: string })
           : null;
@@ -705,22 +713,19 @@ export const listProducts = asyncHandler(async (req, res) => {
     rating: { rating: -1, ratingCount: -1, _id: 1 },
   };
 
-  const [products, total] = await Promise.all([
-    Product.find(filter)
+  const matchingProducts = oneListingPerItem(
+    await Product.find(filter)
       .sort(sortMap[sort])
-      .skip((page - 1) * limit)
-      .limit(limit)
       .select(CARD_FIELDS)
       .populate('shop', 'name slug isOpen')
       .lean(),
-    Product.countDocuments(filter),
-  ]);
+  );
+  const products = matchingProducts.slice((page - 1) * limit, page * limit);
 
-  // Collapse duplicate listings within the selected warehouse too. Without a
-  // location, the same helper also collapses copies stocked by other warehouses.
-  const cards = oneListingPerItem(products).map(toCard);
+  // The representative card's warehouse is used to load the available sizes.
+  const cards = products.map(toCard);
   await attachVariants(cards as unknown as Record<string, unknown>[]);
-  ok(res, cards, pageMeta(page, limit, total));
+  ok(res, cards, pageMeta(page, limit, matchingProducts.length));
 });
 
 /** Brands in an aisle, for the Brand filter. */
@@ -769,7 +774,10 @@ export const getProduct = asyncHandler(async (req, res) => {
   const serving = await servingShopIds(lat, lng);
   const shopFilter = serving ? { shop: { $in: serving } } : {};
   const ROW = 10;
-  const itemKey = (x: { name?: string; unit?: string }) => `${(x.name ?? '').trim().toLowerCase()}|${(x.unit ?? '').trim().toLowerCase()}`;
+  const itemKey = (x: { name?: string; unit?: string; variantGroup?: string }) =>
+    x.variantGroup?.trim()
+      ? `group:${x.variantGroup.trim().toLowerCase()}`
+      : `${(x.name ?? '').trim().toLowerCase()}|${(x.unit ?? '').trim().toLowerCase()}`;
   const sameItem = itemKey(product);
   const rowItems = async (categoryId: Types.ObjectId, max: number) =>
     oneListingPerItem(
