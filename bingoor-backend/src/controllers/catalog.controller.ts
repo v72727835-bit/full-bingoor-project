@@ -462,7 +462,10 @@ export const home = asyncHandler(async (req, res) => {
   const homeSettings = (await loadSettings()).settings;
   const instant = homeSettings.deliverySlots?.find((x) => x.key === 'instant');
   // The admin's default promise (shown when no address/location is set).
-  const defaultText = instant?.label || '19 minutes';
+  // A label with no time in it ("fast delivery") tells the customer nothing, so it
+  // falls back to the real 19-minute promise; "2 hours" or "30 minutes" are kept.
+  const slotLabel = instant?.label?.trim() ?? '';
+  const defaultText = /\d/.test(slotLabel) ? slotLabel : '19 minutes';
   // Point 1/2/6: with a location, show the real promise for that distance;
   // without one, keep the admin's default. The nearest serving shop's distance
   // drives the delivery days through the same pricing bands checkout uses.
