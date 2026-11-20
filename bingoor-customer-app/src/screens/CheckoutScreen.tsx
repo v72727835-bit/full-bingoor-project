@@ -219,6 +219,7 @@ export function CheckoutScreen() {
         navigation.replace('OrderSuccess', {
           orderIds: fresh.map((o) => o._id),
           grandTotal: fresh.reduce((sum, o) => sum + o.total, 0),
+          deliveryDays: Math.max(0, ...fresh.map((o) => o.deliveryDays ?? 0)),
         });
         return true;
       }
@@ -271,6 +272,7 @@ export function CheckoutScreen() {
       navigation.replace('OrderSuccess', {
         orderIds: result.orders.map((o) => o._id),
         grandTotal: result.grandTotal,
+        deliveryDays: Math.max(0, ...result.orders.map((o) => o.deliveryDays ?? 0)),
       });
     } catch (err) {
       // 409 carries a list of exactly what is blocking the order

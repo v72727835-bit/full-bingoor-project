@@ -20,6 +20,7 @@ import { Banner, EmptyState } from '../ui/Feedback';
 import { ProductCardSkeleton, SkeletonBlock } from '../ui/Skeleton';
 import { Txt } from '../ui/Text';
 import { shortDelivery } from '../utils/delivery';
+import { setDeliveryPromise } from '../store/deliveryPromise';
 import { tapConfirm, tapTab } from '../utils/haptics';
 import { usePublicSettingsQuery } from '../store/catalogApi';
 import { useGrid, useRailCardWidth } from '../utils/layout';
@@ -104,6 +105,11 @@ export function HomeScreen({ active }: TabScreenProps) {
     const own = all.filter((s) => s.groupSlug === tab);
     return own.length ? own : all;
   }, [data, tab]);
+
+  // Share the location's real promise so product cards on every other screen match the header.
+  useEffect(() => {
+    if (data) setDeliveryPromise(shortDelivery(data));
+  }, [data]);
 
   const handlers: SectionHandlers = {
     deliveryText: shortDelivery(data),

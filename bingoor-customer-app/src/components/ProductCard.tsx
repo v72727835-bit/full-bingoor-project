@@ -12,6 +12,7 @@ import { StarLine } from '../ui/Rating';
 import { SmartImage } from '../ui/SmartImage';
 import { Stepper } from '../ui/Stepper';
 import { useLocalName } from '../store/language';
+import { useDeliveryPromise } from '../store/deliveryPromise';
 import { Txt } from '../ui/Text';
 
 interface Props {
@@ -30,7 +31,10 @@ interface Props {
  * then a centred column: name, price, rating, delivery time. The name keeps a
  * fixed two-line height so a row of cards lines up on the price.
  */
-function ProductCardBase({ product, width, onPress, deliveryText = '19 min', style }: Props) {
+function ProductCardBase({ product, width, onPress, deliveryText: deliveryTextProp, style }: Props) {
+  // Lists that do not pass a time still show the customer's real promise (by distance).
+  const sharedPromise = useDeliveryPromise();
+  const deliveryText = deliveryTextProp ?? sharedPromise;
   const { quantity: qty, add, setQuantity, remove } = useCartItem(product._id);
   const { isSaved, toggle } = useWishlist();
   const localName = useLocalName();
@@ -112,7 +116,11 @@ function ProductCardBase({ product, width, onPress, deliveryText = '19 min', sty
           <Icon name="time-outline" size={ms(11)} color={colors.inkMuted} />
           <Txt variant="caption" tone="muted">
             {/* Aisles the admin put on the slower schedule say so here. */}
-            {product.deliveryDays && product.deliveryDays > 1 ? `${product.deliveryDays} days` : deliveryText}
+            {product.deliveryDays && product.deliveryDays > 1
+              ? `${product.deliveryDays} days`
+              : product.deliveryDays === 1
+                ? 'Next day delivery'
+                : deliveryText}
           </Txt>
         </View>
 

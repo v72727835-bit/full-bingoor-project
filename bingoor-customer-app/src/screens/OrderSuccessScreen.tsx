@@ -17,6 +17,7 @@ export function OrderSuccessScreen() {
 
   const pop = useRef(new Animated.Value(0)).current;
   const count = params.orderIds.length;
+  const days = params.deliveryDays ?? 0;
 
   useEffect(() => {
     Animated.sequence([
@@ -87,7 +88,7 @@ export function OrderSuccessScreen() {
             <View style={styles.eta}>
               <Ionicons name="time-outline" size={ms(16)} color={colors.brand} />
               <Txt variant="labelSm" tone="brand" style={styles.etaText}>
-                Usually delivered the same day
+                {days > 1 ? `Delivery in about ${days} days` : days === 1 ? 'Delivery by tomorrow' : 'Arriving in about 19 minutes'}
               </Txt>
             </View>
           </View>

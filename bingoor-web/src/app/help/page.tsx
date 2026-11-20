@@ -22,7 +22,7 @@ export default function Page() {
       <section className="card card-pad" style={{ marginTop: 16 }}>
         <h2 className="h3">Common questions</h2>
         <ul className={s.list}>
-          <li><b>How fast is delivery?</b> Pick 19 minutes, 2 hours or next day at checkout. Some aisles take longer and say so on the product.</li>
+          <li><b>How fast is delivery?</b> It depends on how far you are from your nearest warehouse: within 15 km in 19 minutes, 15 to 30 km the next day, and beyond 30 km in 3 days. Some aisles take longer and say so on the product.</li>
           <li><b>Can I pay cash?</b> Yes, cash on delivery is available for most products and nearby addresses.</li>
           <li><b>My item is out of stock.</b> Tap it and choose “Notify me”; we will tell you when it is back.</li>
         </ul>

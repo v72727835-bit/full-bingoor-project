@@ -56,7 +56,12 @@ export function OrderProgressPopup({ hidden }: { hidden?: boolean }) {
 
   if (!order || !visible || hidden) return null;
 
-  const eta = order.deliveryDays && order.deliveryDays > 1 ? `in about ${order.deliveryDays} days` : 'soon';
+  const eta =
+    order.deliveryDays && order.deliveryDays > 1
+      ? `in about ${order.deliveryDays} days`
+      : order.deliveryDays === 1
+        ? 'by tomorrow'
+        : 'soon';
 
   return (
     <Pressable

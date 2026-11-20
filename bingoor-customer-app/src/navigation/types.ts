@@ -25,7 +25,7 @@ export type AppStackParamList = {
   Checkout: undefined;
   AddressList: { pickMode?: boolean } | undefined;
   AddressForm: { address?: Address } | undefined;
-  OrderSuccess: { orderIds: string[]; grandTotal: number };
+  OrderSuccess: { orderIds: string[]; grandTotal: number; deliveryDays?: number };
   OrderDetail: { id: string };
   Wishlist: undefined;
   Support: undefined;

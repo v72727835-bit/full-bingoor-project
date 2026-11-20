@@ -71,7 +71,9 @@ export function OrderProgressToast() {
   const eta =
     order.deliveryDays && order.deliveryDays > 1
       ? `in about ${order.deliveryDays} days`
-      : 'soon';
+      : order.deliveryDays === 1
+        ? 'by tomorrow'
+        : 'soon';
 
   return (
     <div className={s.toast} role="status">
