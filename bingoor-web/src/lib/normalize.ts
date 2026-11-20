@@ -286,6 +286,7 @@ export function home(raw: Record<string, unknown>): Home {
   return {
     deliveryMins: (raw.deliveryMins as number) ?? 0,
     deliveryText: (raw.deliveryText as string) || undefined,
+    deliveryDays: (raw.deliveryDays as number) ?? 0,
     serviceable: raw.serviceable !== false,
     shopCount: (raw.shopCount as number) ?? 0,
     topTabs: ((raw.topTabs as RawCategory[]) ?? []).map(category),

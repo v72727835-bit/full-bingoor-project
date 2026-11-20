@@ -271,6 +271,8 @@ export interface Home {
   deliveryMins: number;
   /** The home delivery promise the admin typed, e.g. "19 minutes" or "Next day delivery". */
   deliveryText?: string;
+  /** Days for the customer's distance: 0 = within 15 km (minutes), 1 = 15-30 km (next day), 3 = beyond 30 km. */
+  deliveryDays?: number;
   /** False when no shop delivers to the customer's pinned address yet. */
   serviceable: boolean;
   shopCount: number;

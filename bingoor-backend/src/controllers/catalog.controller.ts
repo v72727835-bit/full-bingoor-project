@@ -138,16 +138,23 @@ async function categoryFamily(rootId: Types.ObjectId): Promise<Types.ObjectId[]>
 
 const visible = { isActive: true, stock: { $gt: 0 } };
 
-/** Active shops whose own delivery radius covers a point, nearest first. */
+/**
+ * Active shops that can serve a point, nearest first. Every customer is served by
+ * the nearest warehouse and the distance decides the promise (0-15 km 19 minutes,
+ * 15-30 km next day, 30+ km 3 days), so a warehouse's own `deliveryRadiusKm` must
+ * not hide it: with the usual 10 km radius that made every customer past 10 km
+ * "not serviceable" and "Next day" / "3 days" never showed. Shops with no location
+ * cannot be measured and are left out.
+ */
 async function shopsServing(lat: number, lng: number) {
   const shops = await Shop.find({ isActive: true }).select('name location deliveryRadiusKm isOpen').lean();
   return shops
     .map((sh) => {
       const c = sh.location?.coordinates;
-      const km = c ? haversineKm(lat, lng, c[1], c[0]) : Infinity;
+      const km = c && (c[0] || c[1]) ? haversineKm(lat, lng, c[1], c[0]) : Infinity;
       return { _id: sh._id as Types.ObjectId, name: sh.name, km, radius: sh.deliveryRadiusKm ?? 10, isOpen: sh.isOpen !== false };
     })
-    .filter((sh) => sh.km <= sh.radius)
+    .filter((sh) => Number.isFinite(sh.km))
     .sort((a, b) => a.km - b.km);
 }
 

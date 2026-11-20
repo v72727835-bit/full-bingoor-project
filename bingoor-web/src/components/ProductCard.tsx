@@ -8,6 +8,7 @@ import { Product } from '../lib/types';
 import { getErrorMessage } from '../lib/client';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useCatalog } from '../context/CatalogContext';
 import { useWishlist } from '../context/WishlistContext';
 import { Icon } from './Icon';
 import { useLanguage } from '../context/LanguageContext';
@@ -40,6 +41,9 @@ export function ProductCard({
   const { name } = useLanguage();
   const { user } = useAuth();
   const { quantityOf, addItem, updateItem } = useCart();
+  const { home } = useCatalog();
+  // The longer of the aisle's own days and the customer's distance (15-30 km next day, 30+ km 3 days).
+  const days = Math.max(product.deliveryDays ?? 0, home?.deliveryDays ?? 0);
   const { show } = useToast();
   const router = useRouter();
   const wishlist = useWishlist();
@@ -172,8 +176,10 @@ export function ProductCard({
           </div>
         ) : null}
 
-        {product.deliveryDays && product.deliveryDays > 1 ? (
-          <span className={s.days}>Delivery in {product.deliveryDays} days</span>
+        {days > 1 ? (
+          <span className={s.days}>Delivery in {days} days</span>
+        ) : days === 1 ? (
+          <span className={s.days}>Next day delivery</span>
         ) : null}
 
         <div className={s.buy}>

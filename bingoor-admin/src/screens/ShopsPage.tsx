@@ -282,6 +282,7 @@ function ShopForm({ shop, onClose, onSaved }: { shop: Shop | null; onClose: () =
           </Field>
           <Field label="Delivery radius (km)">
             <input type="number" min={1} step="any" required value={form.deliveryRadiusKm} onChange={(e) => set('deliveryRadiusKm', e.target.value)} />
+            <span className="cell-muted" style={{ fontSize: 12 }}>For reference only. Every customer is served by their nearest warehouse; time follows distance: 0-15 km 19 min, 15-30 km next day, 30+ km 3 days.</span>
           </Field>
         </div>
         <div className="field-row">
