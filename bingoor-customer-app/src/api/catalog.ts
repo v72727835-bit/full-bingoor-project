@@ -100,3 +100,21 @@ export async function fetchBrands(category?: string): Promise<string[]> {
   const { data } = await api.get<{ data: string[] }>('/products/brands', { params: category ? { category } : {} });
   return data.data ?? [];
 }
+
+/** The one warehouse an order to a pin comes from: how far, where, and when it arrives. */
+export interface NearestWarehouse {
+  distanceKm: number;
+  lat?: number;
+  lng?: number;
+  isOpen: boolean;
+  /** 0 = within 15 km (19 minutes), 1 = 15-30 km (next day), 3 = beyond 30 km. */
+  deliveryDays: number;
+  deliveryText: string;
+}
+
+export async function fetchNearestWarehouse(lat: number, lng: number): Promise<NearestWarehouse | null> {
+  const { data } = await api.get<ApiEnvelope<{ nearest?: NearestWarehouse | null }>>('/coverage', {
+    params: { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 },
+  });
+  return data.data.nearest ?? null;
+}

@@ -152,7 +152,7 @@ async function shopsServing(lat: number, lng: number) {
     .map((sh) => {
       const c = sh.location?.coordinates;
       const km = c && (c[0] || c[1]) ? haversineKm(lat, lng, c[1], c[0]) : Infinity;
-      return { _id: sh._id as Types.ObjectId, name: sh.name, km, radius: sh.deliveryRadiusKm ?? 10, isOpen: sh.isOpen !== false };
+      return { _id: sh._id as Types.ObjectId, name: sh.name, km, radius: sh.deliveryRadiusKm ?? 10, isOpen: sh.isOpen !== false, lat: c?.[1], lng: c?.[0] };
     })
     .filter((sh) => Number.isFinite(sh.km))
     .sort((a, b) => a.km - b.km);
@@ -246,9 +246,17 @@ async function visibleToFarCustomer<T extends { _id: unknown }>(list: T[], lat?:
 export const coverage = asyncHandler(async (req, res) => {
   const { lat, lng } = req.query as unknown as { lat: number; lng: number };
   const serving = await shopsServing(lat, lng);
+  // The one warehouse an order here comes from: the nearest open one, else the nearest.
+  const sh = serving.find((x) => x.isOpen) ?? serving[0];
+  if (!sh) return ok(res, { serviceable: false, warehouses: [], nearest: null });
+  const distanceKm = Math.round(sh.km * 10) / 10;
+  const q = quoteDelivery((await loadSettings()).settings, { subtotal: 0, distanceKm: sh.km, slot: 'instant' });
+  const deliveryText = q.days >= 2 ? `${q.days} days delivery` : q.days === 1 ? 'Next day delivery' : '19 minutes';
   ok(res, {
-    serviceable: serving.length > 0,
-    warehouses: serving.map((sh) => ({ name: sh.name, distanceKm: Math.round(sh.km * 10) / 10, isOpen: sh.isOpen })),
+    serviceable: true,
+    warehouses: [{ name: sh.name, distanceKm, isOpen: sh.isOpen }],
+    /** For the pin picker: how far the serving warehouse is, where it is, and when an order arrives. */
+    nearest: { distanceKm, lat: sh.lat, lng: sh.lng, isOpen: sh.isOpen, deliveryDays: q.days, deliveryText },
   });
 });
 

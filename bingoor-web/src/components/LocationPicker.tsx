@@ -5,6 +5,7 @@ import { accuratePosition, reverseGeocode, searchPlaces } from '../lib/geo';
 import { addBaseLayer } from '../lib/mapBase';
 import { useSettings } from '../context/SettingsContext';
 import { getDeliveryPoint } from '../lib/deliveryPoint';
+import { fetchCoverage, NearestWarehouse } from '../api/catalog';
 import { Icon } from './Icon';
 import { Button } from './ui';
 import s from './LocationPicker.module.css';
@@ -41,7 +42,7 @@ export async function reverse(lat: number, lng: number): Promise<Partial<PickedP
  * street, move the map under the fixed pin to the exact doorstep, or jump to the
  * phone's own position with "Use my current location".
  */
-export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: number }; onPick: (p: PickedPlace) => void }) {
+export function LocationPicker({ value, onPick, showNearest = false }: { value?: { lat: number; lng: number }; onPick: (p: PickedPlace) => void; showNearest?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('leaflet').Map | null>(null);
   const leaflet = useRef<typeof import('leaflet') | null>(null);
@@ -54,6 +55,46 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
   const [searching, setSearching] = useState(false);
   const [note, setNote] = useState('');
   const [movingPin, setMovingPin] = useState(false);
+  // The one warehouse an order to this pin comes from: how far, and when it arrives.
+  const [nearest, setNearest] = useState<NearestWarehouse | null>(null);
+  const [nearestBusy, setNearestBusy] = useState(false);
+  const nearTurn = useRef(0);
+  const nearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const whLayer = useRef<import('leaflet').LayerGroup | null>(null);
+
+  /** Marker on the warehouse and a dotted line to the pin, so the customer sees exactly where it is. */
+  const drawWarehouse = useCallback((pin: { lat: number; lng: number }, wh: NearestWarehouse | null) => {
+    const L = leaflet.current;
+    const map = mapRef.current;
+    if (!L || !map) return;
+    whLayer.current?.remove();
+    whLayer.current = null;
+    if (!wh || wh.lat == null || wh.lng == null) return;
+    const icon = L.divIcon({ className: s.whMarker, html: '<span>🏬</span>', iconSize: [30, 30], iconAnchor: [15, 15] });
+    whLayer.current = L.layerGroup([
+      L.polyline([[wh.lat, wh.lng], [pin.lat, pin.lng]], { color: '#0E8A3E', weight: 3, dashArray: '6 8', opacity: 0.8, interactive: false }),
+      L.marker([wh.lat, wh.lng], { icon, interactive: false, keyboard: false }),
+    ]).addTo(map);
+  }, []);
+
+  const lookNearest = useCallback((lat: number, lng: number) => {
+    if (!showNearest) return;
+    if (nearTimer.current) clearTimeout(nearTimer.current);
+    const turn = ++nearTurn.current;
+    setNearestBusy(true);
+    nearTimer.current = setTimeout(async () => {
+      try {
+        const cover = await fetchCoverage(lat, lng);
+        if (turn !== nearTurn.current) return;
+        setNearest(cover.nearest ?? null);
+        drawWarehouse({ lat, lng }, cover.nearest ?? null);
+      } catch {
+        if (turn === nearTurn.current) setNearest(null);
+      } finally {
+        if (turn === nearTurn.current) setNearestBusy(false);
+      }
+    }, 350);
+  }, [showNearest, drawWarehouse]);
 
   // Last point handed to onPick, so the map's own moveend after a jump
   // (search, GPS) does not look the same address up twice.
@@ -62,11 +103,12 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
   const place = useCallback(
     async (lat: number, lng: number, move = true) => {
       lastRef.current = { lat, lng };
+      lookNearest(lat, lng);
       if (move) mapRef.current?.setView([lat, lng], Math.max(mapRef.current.getZoom(), 16));
       onPick({ lat, lng });
       onPick({ lat, lng, ...(await reverse(lat, lng)) });
     },
-    [onPick],
+    [onPick, lookNearest],
   );
 
   useEffect(() => {
@@ -199,6 +241,22 @@ export function LocationPicker({ value, onPick }: { value?: { lat: number; lng: 
           <Icon name="pin" size={18} />
         </button>
       </div>
+      {showNearest && (nearest || nearestBusy) ? (
+        <div className={s.nearest} role="status" aria-live="polite">
+          <span className={s.nearIcon} aria-hidden><Icon name="store" size={18} /></span>
+          {nearest ? (
+            <span className={s.nearText}>
+              <b>Nearest warehouse: {nearest.distanceKm < 1 ? `${Math.round(nearest.distanceKm * 1000)} m` : `${nearest.distanceKm} km`} away</b>
+              <span>
+                <Icon name={nearest.deliveryDays > 0 ? 'clock' : 'bolt'} size={13} /> {nearest.deliveryDays === 0 ? 'Delivery in 19 minutes' : nearest.deliveryText}
+                {nearest.isOpen ? '' : ' · warehouse closed right now'}
+              </span>
+            </span>
+          ) : (
+            <span className={s.nearText}><b>Finding the nearest warehouse…</b></span>
+          )}
+        </div>
+      ) : null}
       <div className={s.foot}>
         <span className="body-sm">{movingPin ? 'Move the map so the pin sits on your doorstep.' : 'Page scrolling stays available. Turn on map movement to place the pin.'}</span>
         <Button type="button" size="sm" variant={movingPin ? 'soft' : 'primary'} icon={movingPin ? 'check' : 'pin'} onClick={() => setMovingPin((v) => !v)}>

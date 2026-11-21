@@ -193,3 +193,50 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   cursor: pointer;
 }
+
+/* Nearest warehouse: how far, and when an order to this pin arrives. */
+.nearest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--brand-line, #a3d9b5);
+  background: var(--brand-tint, #e8f6ed);
+}
+.nearIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--brand, #0e8a3e);
+  color: #fff;
+}
+.nearText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+.nearText span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-soft, #555);
+}
+.whMarker {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #0e8a3e;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  font-size: 16px;
+  line-height: 1;
+}

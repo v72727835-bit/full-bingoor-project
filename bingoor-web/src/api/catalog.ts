@@ -155,9 +155,21 @@ export const fetchBrands = async (category?: string): Promise<string[]> => {
   return data.data as string[];
 };
 
+/** The one warehouse an order to a pin comes from. */
+export interface NearestWarehouse {
+  distanceKm: number;
+  lat?: number;
+  lng?: number;
+  isOpen: boolean;
+  /** 0 = within 15 km (19 minutes), 1 = 15-30 km (next day), 3 = beyond 30 km. */
+  deliveryDays: number;
+  deliveryText: string;
+}
+
 export interface Coverage {
   serviceable: boolean;
   warehouses: { name: string; distanceKm: number; isOpen: boolean }[];
+  nearest?: NearestWarehouse | null;
 }
 
 /** Does any warehouse deliver to this point? */

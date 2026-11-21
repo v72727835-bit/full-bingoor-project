@@ -29,6 +29,8 @@ test('15-30 km shows next day and 30+ km shows 3 days even when the warehouse ra
     const owner = await User.create({ name: 'Owner', phone: '9000000000', password: 'test-password', role: 'seller' });
     const customer = await User.create({ name: 'Customer', phone: '9000000001', password: 'test-password', role: 'customer' });
     const shop = await Shop.create({ name: 'Sanganer', owner: owner._id, deliveryRadiusKm: 10, isOpen: true, location: { type: 'Point', coordinates: [W.lng, W.lat] } });
+    // A second warehouse 60 km south: never the nearest for these pins.
+    await Shop.create({ name: 'Far', owner: owner._id, deliveryRadiusKm: 10, isOpen: true, location: { type: 'Point', coordinates: [W.lng, W.lat - 60 / 111] } });
     await Shop.init();
     await Settings.create({ key: 'global' });
     const dairy = await Category.create({ name: 'Dairy, Bread & Eggs', isActive: true, level: 1 });
@@ -55,6 +57,12 @@ test('15-30 km shows next day and 30+ km shows 3 days even when the warehouse ra
 
       const cov = (await get(`/coverage?${pin(km)}`)).body.data;
       assert.equal(cov.serviceable, true, `${km} km: coverage says we deliver`);
+      // The pin picker shows the one warehouse the order comes from, how far it is and when it arrives.
+      assert.ok(Math.abs(cov.nearest.distanceKm - km) < 0.6, `${km} km: nearest distance ${cov.nearest.distanceKm}`);
+      assert.equal(cov.nearest.deliveryDays, days, `${km} km: nearest deliveryDays`);
+      assert.equal(cov.nearest.deliveryText, text, `${km} km: nearest deliveryText`);
+      assert.ok(Math.abs(cov.nearest.lat - W.lat) < 1e-6 && Math.abs(cov.nearest.lng - W.lng) < 1e-6, 'warehouse location for the map marker');
+      assert.equal(cov.warehouses.length, 1, 'only the one serving warehouse is listed');
 
       const list = (await get(`/products?${pin(km)}`)).body.data as { name: string }[];
       assert.ok(list.some((p) => p.name === 'Amul Milk'), `${km} km: products are listed`);

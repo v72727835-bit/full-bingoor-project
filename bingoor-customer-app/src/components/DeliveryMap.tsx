@@ -18,8 +18,10 @@ const same = (a?: Point, b?: Point) => !!a && !!b && Math.abs(a.lat - b.lat) < 1
  * address. One finger moves the map: the WebView keeps the touch, so the screen
  * around it does not scroll instead.
  */
-export function DeliveryMap({ destination, pickup, rider, onPick, focusKey = 0, height = 300 }: {
+export function DeliveryMap({ destination, pickup, rider, onPick, focusKey = 0, height = 300, warehouse }: {
   destination?: Point; pickup?: Point; rider?: Point; onPick?: (pin: PickedPin) => void;
+  /** Pick mode: the nearest warehouse, drawn with a dotted line to the pin. */
+  warehouse?: Point | null;
   /** Bump it to move the pin to `destination` and read its address again, even if the point is unchanged. */
   focusKey?: number; height?: number;
 }) {
@@ -42,6 +44,8 @@ export function DeliveryMap({ destination, pickup, rider, onPick, focusKey = 0, 
   const inject = (data: object) => ref.current?.injectJavaScript(`window.bingoorMapUpdate?.(${JSON.stringify(data)});true;`);
   const sendRider = () => inject({ type: 'positions', rider });
   useEffect(sendRider, [rider?.lat, rider?.lng]);
+  const sendWarehouse = () => { if (picking) inject({ type: 'warehouse', lat: warehouse?.lat, lng: warehouse?.lng }); };
+  useEffect(() => { if (loaded.current) sendWarehouse(); }, [warehouse?.lat, warehouse?.lng]);
 
   // A new point from outside the map (GPS, a pasted pin): move the pin there.
   const focused = useRef(0);
@@ -69,6 +73,7 @@ export function DeliveryMap({ destination, pickup, rider, onPick, focusKey = 0, 
         loaded.current = true;
         sendRider();
         moveTo();
+        sendWarehouse();
       }}
       onMessage={(event) => {
         try {

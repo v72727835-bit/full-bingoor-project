@@ -296,6 +296,7 @@ export function AddressForm({
       ) : null}
       {manual ? (
         <LocationPicker
+          showNearest
           value={f.location}
           onPick={(p) => {
             picked(p);

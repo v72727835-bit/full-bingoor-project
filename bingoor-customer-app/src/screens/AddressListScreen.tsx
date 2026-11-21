@@ -1,11 +1,12 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { getErrorMessage } from '../api/client';
 import { deleteAddress, fetchAddresses, setDefaultAddress } from '../api/user';
+import { fetchNearestWarehouse, NearestWarehouse } from '../api/catalog';
 import type { AppNav } from '../navigation/types';
 import { colors, gutter, ms, radius, space, themed } from '../theme';
 import { Address } from '../types';
@@ -27,6 +28,15 @@ export function AddressListScreen() {
   const [addresses, setAddresses] = useState<Address[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // For each saved address: how far its warehouse is and when an order there arrives.
+  const [near, setNear] = useState<Record<string, NearestWarehouse>>({});
+  useEffect(() => {
+    let live = true;
+    Promise.all((addresses ?? []).filter((a) => a.location).map(async (a) => {
+      try { const n = await fetchNearestWarehouse(a.location!.lat, a.location!.lng); return n ? ([a._id, n] as const) : null; } catch { return null; }
+    })).then((rows) => { if (live) setNear(Object.fromEntries(rows.filter((r): r is readonly [string, NearestWarehouse] => !!r))); });
+    return () => { live = false; };
+  }, [addresses]);
 
   const load = useCallback(async () => {
     try {
@@ -153,6 +163,14 @@ export function AddressListScreen() {
             <Txt variant="caption" tone="faint" style={styles.phone}>
               Phone {item.phone}
             </Txt>
+            {near[item._id] ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(4), marginTop: ms(4) }}>
+                <Ionicons name="storefront-outline" size={ms(14)} color={colors.brandText} />
+                <Txt variant="caption" tone="brand">
+                  Warehouse {near[item._id].distanceKm} km away · {near[item._id].deliveryDays === 0 ? '19 minutes' : near[item._id].deliveryText}
+                </Txt>
+              </View>
+            ) : null}
 
             {!item.isDefault ? (
               <Button

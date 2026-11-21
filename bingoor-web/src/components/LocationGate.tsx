@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { LocationPicker, PickedPlace } from './LocationPicker';
 import { fetchAddresses, setDefaultAddress } from '../api/account';
-import { fetchCoverage } from '../api/catalog';
+import { fetchCoverage, NearestWarehouse } from '../api/catalog';
 import { useAuth } from '../context/AuthContext';
 import { DeliveryPoint, POINT_EVENT, getDeliveryPoint, setDeliveryPoint } from '../lib/deliveryPoint';
 import { Address } from '../lib/types';
@@ -38,6 +38,15 @@ export function LocationGate() {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
+  // For each saved address: how far its warehouse is and when an order there arrives.
+  const [near, setNear] = useState<Record<string, NearestWarehouse>>({});
+  useEffect(() => {
+    let live = true;
+    Promise.all(addresses.filter((a) => a.location).map(async (a) => {
+      try { const c = await fetchCoverage(a.location!.lat, a.location!.lng); return c.nearest ? ([a.id, c.nearest] as const) : null; } catch { return null; }
+    })).then((rows) => { if (live) setNear(Object.fromEntries(rows.filter((r): r is readonly [string, NearestWarehouse] => !!r))); });
+    return () => { live = false; };
+  }, [addresses]);
   const [q, setQ] = useState('');
   const [pin, setPin] = useState<PickedPlace | undefined>();
   const [showMap, setShowMap] = useState(false);
@@ -216,6 +225,11 @@ export function LocationGate() {
                     {[a.line1, a.city, a.pincode].filter(Boolean).join(', ')}
                     {a.location ? '' : ' (no map pin - edit it in My addresses)'}
                   </span>
+                  {near[a.id] ? (
+                    <span className={s.addrBody} style={{ color: 'var(--brand-text)', fontWeight: 600 }}>
+                      🏬 Warehouse {near[a.id].distanceKm} km away · {near[a.id].deliveryDays === 0 ? '19 minutes' : near[a.id].deliveryText}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -225,7 +239,7 @@ export function LocationGate() {
         <div style={{ margin: '16px 0', display: 'grid', gap: 10 }}>
           <Button variant="outline" onClick={() => { gpsTurn.current++; setShowMap((value) => !value); }}>Set an exact pin on map</Button>
           {showMap ? <>
-            <LocationPicker value={pin ?? point ?? undefined} onPick={setPin} />
+            <LocationPicker showNearest value={pin ?? point ?? undefined} onPick={setPin} />
             <Button disabled={!pin || !!busy} onClick={() => pin && choose(pin.lat, pin.lng, shortPlace(pin), { place: pin, accuracy: 0 })}>Use this delivery pin</Button>
           </> : null}
           <Link href="/addresses" onClick={() => setForced(false)}>Save or edit a delivery address</Link>

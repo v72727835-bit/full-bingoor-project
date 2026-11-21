@@ -1,6 +1,6 @@
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Clipboard,
   KeyboardAvoidingView,
@@ -17,6 +17,8 @@ import { useAuth } from '../context/AuthContext';
 import type { AppNav, AppRoute } from '../navigation/types';
 import { colors, gutter, ms, radius, space, themed } from '../theme';
 import { DeliveryMap, PickedPin } from '../components/DeliveryMap';
+import { NearestWarehouseCard } from '../components/NearestWarehouseCard';
+import { fetchNearestWarehouse, NearestWarehouse } from '../api/catalog';
 import { deliveryPointParams } from '../store/deliveryPoint';
 import { AddressLabel } from '../types';
 import { AppHeader } from '../ui/AppHeader';
@@ -82,6 +84,21 @@ export function AddressFormScreen() {
   // taps "Use my current location" or moves the map pin; the map only starts near them.
   const [location, setLocation] = useState<{ lat: number; lng: number } | undefined>(existing?.location);
   const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | undefined>(existing?.location ?? deliveryPointParams() ?? undefined);
+  // The warehouse an order to this pin comes from: distance, place on the map and delivery time.
+  const [nearest, setNearest] = useState<NearestWarehouse | null>(null);
+  const [nearestBusy, setNearestBusy] = useState(false);
+  useEffect(() => {
+    if (!mapPoint) return;
+    let live = true;
+    setNearestBusy(true);
+    const t = setTimeout(() => {
+      fetchNearestWarehouse(mapPoint.lat, mapPoint.lng)
+        .then((n) => { if (live) setNearest(n); })
+        .catch(() => { if (live) setNearest(null); })
+        .finally(() => { if (live) setNearestBusy(false); });
+    }, 350);
+    return () => { live = false; clearTimeout(t); };
+  }, [mapPoint?.lat, mapPoint?.lng]);
   const [focusKey, setFocusKey] = useState(0);
   const [pinnedAt, setPinnedAt] = useState<string>('');
   const [mapTouch, setMapTouch] = useState(false);
@@ -272,8 +289,9 @@ export function AddressFormScreen() {
             onTouchEnd={() => setMapTouch(false)}
             onTouchCancel={() => setMapTouch(false)}
           >
-            <DeliveryMap destination={mapPoint} focusKey={focusKey} onPick={onPick} height={ms(420)} />
+            <DeliveryMap destination={mapPoint} focusKey={focusKey} onPick={onPick} height={ms(420)} warehouse={nearest?.lat != null && nearest?.lng != null ? { lat: nearest.lat, lng: nearest.lng } : null} />
           </View>
+          <NearestWarehouseCard nearest={nearest} loading={nearestBusy} />
           <Txt variant="caption" tone="muted" style={styles.mapHint}>
             Move the map with your finger to put the pin on your entrance. Street, city, state and PIN fill in by themselves.
           </Txt>
