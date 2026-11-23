@@ -21,3 +21,11 @@ Customer flow: allow location permission, adjust the delivery pin, confirm it, c
 Rider flow: accepting an order opens the active delivery map with the warehouse pickup and customer doorstep, with pickup navigation and delivery directions. The existing location watcher reports the rider position while the app is open and location permission/GPS are enabled. Customer tracking and the admin order detail refresh every 10 seconds. This change does not add an Android background location service: tracking while the rider app is suspended must be tested separately and requires additional native work if it is needed.
 
 Before rollout, test provider sign-in on the release-signed APK, GPS permission denial, moving/saving a pin, selecting another saved address at checkout, slow and failed cart writes, two active rider orders, an area without Street View, and an actual rider-to-customer trip. No production credentials or accounts are supplied by this change.
+
+## Meta (Facebook / Instagram) setup checklist
+
+1. developers.facebook.com > Create App, use case "Authenticate and request data from users with Facebook Login". Copy App ID and App secret (Settings > Basic).
+2. Facebook Login > Settings: add valid OAuth redirect URI `https://bingoor.com/auth/mobile/facebook`; add the website domain to App domains and allowed JavaScript SDK domains.
+3. Instagram: add the Instagram product (API setup with Instagram login) to the app, copy the Instagram App ID and Instagram App secret (these differ from the Facebook ones), and add redirect URIs `https://bingoor.com/auth/instagram` and `https://bingoor.com/auth/mobile/instagram`.
+4. Save the four values in Admin > Login & Payments, or set `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET` on the backend (see `bingoor-backend/.env.social.example`). Secrets are never committed.
+5. While the app is in Development mode only app admins/testers can sign in. Switch to Live (needs privacy policy URL and data deletion info) so all customers can.
