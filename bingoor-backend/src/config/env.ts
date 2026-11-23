@@ -31,6 +31,9 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   FACEBOOK_APP_ID: z.string().optional(),
   FACEBOOK_APP_SECRET: z.string().optional(),
+  /** Optional: Continue with Instagram (Instagram API with Instagram Login) app id / secret. */
+  INSTAGRAM_APP_ID: z.string().optional(),
+  INSTAGRAM_APP_SECRET: z.string().optional(),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   /** Optional: Razorpay webhook signing secret (admin panel value takes precedence). */
