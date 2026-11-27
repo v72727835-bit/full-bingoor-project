@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Modal, Perm
 import Geolocation from '@react-native-community/geolocation';
 import { DeliveryMap as RouteMap } from '../components/DeliveryMap';
 import { AnimatedNumber, FadeSlide } from '../components/anim';
-import { cancelRiderOrder, deliverRiderOrder, fetchRiderOrders, fetchRiderProfile, acceptRiderOrder, fetchRoadKm, sendRiderLocation } from '../api/rider';
+import { cancelRiderOrder, deliverRiderOrder, fetchRiderOrders, fetchRiderProfile, acceptRiderOrder, fetchRoadKm, fetchRoute, sendRiderLocation } from '../api/rider';
 import { getErrorMessage } from '../api/client';
 import { Button } from '../components/Button';
 import { ErrorBanner } from '../components/AuthLayout';
@@ -229,7 +229,7 @@ export default function OrdersScreen() {
               ? `Pickup · ${nav?.order.shop?.name ?? 'Warehouse'}`
               : `Deliver to · ${[nav?.order.address.line1, nav?.order.address.line2, nav?.order.address.city].filter(Boolean).join(', ')}`}
           </Text>
-          <Button title="Open in Google Maps" variant="outline" onPress={() => nav && openExternalNav(nav)} />
+          <Button title="Open in Google Maps" variant="outline" onPress={() => nav && void openExternalNav(nav, riderLocation)} />
         </View>
       </View>
     </Modal>
@@ -259,11 +259,12 @@ function useRoadKm(enabled: boolean, from: { latitude: number; longitude: number
   return road;
 }
 /**
- * Optional: hand the stop to the Google Maps app for turn-by-turn with voice.
- * `google.navigation:` opens the Maps app's navigation directly, not a browser;
- * if it is not installed, fall back to the Google Maps directions link.
+ * Optional: hand the stop to the Google Maps app. The route is the SHORTEST road (the same one the kilometres,
+ * the in-app map and the pay use): the server sends a few points along it and they are given to Google Maps as
+ * stops, so Google follows that road instead of picking its own quickest one. If that cannot be had, the plain
+ * route is opened.
  */
-function openExternalNav(nav: { order: RiderOrder; to: 'customer' | 'warehouse' }) {
+async function openExternalNav(nav: { order: RiderOrder; to: 'customer' | 'warehouse' }, from: { latitude: number; longitude: number } | null) {
   const o = nav.order;
   const c = o.shop?.location?.coordinates;
   const loc = nav.to === 'warehouse'
@@ -273,8 +274,16 @@ function openExternalNav(nav: { order: RiderOrder; to: 'customer' | 'warehouse' 
     ? [o.shop?.name, o.shop?.address?.line1, o.shop?.address?.city].filter(Boolean).join(', ')
     : [o.address.line1, o.address.line2, o.address.city, o.address.pincode].filter(Boolean).join(', ');
   const dest = loc ? `${loc.lat},${loc.lng}` : encodeURIComponent(written);
-  const web = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
-  const app = Platform.OS === 'android' ? `google.navigation:q=${dest}&mode=d` : web;
+  let via = '';
+  if (loc && from) {
+    try {
+      const r = await fetchRoute(from, loc);
+      if (r.waypoints.length) via = `&origin=${from.latitude},${from.longitude}&waypoints=${r.waypoints.map((w) => `${w.lat},${w.lng}`).join('%7C')}`;
+    } catch { /* open the plain route */ }
+  }
+  const web = `https://www.google.com/maps/dir/?api=1&destination=${dest}${via}&travelmode=driving`;
+  // With the shortest road's stops the https link is used (it takes them); otherwise Maps' own navigation opens directly.
+  const app = via || Platform.OS !== 'android' ? web : `google.navigation:q=${dest}&mode=d`;
   Linking.openURL(app).catch(() => void Linking.openURL(web));
 }
 

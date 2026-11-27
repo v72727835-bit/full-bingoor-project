@@ -29,7 +29,7 @@ test('the rider gets the road km from their position to the customer, not the st
     const to = { lat: 26.96, lng: 75.86 }; // the customer: about 14 km straight
     mock.method(globalThis, 'fetch', async (url: any, options: any) => {
       if (!String(url).startsWith('https://router.project-osrm.org/')) return originalFetch(url, options);
-      return new Response(JSON.stringify({ code: 'Ok', distances: [[0, 20000]] }), { status: 200 }); // the road is 20 km
+      return new Response(JSON.stringify({ code: 'Ok', routes: [{ distance: 20000, geometry: { coordinates: [[75.8, 26.8], [75.9, 26.9]] } }] }), { status: 200 }); // the road is 20 km
     });
     const call = async (who: { _id: unknown; role: string }, q: string) => {
       const r = await originalFetch(`${base}/rider/road-distance?${q}`, { headers: { Authorization: `Bearer ${signAccessToken(String(who._id), who.role)}` } });
@@ -43,6 +43,14 @@ test('the rider gets the road km from their position to the customer, not the st
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     assert.equal(ok.body.data.km, 20, 'the road km, as the map app shows');
     assert.equal(ok.body.data.road, true);
+
+    // The route the rider is sent on: the shortest road with a few points along it (for a map app to follow).
+    const rt = await originalFetch(`${base}/rider/route?${q}`, { headers: { Authorization: `Bearer ${signAccessToken(String(rider._id), rider.role)}` } });
+    const route = ((await rt.json()) as any).data;
+    assert.equal(route.km, 20);
+    assert.ok(Array.isArray(route.points) && route.points.length >= 2);
+    assert.ok(Array.isArray(route.waypoints));
+    assert.equal((await call(customer, q.replace('rider/road-distance', 'rider/route'))).status, 403);
 
     // Only riders; bad coordinates are refused.
     assert.equal((await call(customer, q)).status, 403);

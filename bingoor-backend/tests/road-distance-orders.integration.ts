@@ -39,7 +39,7 @@ test('old straight-line orders are corrected to road km, and the customer sees r
     const shop = await Shop.create({ name: 'WH', owner: owner._id, deliveryRadiusKm: 10, isOpen: true, location: { type: 'Point', coordinates: [W.lng, W.lat] } });
     mock.method(globalThis, 'fetch', async (url: any, options: any) => {
       if (!String(url).startsWith('https://router.project-osrm.org/')) return originalFetch(url, options);
-      return new Response(JSON.stringify({ code: 'Ok', distances: [[0, 19900]] }), { status: 200 }); // the road is 19.9 km
+      return new Response(JSON.stringify({ code: 'Ok', routes: [{ distance: 19900, geometry: { coordinates: [[75.8, 26.8], [75.9, 26.9]] } }] }), { status: 200 }); // the road is 19.9 km
     });
     const mk = async (extra: Record<string, unknown>) => (await Order.collection.insertOne({
       orderNumber: `BG-${Math.random().toString(36).slice(2, 8)}`, checkoutId: 'c', user: customer._id, shop: shop._id, rider: rider._id,
@@ -65,16 +65,27 @@ test('old straight-line orders are corrected to road km, and the customer sees r
     mock.restoreAll();
     let calls = 0;
     mock.method(globalThis, 'fetch', async (url: any, options: any) => { if (String(url).startsWith('https://router.project-osrm.org/')) { calls++; throw new Error('should not be asked'); } return originalFetch(url, options); });
-    const newId = await mk({ distanceKm: 12.3, distanceRoad: true });
+    const newId = await mk({ distanceKm: 12.3, distanceRoad: true, distanceV: 2 });
     assert.equal((await ridersForOrder(String(newId))).distanceKm, 12.3);
     assert.equal(calls, 0);
+
+    // 3b. A km saved by the earlier quickest-road method (road, but not marked as the shortest) is measured again.
+    mock.restoreAll();
+    clearRoadCache();
+    mock.method(globalThis, 'fetch', async (url: any, options: any) => {
+      if (!String(url).startsWith('https://router.project-osrm.org/')) return originalFetch(url, options);
+      return new Response(JSON.stringify({ code: 'Ok', routes: [{ distance: 20800, geometry: { coordinates: [[75.8, 26.8], [75.9, 26.9]] } }, { distance: 17300, geometry: { coordinates: [[75.8, 26.8], [75.9, 26.9]] } }] }), { status: 200 });
+    });
+    const quickest = await mk({ distanceKm: 20.8, distanceRoad: true });
+    assert.equal((await ridersForOrder(String(quickest))).distanceKm, 17.3, 'the shortest road, not the quickest');
+    assert.equal((await Order.findById(quickest).lean() as any)?.distanceV, 2);
 
     // 4. The customer's live km to the door is the road from the rider's position.
     mock.restoreAll();
     clearRoadCache();
     mock.method(globalThis, 'fetch', async (url: any, options: any) => {
       if (!String(url).startsWith('https://router.project-osrm.org/')) return originalFetch(url, options);
-      return new Response(JSON.stringify({ code: 'Ok', distances: [[0, 7400]] }), { status: 200 });
+      return new Response(JSON.stringify({ code: 'Ok', routes: [{ distance: 7400, geometry: { coordinates: [[75.8, 26.8], [75.9, 26.9]] } }] }), { status: 200 });
     });
     const trackId = await mk({ riderLocation: { lat: 26.85, lng: 75.82, at: new Date() } });
     const get = async (who: { _id: unknown; role: string }, id: unknown) => {

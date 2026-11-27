@@ -45,6 +45,8 @@ const schema = z.object({
    * The free public demo server is the default; set this to your own OSRM server for heavy traffic.
    */
   OSRM_URL: z.string().url().default('https://router.project-osrm.org'),
+  /** Optional: a Google SERVER key with the Directions API on; when set, roads (shortest of Google's alternatives) come from Google first. */
+  GOOGLE_DIRECTIONS_API_KEY: z.string().optional(),
   FREE_DELIVERY_ABOVE: z.coerce.number().min(0).default(499),
 });
 

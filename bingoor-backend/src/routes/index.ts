@@ -169,6 +169,7 @@ router.get('/rider/me', protect, authorize('rider'), rider.touchRider, rider.get
 router.get('/rider/orders', protect, authorize('rider'), rider.touchRider, validate({ query: v.riderOrdersQuery }), rider.listOrders);
 router.post('/rider/orders/:id/accept', protect, authorize('rider'), validate({ params: v.idParam }), rider.acceptOrder);
 router.get('/rider/road-distance', protect, authorize('rider'), validate({ query: v.roadDistanceQuery }), rider.roadDistance);
+router.get('/rider/route', protect, authorize('rider'), validate({ query: v.roadDistanceQuery }), rider.route);
 router.post('/rider/location', protect, authorize('rider'), rider.touchRider, validate({ body: v.riderLocationBody }), rider.updateLocation);
 router.post('/rider/orders/:id/cancel', protect, authorize('rider'), validate({ params: v.idParam, body: v.cancelOrderBody }), rider.cancelOrder);
 router.post('/rider/orders/:id/deliver', protect, authorize('rider'), validate({ params: v.idParam, body: v.riderDeliveryBody }), rider.deliverOrder);

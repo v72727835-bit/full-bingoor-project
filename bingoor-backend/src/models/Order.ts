@@ -79,6 +79,7 @@ export interface IOrder {
   longDistance?: boolean;
   distanceKm?: number;
   distanceRoad?: boolean;
+  distanceV?: number;
   items: IOrderItem[];
   address: {
     name: string;
@@ -148,6 +149,8 @@ const orderSchema = new Schema<IOrder>(
     distanceKm: Number,
     /** True when `distanceKm` is by road (orders placed before that carry a straight line and are corrected when used). */
     distanceRoad: Boolean,
+    /** 2 = `distanceKm` is the SHORTEST road route (the one every screen and the rider's pay use); anything else is measured again when used. */
+    distanceV: Number,
     sellerIds: { type: [{ type: Schema.Types.ObjectId, ref: 'User' }], default: undefined, index: true },
     items: {
       type: [

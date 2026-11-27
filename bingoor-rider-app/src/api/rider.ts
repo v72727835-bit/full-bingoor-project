@@ -14,6 +14,14 @@ export async function fetchRoadKm(from: { latitude: number; longitude: number },
   return data.data;
 }
 
+/** The shortest road from the rider to a place, with a few points along it (so a map app follows the same road). */
+export async function fetchRoute(from: { latitude: number; longitude: number }, to: { lat: number; lng: number }): Promise<{ km: number; road: boolean; waypoints: { lat: number; lng: number }[] }> {
+  const { data } = await api.get<ApiEnvelope<{ km: number; road: boolean; waypoints: { lat: number; lng: number }[] }>>('/rider/route', {
+    params: { fromLat: from.latitude, fromLng: from.longitude, toLat: to.lat, toLng: to.lng },
+  });
+  return data.data;
+}
+
 /** Cash in hand, delivered and cancelled counts, and the bell messages. */
 export async function fetchRiderProfile(): Promise<RiderProfile> {
   const { data } = await api.get<ApiEnvelope<RiderProfile>>('/rider/me');

@@ -81,12 +81,14 @@ function drawRoute(){
  const origin=navMode?rider:(rider||pickup);
  if(!dest||!origin)return;
  const turn=++routeTurn;lastRoute=Date.now();
- new google.maps.DirectionsService().route({origin,destination:dest,travelMode:google.maps.TravelMode.DRIVING},(result,code)=>{
+ new google.maps.DirectionsService().route({origin,destination:dest,travelMode:google.maps.TravelMode.DRIVING,provideRouteAlternatives:true},(result,code)=>{
   if(turn!==routeTurn)return;
   if(code!=='OK'){say(code==='REQUEST_DENIED'?'Turn the Directions API on for the Google Maps key to draw the route line.':code==='ZERO_RESULTS'?'No road route found between the two points.':'Road route unavailable. The pin shows where to go.');return}
   /* A thick highlighted line, like a navigation app's route. */
   if(!route)route=new google.maps.DirectionsRenderer({map:gmap,suppressMarkers:true,preserveViewport:true,polylineOptions:{strokeColor:'#1A73E8',strokeWeight:8,strokeOpacity:0.9}});route.setDirections(result);
-  const leg=result.routes[0].legs[0];const next=leg.steps&&leg.steps[0]?leg.steps[0].instructions.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim():'';say((navMode==='warehouse'?'To warehouse · ':navMode==='customer'?'To customer · ':'')+leg.duration.text+' · '+leg.distance.text+(next?' · Next: '+next:''));notify({type:'eta',seconds:leg.duration.value,meters:leg.distance.value});
+  /* Of the roads Google offers, take the SHORTEST by distance, the same one the app's kilometres and the rider's pay use. */
+  let best=0;result.routes.forEach((r,i)=>{if(r.legs[0].distance.value<result.routes[best].legs[0].distance.value)best=i});route.setRouteIndex(best);
+  const leg=result.routes[best].legs[0];const next=leg.steps&&leg.steps[0]?leg.steps[0].instructions.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim():'';say((navMode==='warehouse'?'To warehouse · ':navMode==='customer'?'To customer · ':'')+leg.duration.text+' · '+leg.distance.text+(next?' · Next: '+next:''));notify({type:'eta',seconds:leg.duration.value,meters:leg.distance.value});
  });
 }
 function update(data){

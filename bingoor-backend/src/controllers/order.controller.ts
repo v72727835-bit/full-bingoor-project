@@ -14,6 +14,7 @@ import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 import { round2 } from '../utils/helpers';
 import { roadLegs } from '../services/roadDistance.service';
+import { ROUTE_VERSION } from '../services/orderDistance.service';
 import { created, ok, pageMeta } from '../utils/response';
 
 const ACTIVE_STATUSES = ['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery'];
@@ -192,7 +193,7 @@ async function runPlaceOrder(
       redOrder: quote.redOrder,
       longDistance: quote.longDistance,
       ...(sellerIds.length ? { sellerIds } : {}),
-      ...(quote.distanceKm !== null ? { distanceKm: quote.distanceKm, distanceRoad: roadKmByGroup[idx]?.road ?? false } : {}),
+      ...(quote.distanceKm !== null ? { distanceKm: quote.distanceKm, distanceRoad: roadKmByGroup[idx]?.road ?? false, ...(roadKmByGroup[idx]?.road ? { distanceV: ROUTE_VERSION } : {}) } : {}),
       items,
       address: {
         name: address.name,
