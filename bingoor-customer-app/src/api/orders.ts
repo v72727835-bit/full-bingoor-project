@@ -31,6 +31,12 @@ export async function fetchOrders(params: { active?: boolean; status?: OrderStat
   return { items: data.data, meta: data.meta };
 }
 
+/** Road km from where the rider is now to the customer's door (never a straight line); null until the rider shares a position. */
+export async function fetchRiderRoadKm(id: string): Promise<{ km: number | null; road: boolean }> {
+  const { data } = await api.get<ApiEnvelope<{ km: number | null; road: boolean }>>(`/orders/${id}/rider-distance`);
+  return data.data;
+}
+
 export async function fetchOrder(id: string): Promise<Order> {
   const { data } = await api.get<ApiEnvelope<Order>>(`/orders/${id}`);
   return data.data;

@@ -1,3 +1,4 @@
+import { ensureRoadKm } from './orderDistance.service';
 import { Types } from 'mongoose';
 import { IOrder, Order } from '../models/Order';
 import { Product } from '../models/Product';
@@ -94,7 +95,7 @@ export async function ridersForOrder(orderId: string) {
   });
   const rank = { free: 0, busy: 1, offline: 2, paused: 3, long_distance_only: 4, not_long_distance: 4 } as Record<string, number>;
   rows.sort((a, b) => rank[a.state] - rank[b.state] || a.name.localeCompare(b.name));
-  return { warehouse: shop.name, radiusKm: shop.deliveryRadiusKm ?? null, distanceKm: order.distanceKm ?? null, longDistance: !!order.longDistance, riders: rows };
+  return { warehouse: shop.name, radiusKm: shop.deliveryRadiusKm ?? null, distanceKm: (await ensureRoadKm(orderId)) ?? order.distanceKm ?? null, longDistance: !!order.longDistance, riders: rows };
 }
 
 export async function assignRiderToOrder(orderId: string, riderId: string, by: string) {

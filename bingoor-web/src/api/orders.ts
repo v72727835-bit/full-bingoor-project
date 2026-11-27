@@ -41,6 +41,12 @@ export const fetchOrders = async (page = 1, limit = 20): Promise<{ items: Order[
   return { items: (data.data as Record<string, unknown>[]).map(n.order), meta: data.meta };
 };
 
+/** Road km from where the rider is now to the customer's door (never a straight line); null until the rider shares a position. */
+export const fetchRiderRoadKm = async (id: string): Promise<{ km: number | null; road: boolean }> => {
+  const { data } = await api.get(`/orders/${id}/rider-distance`);
+  return data.data;
+};
+
 export const fetchOrder = async (id: string): Promise<Order> => {
   const { data } = await api.get(`/orders/${id}`);
   return n.order(data.data);

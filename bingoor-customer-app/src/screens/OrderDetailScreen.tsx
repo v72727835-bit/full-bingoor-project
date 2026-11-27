@@ -3,7 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Dimensions, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { getErrorMessage } from '../api/client';
-import { cancelOrder, fetchOrder } from '../api/orders';
+import { cancelOrder, fetchOrder, fetchRiderRoadKm } from '../api/orders';
 import { DeliveryMap } from '../components/DeliveryMap';
 import { ORDER_META, TRACK_STEPS } from '../components/OrderStatusChip';
 import type { AppNav, AppRoute } from '../navigation/types';
@@ -480,13 +480,21 @@ const styles = themed(({ c }) => ({
   helpRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: space.xxl, paddingHorizontal: space.lg },
   helpText: { flexShrink: 1, marginLeft: space.xs },}));
 
-/** Straight-line distance in km between two points. */
-function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const rad = (d: number) => (d * Math.PI) / 180;
-  const dLat = rad(b.lat - a.lat);
-  const dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.asin(Math.sqrt(h));
+/**
+ * Kilometres from the rider to the door BY ROAD, as a map app would drive it (not the straight line, which is
+ * shorter than the real ride). Asked again only when the rider has moved a few hundred metres.
+ */
+function useRoadAway(orderId: string, at?: { lat: number; lng: number } | null): number | null {
+  const [road, setRoad] = useState<number | null>(null);
+  const cell = (n: number) => Math.round(n * 300) / 300; // about 350 m
+  const key = at ? `${cell(at.lat)},${cell(at.lng)}` : '';
+  useEffect(() => {
+    if (!key) { setRoad(null); return; }
+    let alive = true;
+    fetchRiderRoadKm(orderId).then((r) => { if (alive) setRoad(r.km); }).catch(() => { if (alive) setRoad(null); });
+    return () => { alive = false; };
+  }, [orderId, key]);
+  return road;
 }
 
 /**
@@ -498,6 +506,7 @@ function LiveTracking({ order }: { order: Order }) {
   const [trackOpen, setTrackOpen] = useState(false);
   const at = order.riderLocation;
   const home = order.address.location;
+  const away = useRoadAway(order._id, at);
   if (!at) {
     return (
       <Txt variant="bodySm" tone="muted" style={styles.trackText}>
@@ -505,7 +514,6 @@ function LiveTracking({ order }: { order: Order }) {
       </Txt>
     );
   }
-  const away = home ? distanceKm(at, home) : null;
   // A scooter in town averages about 20 km/h, plus a minute to find the door.
   const minutes = away === null ? null : Math.max(1, Math.round((away / 20) * 60) + 1);
   const headline =

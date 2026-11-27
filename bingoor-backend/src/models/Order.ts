@@ -78,6 +78,7 @@ export interface IOrder {
   /** Beyond the last band: only the special long-distance rider sees it. */
   longDistance?: boolean;
   distanceKm?: number;
+  distanceRoad?: boolean;
   items: IOrderItem[];
   address: {
     name: string;
@@ -145,6 +146,8 @@ const orderSchema = new Schema<IOrder>(
     redOrder: { type: Boolean, default: false },
     longDistance: { type: Boolean, default: false, index: true },
     distanceKm: Number,
+    /** True when `distanceKm` is by road (orders placed before that carry a straight line and are corrected when used). */
+    distanceRoad: Boolean,
     sellerIds: { type: [{ type: Schema.Types.ObjectId, ref: 'User' }], default: undefined, index: true },
     items: {
       type: [

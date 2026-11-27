@@ -13,7 +13,7 @@ import { PaymentIntent } from '../models/PaymentIntent';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 import { round2 } from '../utils/helpers';
-import { roadKm } from '../services/roadDistance.service';
+import { roadLegs } from '../services/roadDistance.service';
 import { created, ok, pageMeta } from '../utils/response';
 
 const ACTIVE_STATUSES = ['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery'];
@@ -54,10 +54,11 @@ async function restoreStock(items: { product: Types.ObjectId | string; quantity:
 async function distanceTo(
   shop: { location?: { coordinates?: number[] } },
   to?: { lat: number; lng: number },
-): Promise<number | null> {
+): Promise<{ km: number; road: boolean } | null> {
   const c = shop.location?.coordinates;
   if (!c || c.length < 2 || !to?.lat || !to?.lng) return null;
-  return roadKm({ lat: to.lat, lng: to.lng }, { lat: c[1], lng: c[0] });
+  const [leg] = await roadLegs({ lat: to.lat, lng: to.lng }, [{ lat: c[1], lng: c[0] }]);
+  return leg;
 }
 
 /* ---------------- place order ---------------- */
@@ -123,7 +124,7 @@ async function runPlaceOrder(
         problems.push({ shop: g.shop.name, productId: String(l.product._id), name: l.product.name, reason: 'online_unavailable' });
       }
     }
-    legs.push({ subtotal, distanceKm: await distanceTo(g.shop, address.location) });
+    legs.push({ subtotal, distanceKm: (await distanceTo(g.shop, address.location))?.km ?? null });
   }
   // One basket, one set of rules (the same quoteCart as /cart/quote): the minimum
   // order and the fees go by the whole cart, not by each warehouse filling it.
@@ -168,7 +169,7 @@ async function runPlaceOrder(
     }));
     const sellerIds = [...new Set(items.filter((i) => i.seller).map((i) => String(i.seller)))];
     const subtotal = round2(items.reduce((s, i) => s + i.lineTotal, 0));
-    const own = quoteDelivery(settings, { subtotal, distanceKm: roadKmByGroup[idx], slot });
+    const own = quoteDelivery(settings, { subtotal, distanceKm: roadKmByGroup[idx]?.km ?? null, slot });
     // The basket's fees are charged once, on the first order of the checkout (like the tip).
     const quote = { ...own, deliveryFee: idx === 0 ? cartQuote.deliveryFee : 0, twoHourFee: idx === 0 ? cartQuote.twoHourFee : 0,
       handlingFee: idx === 0 ? cartQuote.handlingFee : 0, days: cartQuote.days, redOrder: cartQuote.redOrder, longDistance: cartQuote.longDistance };
@@ -191,7 +192,7 @@ async function runPlaceOrder(
       redOrder: quote.redOrder,
       longDistance: quote.longDistance,
       ...(sellerIds.length ? { sellerIds } : {}),
-      ...(quote.distanceKm !== null ? { distanceKm: quote.distanceKm } : {}),
+      ...(quote.distanceKm !== null ? { distanceKm: quote.distanceKm, distanceRoad: roadKmByGroup[idx]?.road ?? false } : {}),
       items,
       address: {
         name: address.name,
@@ -454,6 +455,17 @@ export const getOrder = asyncHandler(async (req, res) => {
   // Live position only matters (and is only shared) while the parcel is on its way.
   const tracking = order.status === 'out_for_delivery' ? order.riderLocation : undefined;
   ok(res, presentOrder(riderVisible ? { ...order, riderLocation: tracking } : { ...order, rider: undefined, riderLocation: undefined }));
+});
+
+/** The customer's live km to the door: the road from where the rider is now. Null until the rider shares a position. */
+export const riderDistance = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ _id: req.params.id, user: req.user!.id, status: 'out_for_delivery' }).select('riderLocation address').lean();
+  if (!order) throw new ApiError(404, 'Order not found');
+  const at = order.riderLocation;
+  const home = order.address?.location;
+  if (!at?.lat || !at?.lng || !home?.lat || !home?.lng) return ok(res, { km: null, road: false });
+  const [leg] = await roadLegs({ lat: at.lat, lng: at.lng }, [{ lat: home.lat, lng: home.lng }]);
+  ok(res, { km: Math.round(leg.km * 10) / 10, road: leg.road });
 });
 
 /* ---------------- cancel ---------------- */

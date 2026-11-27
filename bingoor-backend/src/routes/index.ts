@@ -160,6 +160,7 @@ router.post('/orders/online/confirm', ...customerOnly, validate({ body: v.confir
 router.get('/orders', ...customerOnly, validate({ query: v.ordersQuery }), orders.listOrders);
 router.post('/orders/:id/invoice-link', ...customerOnly, validate({ params: v.idParam }), invoices.customerInvoiceLink);
 router.get('/invoices/:id', validate({ params: v.idParam }), invoices.renderInvoice);
+router.get('/orders/:id/rider-distance', ...customerOnly, validate({ params: v.idParam }), orders.riderDistance);
 router.get('/orders/:id', ...customerOnly, validate({ params: v.idParam }), orders.getOrder);
 router.post('/orders/:id/cancel', ...customerOnly, validate({ params: v.idParam, body: v.cancelOrderBody }), orders.cancelOrder);
 router.post('/orders/:id/reorder', ...customerOnly, validate({ params: v.idParam }), orders.reorder);

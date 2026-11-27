@@ -2,7 +2,7 @@ import { Types } from 'mongoose';
 import { Order } from '../models/Order';
 import { Shop } from '../models/Shop';
 import { WalletTxn } from '../models/WalletTxn';
-import { roadKm } from './roadDistance.service';
+import { ensureRoadKm } from './orderDistance.service';
 import { loadSettings } from './settings.service';
 
 export interface RiderPayRules {
@@ -51,20 +51,14 @@ export function earningFor(km: number, rules: RiderPayRules): number {
  * on the order and adds an "earning" line to the rider's wallet.
  */
 export async function creditDeliveryEarning(orderId: Types.ObjectId | string): Promise<number> {
-  const order = await Order.findById(orderId).select('rider shop address riderEarning deliveredAt orderNumber tip distanceKm').lean();
+  const order = await Order.findById(orderId).select('rider shop address riderEarning deliveredAt orderNumber tip').lean();
   if (!order || !order.rider || (order.riderEarning ?? 0) > 0) return 0;
   const { settings } = await loadSettings();
   const rules = payRules(settings);
   if (!rules.enabled) return 0;
 
-  // The rider is paid for the road: the km saved on the order at checkout, else worked out now (never a straight line).
-  let km = order.distanceKm && order.distanceKm > 0 ? order.distanceKm : 0;
-  const dest = order.address?.location;
-  if (!km && dest?.lat && dest?.lng) {
-    const shop = await Shop.findById(order.shop).select('location').lean();
-    const c = shop?.location?.coordinates;
-    if (c) km = await roadKm({ lat: dest.lat, lng: dest.lng }, { lat: c[1], lng: c[0] });
-  }
+  // The rider is paid for the road km from the warehouse to the customer (an old straight-line km is corrected first).
+  const km = (await ensureRoadKm(order._id)) ?? 0;
   // The customer's tip (#35) goes to the rider in full, on top of the delivery pay.
   const tip = order.tip ?? 0;
   const amount = earningFor(km, rules) + tip;

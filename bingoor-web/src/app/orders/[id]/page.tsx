@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
-import { cancelOrder, fetchInvoiceLinks, fetchOrder, reorder } from '../../../api/orders';
+import { cancelOrder, fetchInvoiceLinks, fetchOrder, fetchRiderRoadKm, reorder } from '../../../api/orders';
 import { getErrorMessage } from '../../../lib/client';
 import { FLOW, STATUS_BLURB, STATUS_LABEL, STATUS_TONE, isFinal } from '../../../lib/orderStatus';
 import { fitClass } from '../../../lib/art';
@@ -316,12 +316,21 @@ export default function OrderPage() {
 }
 
 /** Straight-line distance in km between two points. */
-function km(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const rad = (d: number) => (d * Math.PI) / 180;
-  const dLat = rad(b.lat - a.lat);
-  const dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.asin(Math.sqrt(h));
+/**
+ * Kilometres from the rider to the door BY ROAD, as a map app would drive it (not the straight line, which is
+ * shorter than the real ride). Asked again only when the rider has moved a few hundred metres.
+ */
+function useRoadAway(orderId: string, at?: { lat: number; lng: number } | null): number | null {
+  const [road, setRoad] = useState<number | null>(null);
+  const cell = (n: number) => Math.round(n * 300) / 300; // about 350 m
+  const key = at ? `${cell(at.lat)},${cell(at.lng)}` : '';
+  useEffect(() => {
+    if (!key) { setRoad(null); return; }
+    let alive = true;
+    fetchRiderRoadKm(orderId).then((r) => { if (alive) setRoad(r.km); }).catch(() => { if (alive) setRoad(null); });
+    return () => { alive = false; };
+  }, [orderId, key]);
+  return road;
 }
 
 /**
@@ -332,6 +341,7 @@ function km(a: { lat: number; lng: number }, b: { lat: number; lng: number }): n
 function RiderTracking({ order }: { order: Order }) {
   const at = order.riderLocation;
   const home = order.address.location;
+  const away = useRoadAway(order.id, at);
   if (!at) {
     return (
       <section className={`card ${s.track}`}>
@@ -343,7 +353,6 @@ function RiderTracking({ order }: { order: Order }) {
       </section>
     );
   }
-  const away = home ? km(at, home) : null;
   // A scooter in town averages ~20 km/h, plus a minute to find the door.
   const mins = away === null ? null : Math.max(1, Math.round((away / 20) * 60) + 1);
   const eta = away === null ? 'On the way to you' : away < 0.15 ? 'Rider is at your door' : `Arriving in about ${mins} min`;
