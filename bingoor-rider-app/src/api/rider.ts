@@ -6,6 +6,14 @@ export async function fetchRiderOrders(status?: 'ready_for_pickup' | 'out_for_de
   return data.data;
 }
 
+/** Road km (as a map app drives it) from the rider's position to a place; `road` is false when it is only an estimate. */
+export async function fetchRoadKm(from: { latitude: number; longitude: number }, to: { lat: number; lng: number }): Promise<{ km: number; road: boolean }> {
+  const { data } = await api.get<ApiEnvelope<{ km: number; road: boolean }>>('/rider/road-distance', {
+    params: { fromLat: from.latitude, fromLng: from.longitude, toLat: to.lat, toLng: to.lng },
+  });
+  return data.data;
+}
+
 /** Cash in hand, delivered and cancelled counts, and the bell messages. */
 export async function fetchRiderProfile(): Promise<RiderProfile> {
   const { data } = await api.get<ApiEnvelope<RiderProfile>>('/rider/me');

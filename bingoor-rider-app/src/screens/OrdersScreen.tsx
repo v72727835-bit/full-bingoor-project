@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Modal, Perm
 import Geolocation from '@react-native-community/geolocation';
 import { DeliveryMap as RouteMap } from '../components/DeliveryMap';
 import { AnimatedNumber, FadeSlide } from '../components/anim';
-import { cancelRiderOrder, deliverRiderOrder, fetchRiderOrders, fetchRiderProfile, acceptRiderOrder, sendRiderLocation } from '../api/rider';
+import { cancelRiderOrder, deliverRiderOrder, fetchRiderOrders, fetchRiderProfile, acceptRiderOrder, fetchRoadKm, sendRiderLocation } from '../api/rider';
 import { getErrorMessage } from '../api/client';
 import { Button } from '../components/Button';
 import { ErrorBanner } from '../components/AuthLayout';
@@ -239,13 +239,24 @@ export default function OrdersScreen() {
 
 function Stat({ value, label, last }: { value: string; label: string; last?: boolean }) { return <View style={[styles.stat, last && styles.statLast]}><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>; }
 
-/** Straight-line kilometres between two pins - close enough to judge a run. */
-function kmBetween(a: { latitude: number; longitude: number }, b: { lat: number; lng: number }): number {
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.latitude);
-  const dLng = toRad(b.lng - a.longitude);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.asin(Math.sqrt(h));
+/**
+ * Kilometres to the customer BY ROAD from where the rider is now, the same as the map app shows
+ * (never the straight line, which is shorter than the real ride). It is asked again only when the rider
+ * has moved a few hundred metres, so a jittering GPS does not hammer the server.
+ */
+function useRoadKm(enabled: boolean, from: { latitude: number; longitude: number } | null, to?: { lat: number; lng: number } | null) {
+  const [road, setRoad] = useState<{ km: number; road: boolean } | null>(null);
+  const cell = (n: number) => Math.round(n * 300) / 300; // about 350 m
+  const key = enabled && from && to ? `${cell(from.latitude)},${cell(from.longitude)}>${to.lat},${to.lng}` : '';
+  useEffect(() => {
+    if (!key || !from || !to) { setRoad(null); return; }
+    let alive = true;
+    fetchRoadKm(from, to).then((r) => { if (alive) setRoad(r); }).catch(() => { if (alive) setRoad(null); });
+    return () => { alive = false; };
+    // `key` changes only when the rider has moved a few hundred metres or the order changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return road;
 }
 /**
  * Optional: hand the stop to the Google Maps app for turn-by-turn with voice.
@@ -276,7 +287,7 @@ function OrderCard({ order, saving, riderLocation, onAccept, onDeliver, onCancel
   // The distance is not shown before the order is accepted: riders were
   // cherry-picking the short runs and leaving the far ones for nobody.
   const accepted = !isNew(order);
-  const km = accepted && riderLocation && order.address.location ? kmBetween(riderLocation, order.address.location) : null;
+  const roadKm = useRoadKm(accepted, riderLocation, order.address.location);
 
   const slotText = order.deliveryDays ? `${order.deliveryDays} day${order.deliveryDays > 1 ? 's' : ''} delivery` : order.slot === 'twoHour' ? 'Within 2 hours' : order.slot === 'nextDay' ? 'Next day delivery' : 'Deliver in 19 minutes';
   // Date and time, so an order from another day is never mistaken for today's.
@@ -304,7 +315,7 @@ function OrderCard({ order, saving, riderLocation, onAccept, onDeliver, onCancel
         <Text style={[styles.payText, { color: order.paymentMethod === 'cod' ? '#B45309' : colors.success }]}>{order.paymentMethod === 'cod' ? `Cash on delivery · collect ${money(order.total)}` : 'Paid online · nothing to collect'}</Text>
       </View>
     </View>
-    {km !== null ? <Text style={styles.items}>{km.toFixed(1)} km away</Text> : null}
+    {roadKm ? <Text style={styles.items}>{roadKm.road ? `${roadKm.km.toFixed(1)} km by road` : `about ${roadKm.km.toFixed(1)} km by road`}</Text> : null}
     {isNew(order) ? <View>
       <Button title={saving ? 'Accepting...' : 'Accept order'} onPress={onAccept} loading={saving} style={{ marginTop: 14 }} />
       {order.status !== 'ready_for_pickup' ? <Text style={styles.packNote}>The warehouse is packing it - accept now and pick it up when it is ready.</Text> : null}

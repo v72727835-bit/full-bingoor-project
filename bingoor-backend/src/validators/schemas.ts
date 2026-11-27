@@ -111,6 +111,13 @@ export const homeQuery = geoQuery.refine((v) => (v.lat === undefined) === (v.lng
   message: 'Send both lat and lng, or neither',
 });
 
+/** A rider asks how far a place is by road from where they are now. */
+export const roadDistanceQuery = z.object({
+  fromLat: z.coerce.number().min(-90).max(90),
+  fromLng: z.coerce.number().min(-180).max(180),
+  toLat: z.coerce.number().min(-90).max(90),
+  toLng: z.coerce.number().min(-180).max(180),
+});
 export const coverageQuery = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),

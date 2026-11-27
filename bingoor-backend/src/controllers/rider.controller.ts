@@ -1,3 +1,4 @@
+import { roadLegs } from '../services/roadDistance.service';
 import { FilterQuery } from 'mongoose';
 import { Order, IOrder } from '../models/Order';
 import { riderWarehouseIds, User } from '../models/User';
@@ -185,4 +186,11 @@ export const updateLocation = asyncHandler(async (req, res) => {
     { $set: { riderLocation: { lat, lng, at: new Date() } } },
   );
   ok(res, { updated: result.modifiedCount });
+});
+
+/** Road km (as a map app drives it) from the rider's position to a place, e.g. the customer. Never a straight line. */
+export const roadDistance = asyncHandler(async (req, res) => {
+  const { fromLat, fromLng, toLat, toLng } = req.query as unknown as { fromLat: number; fromLng: number; toLat: number; toLng: number };
+  const [leg] = await roadLegs({ lat: fromLat, lng: fromLng }, [{ lat: toLat, lng: toLng }]);
+  ok(res, { km: Math.round(leg.km * 10) / 10, road: leg.road });
 });
