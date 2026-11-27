@@ -157,7 +157,12 @@ export const fetchBrands = async (category?: string): Promise<string[]> => {
 
 /** The one warehouse an order to a pin comes from. */
 export interface NearestWarehouse {
+  /** Kilometres by ROAD, as a rider drives it. */
   distanceKm: number;
+  /** False when the road service could not answer and this is an estimate. */
+  road?: boolean;
+  /** The road to draw on the map, as [lat, lng] points (only with route = true). */
+  route?: [number, number][] | null;
   lat?: number;
   lng?: number;
   isOpen: boolean;
@@ -173,8 +178,8 @@ export interface Coverage {
 }
 
 /** Does any warehouse deliver to this point? */
-export const fetchCoverage = async (lat: number, lng: number): Promise<Coverage> => {
-  const { data } = await api.get('/coverage', { params: { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 } });
+export const fetchCoverage = async (lat: number, lng: number, route = false): Promise<Coverage> => {
+  const { data } = await api.get('/coverage', { params: { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000, ...(route ? { route: 1 } : {}) } });
   return data.data as Coverage;
 };
 

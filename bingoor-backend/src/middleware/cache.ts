@@ -26,7 +26,7 @@ let generation = 0;
 const CACHE_PARAMS = new Set([
   'q', 'category', 'shop', 'brand', 'minPrice', 'maxPrice', 'inStock', 'minRating',
   'minDiscount', 'foodType', 'lat', 'lng', 'radiusKm', 'isOpen', 'page', 'limit',
-  'sort', 'parent', 'level', 'all', 'slug',
+  'sort', 'parent', 'level', 'all', 'slug', 'route',
 ]);
 
 function cacheKey(req: { path: string; query: Record<string, unknown> }): string {

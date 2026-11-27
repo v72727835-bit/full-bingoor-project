@@ -62,8 +62,8 @@ export function LocationPicker({ value, onPick, showNearest = false }: { value?:
   const nearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const whLayer = useRef<import('leaflet').LayerGroup | null>(null);
 
-  /** Marker on the warehouse and a dotted line to the pin, so the customer sees exactly where it is. */
-  const drawWarehouse = useCallback((pin: { lat: number; lng: number }, wh: NearestWarehouse | null) => {
+  /** Marker on the warehouse and the ROAD to the pin (never a straight line), so the customer sees how a rider would come. */
+  const drawWarehouse = useCallback((_pin: { lat: number; lng: number }, wh: NearestWarehouse | null) => {
     const L = leaflet.current;
     const map = mapRef.current;
     if (!L || !map) return;
@@ -71,10 +71,11 @@ export function LocationPicker({ value, onPick, showNearest = false }: { value?:
     whLayer.current = null;
     if (!wh || wh.lat == null || wh.lng == null) return;
     const icon = L.divIcon({ className: s.whMarker, html: '<span>🏬</span>', iconSize: [30, 30], iconAnchor: [15, 15] });
-    whLayer.current = L.layerGroup([
-      L.polyline([[wh.lat, wh.lng], [pin.lat, pin.lng]], { color: '#0E8A3E', weight: 3, dashArray: '6 8', opacity: 0.8, interactive: false }),
-      L.marker([wh.lat, wh.lng], { icon, interactive: false, keyboard: false }),
-    ]).addTo(map);
+    const layers: import('leaflet').Layer[] = [];
+    // Only a real road is drawn; when the road is not known the marker alone is shown.
+    if (wh.route && wh.route.length > 1) layers.push(L.polyline(wh.route, { color: '#1A73E8', weight: 5, opacity: 0.85, interactive: false }));
+    layers.push(L.marker([wh.lat, wh.lng], { icon, interactive: false, keyboard: false }));
+    whLayer.current = L.layerGroup(layers).addTo(map);
   }, []);
 
   const lookNearest = useCallback((lat: number, lng: number) => {
@@ -84,7 +85,7 @@ export function LocationPicker({ value, onPick, showNearest = false }: { value?:
     setNearestBusy(true);
     nearTimer.current = setTimeout(async () => {
       try {
-        const cover = await fetchCoverage(lat, lng);
+        const cover = await fetchCoverage(lat, lng, true);
         if (turn !== nearTurn.current) return;
         setNearest(cover.nearest ?? null);
         drawWarehouse({ lat, lng }, cover.nearest ?? null);
@@ -246,7 +247,7 @@ export function LocationPicker({ value, onPick, showNearest = false }: { value?:
           <span className={s.nearIcon} aria-hidden><Icon name="store" size={18} /></span>
           {nearest ? (
             <span className={s.nearText}>
-              <b>Nearest warehouse: {nearest.distanceKm < 1 ? `${Math.round(nearest.distanceKm * 1000)} m` : `${nearest.distanceKm} km`} away</b>
+              <b>Nearest warehouse: {nearest.distanceKm < 1 ? `${Math.round(nearest.distanceKm * 1000)} m` : `${nearest.distanceKm} km`} {nearest.road === false ? 'away (about)' : 'by road'}</b>
               <span>
                 <Icon name={nearest.deliveryDays > 0 ? 'clock' : 'bolt'} size={13} /> {nearest.deliveryDays === 0 ? 'Delivery in 19 minutes' : nearest.deliveryText}
                 {nearest.isOpen ? '' : ' · warehouse closed right now'}

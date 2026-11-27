@@ -40,6 +40,11 @@ const schema = z.object({
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   /** Optional: Google Maps JS API key fallback (admin panel value takes precedence). */
   GOOGLE_MAPS_API_KEY: z.string().optional(),
+  /**
+   * Road distances (km a rider really drives) come from an OSRM routing server over OpenStreetMap roads.
+   * The free public demo server is the default; set this to your own OSRM server for heavy traffic.
+   */
+  OSRM_URL: z.string().url().default('https://router.project-osrm.org'),
   FREE_DELIVERY_ABOVE: z.coerce.number().min(0).default(499),
 });
 

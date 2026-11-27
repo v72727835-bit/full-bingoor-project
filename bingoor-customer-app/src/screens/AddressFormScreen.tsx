@@ -92,7 +92,7 @@ export function AddressFormScreen() {
     let live = true;
     setNearestBusy(true);
     const t = setTimeout(() => {
-      fetchNearestWarehouse(mapPoint.lat, mapPoint.lng)
+      fetchNearestWarehouse(mapPoint.lat, mapPoint.lng, true)
         .then((n) => { if (live) setNearest(n); })
         .catch(() => { if (live) setNearest(null); })
         .finally(() => { if (live) setNearestBusy(false); });
@@ -289,7 +289,7 @@ export function AddressFormScreen() {
             onTouchEnd={() => setMapTouch(false)}
             onTouchCancel={() => setMapTouch(false)}
           >
-            <DeliveryMap destination={mapPoint} focusKey={focusKey} onPick={onPick} height={ms(420)} warehouse={nearest?.lat != null && nearest?.lng != null ? { lat: nearest.lat, lng: nearest.lng } : null} />
+            <DeliveryMap destination={mapPoint} focusKey={focusKey} onPick={onPick} height={ms(420)} warehouse={nearest?.lat != null && nearest?.lng != null ? { lat: nearest.lat, lng: nearest.lng, route: nearest.route } : null} />
           </View>
           <NearestWarehouseCard nearest={nearest} loading={nearestBusy} />
           <Txt variant="caption" tone="muted" style={styles.mapHint}>

@@ -20,8 +20,8 @@ const same = (a?: Point, b?: Point) => !!a && !!b && Math.abs(a.lat - b.lat) < 1
  */
 export function DeliveryMap({ destination, pickup, rider, onPick, focusKey = 0, height = 300, warehouse }: {
   destination?: Point; pickup?: Point; rider?: Point; onPick?: (pin: PickedPin) => void;
-  /** Pick mode: the nearest warehouse, drawn with a dotted line to the pin. */
-  warehouse?: Point | null;
+  /** Pick mode: the nearest warehouse and the ROAD from it to the pin (never a straight line). */
+  warehouse?: (Point & { route?: [number, number][] | null }) | null;
   /** Bump it to move the pin to `destination` and read its address again, even if the point is unchanged. */
   focusKey?: number; height?: number;
 }) {
@@ -44,8 +44,8 @@ export function DeliveryMap({ destination, pickup, rider, onPick, focusKey = 0, 
   const inject = (data: object) => ref.current?.injectJavaScript(`window.bingoorMapUpdate?.(${JSON.stringify(data)});true;`);
   const sendRider = () => inject({ type: 'positions', rider });
   useEffect(sendRider, [rider?.lat, rider?.lng]);
-  const sendWarehouse = () => { if (picking) inject({ type: 'warehouse', lat: warehouse?.lat, lng: warehouse?.lng }); };
-  useEffect(() => { if (loaded.current) sendWarehouse(); }, [warehouse?.lat, warehouse?.lng]);
+  const sendWarehouse = () => { if (picking) inject({ type: 'warehouse', lat: warehouse?.lat, lng: warehouse?.lng, route: warehouse?.route ?? null }); };
+  useEffect(() => { if (loaded.current) sendWarehouse(); }, [warehouse?.lat, warehouse?.lng, warehouse?.route]);
 
   // A new point from outside the map (GPS, a pasted pin): move the pin there.
   const focused = useRef(0);

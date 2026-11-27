@@ -13,6 +13,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { escapeRegex, idOrSlugFilter } from '../utils/helpers';
 import { ok, pageMeta } from '../utils/response';
 import { haversineKm } from '../utils/helpers';
+import { ROAD_FACTOR, roadLegs, roadRoute, RoadLeg } from '../services/roadDistance.service';
 import { cachedSettings, loadSettings, productRules } from '../services/settings.service';
 import { mapLimit } from '../utils/mapLimit';
 
@@ -139,22 +140,46 @@ async function categoryFamily(rootId: Types.ObjectId): Promise<Types.ObjectId[]>
 const visible = { isActive: true, stock: { $gt: 0 } };
 
 /**
- * Active shops that can serve a point, nearest first. Every customer is served by
- * the nearest warehouse and the distance decides the promise (0-15 km 19 minutes,
- * 15-30 km next day, 30+ km 3 days), so a warehouse's own `deliveryRadiusKm` must
- * not hide it: with the usual 10 km radius that made every customer past 10 km
- * "not serviceable" and "Next day" / "3 days" never showed. Shops with no location
- * cannot be measured and are left out.
+ * Active shops that can serve a point, nearest first BY ROAD. Every customer is served by the nearest
+ * warehouse and the distance decides the promise (0-15 km 19 minutes, 15-30 km next day, 30+ km 3 days),
+ * so a warehouse's own `deliveryRadiusKm` must not hide it. The km are what a rider drives, not a straight
+ * line: the straight-line nearest few (and the nearest open one) are measured by road, and any other
+ * warehouse whose straight line is already shorter than the best road found is measured too, since a road
+ * is never shorter than the straight line. Shops with no location cannot be measured and are left out.
  */
 async function shopsServing(lat: number, lng: number) {
   const shops = await Shop.find({ isActive: true }).select('name location deliveryRadiusKm isOpen').lean();
-  return shops
+  const list = shops
     .map((sh) => {
       const c = sh.location?.coordinates;
-      const km = c && (c[0] || c[1]) ? haversineKm(lat, lng, c[1], c[0]) : Infinity;
-      return { _id: sh._id as Types.ObjectId, name: sh.name, km, radius: sh.deliveryRadiusKm ?? 10, isOpen: sh.isOpen !== false, lat: c?.[1], lng: c?.[0] };
+      const straight = c && (c[0] || c[1]) ? haversineKm(lat, lng, c[1], c[0]) : Infinity;
+      return { _id: sh._id as Types.ObjectId, name: sh.name, straight, radius: sh.deliveryRadiusKm ?? 10, isOpen: sh.isOpen !== false, lat: c?.[1], lng: c?.[0] };
     })
-    .filter((sh) => Number.isFinite(sh.km))
+    .filter((sh) => Number.isFinite(sh.straight))
+    .sort((a, b) => a.straight - b.straight);
+
+  const here = { lat, lng };
+  const measured = new Map<string, RoadLeg>();
+  const measure = async (batch: typeof list) => {
+    const todo = batch.filter((sh) => !measured.has(String(sh._id)));
+    if (!todo.length) return;
+    const legs = await roadLegs(here, todo.map((sh) => ({ lat: sh.lat!, lng: sh.lng! })));
+    todo.forEach((sh, i) => measured.set(String(sh._id), legs[i]));
+  };
+  const best = (onlyOpen: boolean) => Math.min(Infinity, ...list.filter((sh) => (!onlyOpen || sh.isOpen) && measured.has(String(sh._id))).map((sh) => measured.get(String(sh._id))!.km));
+  await measure([...list.slice(0, 4), ...list.filter((sh) => sh.isOpen).slice(0, 2)]);
+  for (let round = 0; round < 2; round++) {
+    // Anyone whose straight line is already shorter than the best road so far could still win.
+    const limit = Math.max(best(false), best(true) === Infinity ? 0 : best(true));
+    const more = list.filter((sh) => !measured.has(String(sh._id)) && sh.straight < limit).slice(0, 6);
+    if (!more.length) break;
+    await measure(more);
+  }
+  return list
+    .map((sh) => {
+      const leg = measured.get(String(sh._id)) ?? { km: Math.round(sh.straight * ROAD_FACTOR * 100) / 100, road: false };
+      return { ...sh, km: leg.km, road: leg.road };
+    })
     .sort((a, b) => a.km - b.km);
 }
 
@@ -244,9 +269,9 @@ async function visibleToFarCustomer<T extends { _id: unknown }>(list: T[], lat?:
  * step, so a customer outside every warehouse's range is told so instead of seeing products.
  */
 export const coverage = asyncHandler(async (req, res) => {
-  const { lat, lng } = req.query as unknown as { lat: number; lng: number };
+  const { lat, lng, route } = req.query as unknown as { lat: number; lng: number; route?: string };
   const serving = await shopsServing(lat, lng);
-  // The one warehouse an order here comes from: the nearest open one, else the nearest.
+  // The one warehouse an order here comes from: the nearest open one by road, else the nearest.
   const sh = serving.find((x) => x.isOpen) ?? serving[0];
   if (!sh) return ok(res, { serviceable: false, warehouses: [], nearest: null });
   const distanceKm = Math.round(sh.km * 10) / 10;
@@ -256,7 +281,11 @@ export const coverage = asyncHandler(async (req, res) => {
     serviceable: true,
     warehouses: [{ name: sh.name, distanceKm, isOpen: sh.isOpen }],
     /** For the pin picker: how far the serving warehouse is, where it is, and when an order arrives. */
-    nearest: { distanceKm, lat: sh.lat, lng: sh.lng, isOpen: sh.isOpen, deliveryDays: q.days, deliveryText },
+    nearest: {
+      distanceKm, road: sh.road, lat: sh.lat, lng: sh.lng, isOpen: sh.isOpen, deliveryDays: q.days, deliveryText,
+      // The road to draw on the map, as [lat, lng] points (only when asked for; never a straight line).
+      ...(route === '1' || route === 'true' ? { route: (await roadRoute({ lat, lng }, { lat: sh.lat!, lng: sh.lng! })).points } : {}),
+    },
   });
 });
 

@@ -12,14 +12,14 @@ export function NearestWarehouseCard({ nearest, loading }: { nearest: NearestWar
   const km = nearest ? (nearest.distanceKm < 1 ? `${Math.round(nearest.distanceKm * 1000)} m` : `${nearest.distanceKm} km`) : '';
   const when = nearest ? (nearest.deliveryDays === 0 ? 'Delivery in 19 minutes' : nearest.deliveryText) : '';
   return (
-    <View style={styles.card} accessibilityRole="summary" accessibilityLabel={nearest ? `Nearest warehouse ${km} away. ${when}` : 'Finding the nearest warehouse'}>
+    <View style={styles.card} accessibilityRole="summary" accessibilityLabel={nearest ? `Nearest warehouse ${km} by road. ${when}` : 'Finding the nearest warehouse'}>
       <View style={styles.icon}>
         <Ionicons name="storefront" size={ms(18)} color={c.onBrand} />
       </View>
       <View style={{ flex: 1 }}>
         {nearest ? (
           <>
-            <Txt variant="label">Nearest warehouse: {km} away</Txt>
+            <Txt variant="label">Nearest warehouse: {km} {nearest.road === false ? 'away (about)' : 'by road'}</Txt>
             <View style={styles.row}>
               <Ionicons name={nearest.deliveryDays > 0 ? 'calendar-outline' : 'flash'} size={ms(13)} color={c.brandText} />
               <Txt variant="caption" tone="brand">{when}{nearest.isOpen ? '' : ' · warehouse closed right now'}</Txt>

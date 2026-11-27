@@ -103,7 +103,12 @@ export async function fetchBrands(category?: string): Promise<string[]> {
 
 /** The one warehouse an order to a pin comes from: how far, where, and when it arrives. */
 export interface NearestWarehouse {
+  /** Kilometres by ROAD, as a rider drives it. */
   distanceKm: number;
+  /** False when the road service could not answer and this is an estimate. */
+  road?: boolean;
+  /** The road to draw on the map, as [lat, lng] points (only when asked for). */
+  route?: [number, number][] | null;
   lat?: number;
   lng?: number;
   isOpen: boolean;
@@ -112,9 +117,9 @@ export interface NearestWarehouse {
   deliveryText: string;
 }
 
-export async function fetchNearestWarehouse(lat: number, lng: number): Promise<NearestWarehouse | null> {
+export async function fetchNearestWarehouse(lat: number, lng: number, route = false): Promise<NearestWarehouse | null> {
   const { data } = await api.get<ApiEnvelope<{ nearest?: NearestWarehouse | null }>>('/coverage', {
-    params: { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 },
+    params: { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000, ...(route ? { route: 1 } : {}) },
   });
   return data.data.nearest ?? null;
 }

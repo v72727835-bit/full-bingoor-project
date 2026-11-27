@@ -167,7 +167,7 @@ export function AddressListScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(4), marginTop: ms(4) }}>
                 <Ionicons name="storefront-outline" size={ms(14)} color={colors.brandText} />
                 <Txt variant="caption" tone="brand">
-                  Warehouse {near[item._id].distanceKm} km away · {near[item._id].deliveryDays === 0 ? '19 minutes' : near[item._id].deliveryText}
+                  Warehouse {near[item._id].distanceKm} km by road · {near[item._id].deliveryDays === 0 ? '19 minutes' : near[item._id].deliveryText}
                 </Txt>
               </View>
             ) : null}

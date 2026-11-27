@@ -6,7 +6,8 @@ import { User } from '../models/User';
 import { getCartView, guestCartView, lineIssue, resolveCart, ResolvedGroup } from '../services/cart.service';
 import { orderDeliveryDays, paymentFee, paymentOptions, quoteCart, Slot } from '../services/pricing.service';
 import { codMessage, loadSettings, longDistanceCodMessage, productRules } from '../services/settings.service';
-import { haversineKm, round2 } from '../utils/helpers';
+import { round2 } from '../utils/helpers';
+import { roadKm } from '../services/roadDistance.service';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ok } from '../utils/response';
@@ -133,12 +134,13 @@ async function quoteFor(groups: ResolvedGroup[], point: { lat: number; lng: numb
   // One basket, one set of rules: the customer never sees which warehouse fills
   // which item, so the minimum order, free delivery and fees are judged on the
   // whole cart (checkout, runPlaceOrder, uses the same quoteCart).
-  const legs = groups.map((g) => {
+  const legs = await Promise.all(groups.map(async (g) => {
     const subtotal = g.lines.reduce((s, l) => (lineIssue(g, l) ? s : s + l.product.price * l.quantity), 0);
     const c = g.shop.location?.coordinates;
-    const km = point && c ? haversineKm(point.lat, point.lng, c[1], c[0]) : null;
+    // Road km, as a rider drives it.
+    const km = point && c ? await roadKm(point, { lat: c[1], lng: c[0] }) : null;
     return { subtotal, distanceKm: km };
-  });
+  }));
   const q = quoteCart(settings, { groups: legs, slot });
   const { subtotal, handlingFee, deliveryFee, twoHourFee, total, distanceKm, redOrder, longDistance, addForFree, freeAbove, minOrder, meetsMinOrder, baseDeliveryFee } = q;
   // #31: the cart's ETA must also honour a category's fixed "6 day" delivery,

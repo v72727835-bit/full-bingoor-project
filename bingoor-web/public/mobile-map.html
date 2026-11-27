@@ -35,7 +35,7 @@ async function reverseNotify(selected){
 let moving=false;
 function nudge(){const el=document.getElementById('pin');el.classList.remove('nudge');void el.offsetWidth;el.classList.add('nudge')}
 /* Pick mode: the pin stays in the middle and the customer moves the map under it. */
-function move(p,pan=true){destination={lat:p.lat,lng:p.lng};if(whLine&&wh)whLine.setPath([wh,destination]);
+function move(p,pan=true){destination={lat:p.lat,lng:p.lng};
  if(!edit){pin?.setPosition(destination);return}
  if(gmap&&pan){moving=true;gmap.panTo(destination);if(gmap.getZoom()<17)gmap.setZoom(17);nudge()}
  say('Finding the address…');clearTimeout(geoTimer);geoTimer=setTimeout(()=>reverseNotify({...destination}),350)}
@@ -65,14 +65,15 @@ function drawGoogle(){
  drawWarehouse();
 }
 let pendingMove=false;
-/* Pick mode: the nearest warehouse (the one the order comes from) and a dotted line to the pin. */
-let wh=null,whMarker=null,whLine=null;
+/* Pick mode: the nearest warehouse (the one the order comes from) and the ROAD from it to the pin - never a straight line. */
+let wh=null,whRoute=null,whMarker=null,whLine=null;
 function drawWarehouse(){
  if(!gmap||!edit)return;
  if(!wh){if(whMarker)whMarker.setMap(null);if(whLine)whLine.setMap(null);whMarker=whLine=null;return}
  if(!whMarker)whMarker=new google.maps.Marker({map:gmap,position:wh,clickable:false,title:'Nearest warehouse',zIndex:1,icon:{path:google.maps.SymbolPath.CIRCLE,scale:15,fillColor:'#ffffff',fillOpacity:1,strokeColor:'#0E8A3E',strokeWeight:2},label:{text:'🏬',fontSize:'17px'}});else whMarker.setPosition(wh);
- const path=[wh,destination];
- if(!whLine)whLine=new google.maps.Polyline({map:gmap,path,clickable:false,strokeOpacity:0,icons:[{icon:{path:'M 0,-1 0,1',strokeOpacity:0.9,strokeColor:'#0E8A3E',scale:3},offset:'0',repeat:'14px'}]});else whLine.setPath(path);
+ const path=(whRoute||[]).map(p=>({lat:p[0],lng:p[1]}));
+ if(path.length<2){if(whLine)whLine.setMap(null);whLine=null;return}
+ if(!whLine)whLine=new google.maps.Polyline({map:gmap,path,clickable:false,strokeColor:'#1A73E8',strokeOpacity:0.85,strokeWeight:5});else whLine.setPath(path);
 }
 function drawRoute(){
  if(!googleReady||edit)return;
@@ -90,7 +91,7 @@ function drawRoute(){
 }
 function update(data){
  /* The app found the phone's location: move the pin there and fill the address. */
- if(data.type==='warehouse'&&edit){wh=valid(data)?{lat:data.lat,lng:data.lng}:null;drawWarehouse();return}
+ if(data.type==='warehouse'&&edit){wh=valid(data)?{lat:data.lat,lng:data.lng}:null;whRoute=Array.isArray(data.route)?data.route.filter(p=>Array.isArray(p)&&valid({lat:p[0],lng:p[1]})):null;drawWarehouse();return}
  if(data.type==='moveTo'&&edit&&valid(data)){if(googleReady)move({lat:data.lat,lng:data.lng});else{destination={lat:data.lat,lng:data.lng};pendingMove=true}return}
  if(data.type!=='positions'||!valid(data.rider))return;rider=data.rider;
  if(gmap){

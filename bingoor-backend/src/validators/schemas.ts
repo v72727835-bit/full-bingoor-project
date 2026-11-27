@@ -111,7 +111,12 @@ export const homeQuery = geoQuery.refine((v) => (v.lat === undefined) === (v.lng
   message: 'Send both lat and lng, or neither',
 });
 
-export const coverageQuery = z.object({ lat: z.coerce.number().min(-90).max(90), lng: z.coerce.number().min(-180).max(180) });
+export const coverageQuery = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+  /** 1 = also send the road to draw on the map. */
+  route: z.enum(['0', '1', 'true', 'false']).optional(),
+});
 
 export const categoriesQuery = z.object({
   parent: objectId.optional(),

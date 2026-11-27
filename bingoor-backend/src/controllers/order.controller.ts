@@ -12,7 +12,8 @@ import { createRazorpayOrder, razorpayEnabled, razorpayKeys, razorpayWebhookSecr
 import { PaymentIntent } from '../models/PaymentIntent';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
-import { haversineKm, round2 } from '../utils/helpers';
+import { round2 } from '../utils/helpers';
+import { roadKm } from '../services/roadDistance.service';
 import { created, ok, pageMeta } from '../utils/response';
 
 const ACTIVE_STATUSES = ['placed', 'accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery'];
@@ -49,14 +50,14 @@ async function restoreStock(items: { product: Types.ObjectId | string; quantity:
   );
 }
 
-/** Straight-line km from the warehouse to the delivery pin, or null when either is unknown. */
-function distanceTo(
+/** Road km (as a rider drives it) from the warehouse to the delivery pin, or null when either is unknown. */
+async function distanceTo(
   shop: { location?: { coordinates?: number[] } },
   to?: { lat: number; lng: number },
-): number | null {
+): Promise<number | null> {
   const c = shop.location?.coordinates;
   if (!c || c.length < 2 || !to?.lat || !to?.lng) return null;
-  return haversineKm(to.lat, to.lng, c[1], c[0]);
+  return roadKm({ lat: to.lat, lng: to.lng }, { lat: c[1], lng: c[0] });
 }
 
 /* ---------------- place order ---------------- */
@@ -95,7 +96,7 @@ async function runPlaceOrder(
 
   // Hidden cart-points rule: checkout stays closed until the basket reaches the
   // target for this address's distance (e.g. 70 points at 9-15 km).
-  const needPoints = pointsTarget(settings, basketKm(groups, address.location));
+  const needPoints = pointsTarget(settings, await basketKm(groups, address.location));
   if (needPoints > 0 && cartPointsTotal(groups) < needPoints) {
     throw new ApiError(409, 'Please add 1 product from the list below your cart to continue.', [{ reason: 'points_short' }]);
   }
@@ -122,7 +123,7 @@ async function runPlaceOrder(
         problems.push({ shop: g.shop.name, productId: String(l.product._id), name: l.product.name, reason: 'online_unavailable' });
       }
     }
-    legs.push({ subtotal, distanceKm: distanceTo(g.shop, address.location) });
+    legs.push({ subtotal, distanceKm: await distanceTo(g.shop, address.location) });
   }
   // One basket, one set of rules (the same quoteCart as /cart/quote): the minimum
   // order and the fees go by the whole cart, not by each warehouse filling it.
@@ -148,6 +149,8 @@ async function runPlaceOrder(
   const reservations = groups.flatMap((g) =>
     g.lines.map((l) => ({ product: l.product._id, quantity: l.quantity, name: l.product.name })),
   );
+  // Road km from each warehouse to the delivery pin (already measured above, so this is remembered).
+  const roadKmByGroup = await Promise.all(groups.map((g) => distanceTo(g.shop, address.location)));
   const orderDocs = groups.map((g, idx) => {
     const items = g.lines.map((l) => ({
       product: l.product._id,
@@ -165,7 +168,7 @@ async function runPlaceOrder(
     }));
     const sellerIds = [...new Set(items.filter((i) => i.seller).map((i) => String(i.seller)))];
     const subtotal = round2(items.reduce((s, i) => s + i.lineTotal, 0));
-    const own = quoteDelivery(settings, { subtotal, distanceKm: distanceTo(g.shop, address.location), slot });
+    const own = quoteDelivery(settings, { subtotal, distanceKm: roadKmByGroup[idx], slot });
     // The basket's fees are charged once, on the first order of the checkout (like the tip).
     const quote = { ...own, deliveryFee: idx === 0 ? cartQuote.deliveryFee : 0, twoHourFee: idx === 0 ? cartQuote.twoHourFee : 0,
       handlingFee: idx === 0 ? cartQuote.handlingFee : 0, days: cartQuote.days, redOrder: cartQuote.redOrder, longDistance: cartQuote.longDistance };

@@ -3,7 +3,8 @@ import { env } from '../config/env';
 import { Cart } from '../models/Cart';
 import { IProduct, Product } from '../models/Product';
 import { IShop } from '../models/Shop';
-import { haversineKm, round2 } from '../utils/helpers';
+import { round2 } from '../utils/helpers';
+import { roadLegs } from './roadDistance.service';
 import { User } from '../models/User';
 import { pointsTarget } from './pricing.service';
 import { loadSettings, productRules } from './settings.service';
@@ -158,14 +159,16 @@ export function cartPointsTotal(groups: ResolvedGroup[]): number {
  * checkout is open (`met`), a row of top-up products, and the one product
  * that is added for them when they are short.
  */
-/** The delivery distance a basket is judged on: the farthest warehouse in it from the point. */
-export function basketKm(groups: ResolvedGroup[], point?: { lat?: number; lng?: number } | null): number | null {
+/** The delivery distance a basket is judged on: the farthest warehouse in it from the point, by road. */
+export async function basketKm(groups: ResolvedGroup[], point?: { lat?: number; lng?: number } | null): Promise<number | null> {
   if (!point?.lat || !point?.lng) return null;
-  const kms = groups
+  const places = groups
     .map((g) => g.shop.location?.coordinates)
     .filter((c): c is [number, number] => !!c && c.length >= 2)
-    .map((c) => haversineKm(point.lat!, point.lng!, c[1], c[0]));
-  return kms.length ? Math.max(...kms) : null;
+    .map((c) => ({ lat: c[1], lng: c[0] }));
+  if (!places.length) return null;
+  const legs = await roadLegs({ lat: point.lat, lng: point.lng }, places);
+  return Math.max(...legs.map((l) => l.km));
 }
 
 async function pointsView(groups: ResolvedGroup[], distanceKm: number | null = null) {
@@ -232,13 +235,13 @@ export async function getCartView(userId: string, point?: { lat?: number; lng?: 
     const def = user?.addresses?.find((a) => a.isDefault) ?? user?.addresses?.[0];
     at = def?.location ?? null;
   }
-  return { ...buildCartView(groups), points: await pointsView(groups, basketKm(groups, at)) };
+  return { ...buildCartView(groups), points: await pointsView(groups, await basketKm(groups, at)) };
 }
 
 /** The same view for a visitor who has not signed in yet: their basket lives in the browser / phone. */
 export async function guestCartView(items: { product: string; quantity: number }[], point?: { lat: number; lng: number }) {
   const { groups } = await resolveItems(items);
-  return { groups, view: { ...buildCartView(groups), points: await pointsView(groups, basketKm(groups, point)) } };
+  return { groups, view: { ...buildCartView(groups), points: await pointsView(groups, await basketKm(groups, point)) } };
 }
 
 /** #35 "See all": every product the admin picked for the cart rows, in sort-code order. */

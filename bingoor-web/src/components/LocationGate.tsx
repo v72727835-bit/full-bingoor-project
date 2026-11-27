@@ -227,7 +227,7 @@ export function LocationGate() {
                   </span>
                   {near[a.id] ? (
                     <span className={s.addrBody} style={{ color: 'var(--brand-text)', fontWeight: 600 }}>
-                      🏬 Warehouse {near[a.id].distanceKm} km away · {near[a.id].deliveryDays === 0 ? '19 minutes' : near[a.id].deliveryText}
+                      🏬 Warehouse {near[a.id].distanceKm} km by road · {near[a.id].deliveryDays === 0 ? '19 minutes' : near[a.id].deliveryText}
                     </span>
                   ) : null}
                 </button>
